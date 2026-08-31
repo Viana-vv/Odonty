@@ -1,0 +1,6 @@
+Nome
+Descrição
+Responsabilidade
+Principais atributos conceituais
+Relacionamentos
+Regras estruturais importantes
