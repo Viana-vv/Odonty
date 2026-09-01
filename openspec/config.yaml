@@ -1,34 +1,152 @@
 schema: spec-driven
+
 githubCopilot:
   cloudAgent: true
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+context: |
+  Project:
+    Sistema web para gerenciamento de uma clínica odontológica.
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+  Domain:
+    O sistema gerencia contas de acesso, pacientes, profissionais,
+    disponibilidades da agenda, consultas, prontuários, registros
+    clínicos, procedimentos e exames.
 
-# Per-operation guidance (optional)
-# Add advisory guidance for how apply and archive work should be conducted.
-# This is separate from artifact rules above.
-# Example:
-#   operations:
-#     apply:
-#       guidance:
-#         - Keep test summaries concise
-#     archive:
-#       guidance:
-#         - Summarize the archive outcome before finishing
+    Paciente representa a pessoa atendida.
+
+    Conta de Acesso representa a identidade usada para autenticação
+    e autorização.
+
+    Consulta representa o atendimento agendado entre um paciente
+    e um profissional.
+
+    Prontuário representa o histórico clínico permanente do paciente
+    e pode possuir vários registros clínicos.
+
+  Tech stack:
+    Python como linguagem de programação.
+    Streamlit como frontend.
+    Xano como backend, banco de dados e provedor de APIs REST.
+    Git e GitHub para versionamento e colaboração.
+    OpenSpec para especificação das mudanças.
+    Render ou Railway para implantação.
+
+  Architecture:
+    O Streamlit é responsável pela interface, navegação,
+    formulários e apresentação dos dados.
+
+    O Xano é responsável pela persistência, autenticação,
+    autorização, validações e regras de negócio.
+
+    O frontend não deve ser considerado um mecanismo de segurança.
+
+    Toda operação protegida deve ser validada no Xano.
+
+    A comunicação entre Streamlit e Xano deve acontecer por APIs REST.
+
+    Configurações sensíveis devem utilizar variáveis de ambiente.
+
+  Domain rules:
+    Um paciente pode possuir várias consultas.
+
+    Um profissional pode possuir várias disponibilidades e consultas.
+
+    Não pode existir mais de uma consulta ativa para o mesmo
+    profissional e horário.
+
+    Um paciente possui um prontuário.
+
+    Um prontuário pode possuir vários registros clínicos.
+
+    Uma consulta pode possuir vários procedimentos e exames.
+
+    Consultas canceladas ou realizadas devem permanecer no histórico.
+
+    Registros clínicos concluídos não devem ser apagados.
+
+  Security:
+    Utilizar somente dados fictícios.
+
+    Não utilizar dados, prontuários ou exames de pessoas reais.
+
+    Não armazenar senhas em texto puro.
+
+    Não colocar tokens, senhas ou chaves no código ou no GitHub.
+
+    Aplicar autenticação e autorização no Xano.
+
+    O paciente deve acessar somente os próprios dados.
+
+    Informações clínicas não devem aparecer em logs ou mensagens de erro.
+
+  Development:
+    O projeto deve ser desenvolvido incrementalmente com OpenSpec.
+
+    Mudanças relevantes devem ser especificadas antes da implementação.
+
+    Cada change deve possuir escopo pequeno, claro e verificável.
+
+    A implementação deve permanecer dentro do escopo aprovado.
+
+    Não adicionar funcionalidades ou tecnologias sem aprovação do grupo.
+
+  Documentation:
+    Consultar docs/project-overview.md para compreender o projeto.
+
+    Consultar docs/domain-model.md para compreender as entidades,
+    relacionamentos e regras do domínio.
+
+    Consultar AGENTS.md para conhecer as regras de trabalho.
+
+  Language:
+    Escrever a documentação e os artefatos do OpenSpec
+    em português brasileiro.
+
+rules:
+  proposal:
+    - Descrever claramente o problema e o objetivo.
+    - Informar o que está dentro do escopo.
+    - Informar o que está fora do escopo.
+    - Identificar dependências e riscos importantes.
+    - Não propor todo o sistema em uma única change.
+
+  specs:
+    - Escrever requisitos claros e verificáveis.
+    - Incluir cenários de sucesso e erro.
+    - Incluir cenários de autorização quando aplicável.
+    - Respeitar as regras de docs/domain-model.md.
+    - Não incluir detalhes técnicos que pertencem ao design.
+
+  design:
+    - Respeitar a arquitetura Streamlit e Xano.
+    - Manter regras de negócio e autorização no Xano.
+    - Explicar endpoints e integrações afetadas.
+    - Explicar alterações no modelo de dados.
+    - Identificar riscos de segurança e privacidade.
+
+  tasks:
+    - Dividir a implementação em tarefas pequenas.
+    - Organizar as tarefas por dependência.
+    - Incluir backend, frontend e integração quando aplicável.
+    - Incluir testes e verificações.
+    - Incluir atualização da documentação quando necessária.
+
+operations:
+  apply:
+    guidance:
+      - Ler AGENTS.md e os documentos de contexto antes de implementar.
+      - Implementar somente as tarefas da change atual.
+      - Não modificar funcionalidades não relacionadas.
+      - Aplicar autenticação e autorização no Xano.
+      - Utilizar somente dados fictícios.
+      - Não colocar credenciais ou segredos no código.
+      - Executar as verificações antes de concluir.
+
+  archive:
+    guidance:
+      - Confirmar que todas as tarefas foram concluídas.
+      - Confirmar que a implementação corresponde às especificações.
+      - Confirmar que os critérios de aceitação foram atendidos.
+      - Confirmar que os testes foram executados.
+      - Confirmar que a documentação foi atualizada.
+      - Não arquivar changes com defeitos críticos pendentes.
