@@ -48,7 +48,7 @@ Sem configuração válida, a tela informa o problema e desabilita o formulário
 | `GET /auth/me` | Bearer token | 200 com `conta` e `expira_em` |
 | `POST /auth/logout` | Bearer token | 204 sem corpo |
 
-O [design](openspec/changes/login-streamlit-xano/design.md) detalha o contrato e as permissões. As tabelas legadas e APIs de outras funcionalidades foram preservadas.
+O [design](openspec/changes/archive/2026-09-25-login-streamlit-xano/design.md) detalha o contrato e as permissões. As tabelas legadas e APIs de outras funcionalidades foram preservadas.
 
 O token fica no estado da sessão Streamlit. A identidade é revalidada antes da exibição protegida. A sessão tem prazo absoluto de uma hora, sem renovação. O logout sempre limpa o estado local e informa quando não confirmou a revogação remota. Nova conexão sem estado exige novo login.
 
@@ -56,7 +56,7 @@ O token fica no estado da sessão Streamlit. A identidade é revalidada antes da
 
 ```powershell
 .venv/Scripts/python -m pytest tests/test_acesso.py tests/test_interface.py -q
-openspec validate login-streamlit-xano --strict
+openspec validate --all --strict
 ```
 
 Em 23/09/2026, **54 testes locais e 25 testes reais passaram**. Os testes locais verificam configuração, contrato, falhas de rede, erros seguros e comportamento da interface. A suíte real verifica diretamente no Xano campos, perfis, contas bloqueadas/inativas, identidade própria, revogação, replay, logout repetido, perda de acesso, sessões independentes e expiração efetiva.
@@ -91,7 +91,7 @@ Esse arquivo não acompanha o repositório. Em outra máquina, um responsável d
 - [Visão do projeto](docs/project-overview.md)
 - [Modelo de domínio](docs/domain-model.md)
 - [Instruções de trabalho](AGENTS.md)
-- [Proposta de login](openspec/changes/login-streamlit-xano/proposal.md)
-- [Verificações e tarefas](openspec/changes/login-streamlit-xano/tasks.md)
+- [Proposta de login](openspec/changes/archive/2026-09-25-login-streamlit-xano/proposal.md)
+- [Verificações e tarefas](openspec/changes/archive/2026-09-25-login-streamlit-xano/tasks.md)
 
 O MVP utiliza somente dados fictícios e não é destinado ao uso clínico real.

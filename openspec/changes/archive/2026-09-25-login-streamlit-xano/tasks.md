@@ -30,8 +30,8 @@ Checklist preliminar: as etapas posteriores dependem da aprovação dos contrato
 
 ## 5. Revisão e arquivo
 
-- [ ] 5.1 Abrir PR ligado à Issue com instruções e resultados de testes e solicitar revisão de integrante; verificar referências.
-- [ ] 5.2 Após conclusão e integração real validada, arquivar pelo OpenSpec; verificar tarefas concluídas e sincronização pela ferramenta, sem editar manualmente openspec/specs.
+- [x] 5.1 Abrir PR ligado à Issue com instruções e resultados de testes e solicitar revisão de integrante; verificar referências.
+- [x] 5.2 Após conclusão e integração real validada, arquivar pelo OpenSpec; verificar tarefas concluídas e sincronização pela ferramenta, sem editar manualmente openspec/specs.
 
 
 
@@ -50,3 +50,12 @@ Checklist preliminar: as etapas posteriores dependem da aprovação dos contrato
 - `XANO_API_BASE_URL` configurada no ambiente do usuário Windows. Conta fictícia de demonstração com credencial protegida por DPAPI local, ignorada pelo Git.
 - Correção publicada somente em auth/login após prévia sem erros: util.get_raw_input e sintaxe da validação do prazo. Tabelas e APIs legadas preservadas.
 - `git diff --check` e validação estrita do OpenSpec passaram. Revisão do conteúdo limitada a esta change; credenciais, cópias remotas e evidências temporárias não entram no Git.
+
+
+## Retomada e revisão — 25/09/2026
+
+- 54 testes locais aprovados novamente; validação estrita do OpenSpec aprovada.
+- PR: https://github.com/Viana-vv/Odonty/pull/2, vinculado à Issue #1.
+- Revisão solicitada a Alveszx1 e viinisoares; aprovação e merge pendentes.
+- Testes reais do Xano mantidos como evidência de 23/09/2026.
+- Arquivamento pela CLI concluído; oito requisitos sincronizados e spec validada.
