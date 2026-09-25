@@ -58,7 +58,7 @@ class ClienteXano:
     def __init__(self, configuracao: Configuracao):
         self.configuracao = configuracao
 
-    def _request(self, method, route, token=None, payload=None):
+    def _request(self, method, route, token=None, payload=None, status_esperado=200):
         headers = {"Accept": "application/json"}
         if token:
             if not isinstance(token, str) or any(c.isspace() for c in token):
@@ -76,12 +76,13 @@ class ClienteXano:
             status = response.status_code
             if route == "/auth/logout" and status in (204, 401):
                 return None
-            if status != 200:
+            if status != status_esperado:
                 messages = {
                     400: "Confira os dados informados e tente novamente.",
                     401: ("E-mail ou senha incorretos, ou conta indisponível."
                           if route == "/auth/login" else "Sua sessão expirou ou não é válida. Entre novamente."),
                     403: "Sua conta não tem permissão para acessar esta área.",
+                    409: "E-mail ou CRO já cadastrado.",
                     429: "Muitas tentativas. Aguarde um pouco antes de tentar novamente.",
                 }
                 raise ErroAcesso(messages.get(status, INDISPONIVEL), status)
@@ -120,3 +121,50 @@ class ClienteXano:
 
     def sair(self, token):
         self._request("POST", "/auth/logout", token=token)
+
+
+    def listar_especialidades(self, token):
+        data = self._request("GET", "/especialidades", token=token)
+        itens = data.get("especialidades")
+        if not isinstance(itens, list):
+            raise ErroAcesso()
+        vistos = set()
+        for item in itens:
+            if (not isinstance(item, dict) or type(item.get("id")) is not int
+                    or item["id"] <= 0 or item["id"] in vistos
+                    or not isinstance(item.get("nome"), str) or not item["nome"].strip()):
+                raise ErroAcesso()
+            vistos.add(item["id"])
+        return [{"id": item["id"], "nome": item["nome"]} for item in itens]
+
+    def cadastrar_profissional(self, token, nome, email, senha, cro, especialidade_id):
+        from .profissionais import validar_cadastro
+        dados = validar_cadastro(nome, email, senha, cro, especialidade_id)
+        try:
+            data = self._request("POST", "/profissionais", token=token,
+                                 payload=dados, status_esperado=201)
+            profissional, conta = data.get("profissional"), data.get("conta")
+            if not isinstance(profissional, dict) or not isinstance(conta, dict):
+                raise ErroAcesso()
+            especialidade = profissional.get("especialidade")
+            if (type(profissional.get("id")) is not int or profissional["id"] <= 0
+                    or type(conta.get("id")) is not int or conta["id"] <= 0
+                    or profissional.get("nome") != dados["nome"]
+                    or profissional.get("cro") != dados["cro"]
+                    or profissional.get("situacao") != "ativo"
+                    or conta.get("situacao") != "ativo" or conta.get("perfis") != ["profissional"]
+                    or not isinstance(especialidade, dict)
+                    or type(especialidade.get("id")) is not int
+                    or especialidade.get("id") != especialidade_id
+                    or not isinstance(especialidade.get("nome"), str)
+                    or not especialidade["nome"].strip()):
+                raise ErroAcesso()
+            return profissional["id"]
+        except ErroAcesso as error:
+            if error.status in (400, 401, 403, 409, 429):
+                raise
+            raise ErroAcesso(
+                "Não foi possível confirmar o cadastro. Não há repetição automática. "
+                "Antes de tentar novamente, confira o resultado com o responsável pelo sistema.",
+                error.status,
+            ) from None
