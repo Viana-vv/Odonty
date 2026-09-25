@@ -25,3 +25,10 @@
 - [ ] 4.3 Atualizar README e documentação de execução/contrato; verificar instruções reproduzíveis e validar OpenSpec estritamente.
 - [ ] 4.4 Revisar diff, publicar PR de implementação ligado à Issue e solicitar revisão; verificar ausência de segredos e mudanças fora de escopo.
 - [ ] 4.5 Após conclusão verificada, arquivar e sincronizar pela CLI OpenSpec; verificar todas as tarefas e specs principais sem edição manual.
+
+## Verificação da correção do cadastro — 25/09/2026
+
+- Corrigida no endpoint publicado a ordem dos argumentos das validações de e-mail e CRO. O teste isolado no Xano rejeitava valores válidos antes da correção e passou a aceitá-los com o padrão como entrada do filtro e o texto como argumento.
+- A interface restaura nome, e-mail, CRO e especialidade após rejeição, sem restaurar senha ou confirmação.
+- 110 testes locais passaram (`tests/test_acesso.py`, `tests/test_interface.py` e `tests/test_profissionais.py`), incluindo rejeição no primeiro envio seguida de correção e sucesso. OpenSpec validado com `--strict`.
+- Cadastro real com dados fictícios confirmado no navegador após a publicação. O login da conta criada retornou HTTP 200 pela API e apresentou a identificação de Dentista, sem ação administrativa, no navegador. As verificações restantes da change continuam pendentes; ocorrências de HTTP 429 exigiram espaçar chamadas de teste.

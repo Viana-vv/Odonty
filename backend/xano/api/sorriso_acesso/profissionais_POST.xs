@@ -36,7 +36,7 @@ query profissionais verb=POST {
     var $email { value = $bruto.email|trim|to_lower }
     var $cro_entrada { value = $bruto.cro|trim|to_upper }
     conditional {
-      if (($nome|strlen) < 2 || ($nome|strlen) > 120 || ($email|strlen) > 254 || ($email|regex_test:"^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$") == false || ($bruto.senha|strlen) < 12 || ($bruto.senha|strlen) > 128 || ($cro_entrada|strlen) > 32 || ($cro_entrada|regex_test:"^(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)-[0-9]{1,10}$") == false || $bruto.especialidade_id <= 0) {
+      if (($nome|strlen) < 2 || ($nome|strlen) > 120 || ($email|strlen) > 254 || ("/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/"|regex_test:$email) == false || ($bruto.senha|strlen) < 12 || ($bruto.senha|strlen) > 128 || ($cro_entrada|strlen) > 32 || ("/^(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)-[0-9]{1,10}$/"|regex_test:$cro_entrada) == false || $bruto.especialidade_id <= 0) {
         util.set_header { value = "HTTP/1.1 400 Bad Request" }
         return { value = {codigo: "DADOS_INVALIDOS", mensagem: "Confira os dados do profissional."} }
       }

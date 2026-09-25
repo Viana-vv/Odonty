@@ -166,6 +166,28 @@ def test_admin_cria_sem_trocar_identidade(api):
     api["cadastrar_profissional"].assert_called_once_with("token-adm", **DADOS)
 
 
+def test_primeiro_envio_preserva_campos_apos_rejeicao_e_permite_corrigir(api):
+    api["cadastrar_profissional"].side_effect = [ErroAcesso("Confira os dados.", 400), 10]
+    app = abrir_form(api)
+    preencher(app)
+    botao(app, "Cadastrar").click().run()
+    assert not app.exception
+    for campo in ("nome", "email", "cro"):
+        assert app.text_input(key="cad_" + campo).value == DADOS[campo]
+    assert app.selectbox(key="cad_especialidade").value == 1
+    assert app.text_input(key="cad_senha").value == ""
+    assert app.text_input(key="cad_confirmacao").value == ""
+    app.text_input(key="cad_senha").set_value(DADOS["senha"])
+    app.text_input(key="cad_confirmacao").set_value(DADOS["senha"])
+    botao(app, "Cadastrar").click().run()
+    assert not app.exception
+    assert app.success
+    assert api["cadastrar_profissional"].call_count == 2
+    assert api["cadastrar_profissional"].call_args.kwargs == DADOS
+    assert app.text_input(key="cad_nome").value == ""
+    assert app.session_state[sessao.CHAVE].token == "token-adm"
+
+
 @pytest.mark.parametrize("perfil", ["profissional", "recepcionista"])
 def test_outros_perfis_sem_cadastro(api, perfil):
     conta = api["identificar"].return_value

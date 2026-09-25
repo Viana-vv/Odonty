@@ -42,6 +42,9 @@ def solicitar_cadastro():
 
 
 def renderizar_cadastro(cliente):
+    restaurar = st.session_state.pop("cad_restaurar", {})
+    for campo, valor in restaurar.items():
+        st.session_state["cad_" + campo] = valor
     if st.session_state.pop("cad_limpar", False):
         limpar_formulario()
         st.success("Profissional cadastrado. Ele já pode entrar pelo login da equipe.")
@@ -97,6 +100,11 @@ def renderizar_cadastro(cliente):
                 st.session_state["aviso"] = ("error", str(error))
             else:
                 st.session_state["cad_aviso"] = ("error", str(error))
+                if dados:
+                    st.session_state["cad_restaurar"] = {
+                        "nome": dados["nome"], "email": dados["email"],
+                        "cro": dados["cro"], "especialidade": dados["especialidade_id"],
+                    }
         finally:
             if dados:
                 dados.clear()
