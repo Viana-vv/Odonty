@@ -7,7 +7,7 @@ query "auth/login" verb=POST {
   }
   stack {
     util.set_header { value = "Cache-Control: no-store" }
-    util.get_input { encoding = "json" } as $bruto
+    util.get_raw_input { encoding = "json" } as $bruto
     conditional {
       if (($bruto|keys|count) != 2) {
         util.set_header { value = "HTTP/1.1 400 Bad Request" }
@@ -41,7 +41,10 @@ query "auth/login" verb=POST {
       }
     }
     var $duracao { value = $env|get:"AUTH_SESSION_TTL_SECONDS":3600|to_int }
-    precondition ($duracao > 0 && $duracao <= 3600) { error_type = "standard" error = "Configuração de sessão inválida." }
+    precondition ($duracao > 0 && $duracao <= 3600) {
+      error_type = "standard"
+      error = "Configuração de sessão inválida."
+    }
     var $prazo { value = now|add_secs_to_timestamp:$duracao }
     security.create_uuid as $sessao_id
     db.transaction {

@@ -1,8 +1,8 @@
 ﻿## Context
 
-Esta é a proposta técnica solicitada pelo usuário para revisão, não um contrato já publicado no Xano. Estão aprovados: login por e-mail e senha, página inicial com nome, perfil e Sair, três perfis internos e o rótulo Dentista para Profissional. Os detalhes abaixo ainda dependem da revisão desta proposta antes de Apply.
+Este design registra o contrato aprovado: login por e-mail e senha, página inicial com nome, perfil e Sair, três perfis internos e o rótulo Dentista para Profissional. A aprovação inclui a matriz e a política de sessão; a validação real no Xano foi concluída conforme evidências ao final.
 
-Não há protótipo React/Vinext disponível, conforme confirmação do usuário. Não existem endpoints comprovados nesta sessão. A conexão anterior com a instância terminou em timeout; isso não comprova indisponibilidade permanente. O login administrativo do CLI não é autenticação da aplicação.
+Não há protótipo React/Vinext disponível, conforme confirmação do usuário. Em 23/09/2026, a leitura do workspace 149129 confirmou os três endpoints e history = false. Os contratos foram verificados por 25 testes reais. O login administrativo do CLI não é autenticação da aplicação.
 
 ## Goals / Non-Goals
 
@@ -18,7 +18,7 @@ Navegador → Streamlit/Python → Xano. Separar interface, configuração, clie
 
 A documentação oficial descreve autenticação de endpoints por token, validação de senha e informações adicionais no token. Consultar perfis atuais na Conta de Acesso em cada operação evita depender de permissões antigas guardadas no token. Referências: [autenticação](https://docs.xano.com/building-backend-features/user-authentication-and-user-data) e [autorização por perfil](https://docs.xano.com/building-backend-features/user-authentication-and-user-data/restricting-access-rbac).
 
-As rotas, campos, tabelas e duração abaixo são decisões propostas para o Sorriso+, não padrões presumidos nem recursos já configurados. A implementação deve verificar o suporte na instância e ajustar a proposta se necessário.
+As rotas, campos, tabelas e duração abaixo são decisões aprovadas para o Sorriso+, não padrões presumidos nem recursos já configurados. A implementação deve verificar o suporte na instância e ajustar a proposta se necessário.
 
 ### Contrato REST proposto
 
@@ -85,7 +85,7 @@ Configurar o histórico de requisições e logs do Xano e do frontend para não 
 - Em indisponibilidade durante revalidação, não apresentar identidade em cache: limpar estado autenticado, informar indisponibilidade e permitir nova tentativa de login.
 - A interface não retenta automaticamente login ou logout, evitando efeitos duplicados. Sessão remota criada sem resposta ao cliente expira normalmente.
 
-Uma hora reduz a complexidade do MVP sem introduzir refresh tokens. É uma proposta de produto, não uma exigência nem um padrão do Xano.
+Uma hora reduz a complexidade do MVP sem introduzir refresh tokens. É uma decisão de produto, não uma exigência nem um padrão do Xano.
 
 ### Matriz proposta somente para esta change
 
@@ -104,13 +104,13 @@ Não criar endpoints de administração, prontuários, consultas ou exames nesta
 
 - Frontend: `XANO_API_BASE_URL` obrigatória, HTTPS, sem token, query string ou fragmento; `XANO_HTTP_TIMEOUT_SECONDS` opcional, padrão 10, valor positivo. Validar configuração antes de permitir submissão. Não repetir automaticamente requisições após timeout.
 - Backend: `AUTH_SESSION_TTL_SECONDS=3600`; uma mudança nesse valor requer atualizar a política e os testes. O frontend recebe o prazo do backend, sem configurá-lo independentemente.
-- Nenhum segredo administrativo necessário no frontend. Dependências Python e comando de execução serão documentados ao implementar; não há aplicação executável nesta etapa.
+- Nenhum segredo administrativo necessário no frontend. Dependências estão em requirements.txt e requirements-dev.txt; configuração e execução da aplicação existente estão no README.
 
 ### Referência visual
 
 A imagem 1000323602.jpg mostra mascote de dente sorridente, escova, creme dental, contornos escuros, detalhes azuis e fundo branco. Os textos NOME DA CLÍNICA e TAGLINE AQUI são placeholders.
 
-Usar mascote com Sorriso+ e formulário lado a lado no computador e disposição vertical em telas pequenas. Verde nos elementos de ação, fundo claro, rótulos visíveis e foco de teclado. Preparar asset sem placeholders preservando o original. Nenhuma imagem foi editada nesta etapa.
+Usar mascote com Sorriso+ e formulário lado a lado no computador e disposição vertical em telas pequenas. Verde nos elementos de ação, fundo claro, rótulos visíveis e foco de teclado. Preparar asset sem placeholders preservando o original. O asset preparado está em assets/mascote-sorriso.png; a imagem original foi preservada.
 
 ### Critérios de verificação
 
@@ -125,13 +125,28 @@ Verificar proteção sem depender da interface. Revisar logs para ausência de c
 - Revogação requer consulta à sessão em cada operação → custo adicional pequeno e necessário ao logout proposto.
 - Sem persistência após recarga → exige novo login, mas evita mecanismo adicional de armazenamento de credenciais.
 - Falha de rede no logout → saída local garantida; revogação remota não garantida até expiração, explicitada ao usuário.
-- Configuração real não inspecionada → verificar suporte, rotas existentes e logs antes de implementar; atualizar proposta se divergente.
-- Contratos e política ainda em revisão → não publicar endpoints nem declarar integração funcional nesta etapa.
+- Limite de requisições do plano Xano → a interface informa HTTP 429 sem repetir automaticamente; a suíte real espaça as chamadas.
+- Credenciais administrativas restritas aos testes de integração → nunca disponibilizá-las ao frontend.
 
 ## Migration Plan
 
-Após revisão, vincular Issue e branch, inspecionar o Xano, implementar tabelas e endpoints aprovados, validar os contratos reais e integrar Streamlit. Não modificar tabelas clínicas nem ativar outro banco. Abrir PR com testes e revisão de integrante. Reverter apenas componentes introduzidos, preservando dados e históricos. Archive somente após validação real e todas as tarefas concluídas. Os quatro documentos presentes não significam implementação concluída.
+Issue e branch já estão vinculadas. Conferir a configuração publicada no Xano, validar os contratos reais e concluir a integração Streamlit. Não modificar tabelas clínicas nem ativar outro banco. Abrir PR com testes e revisão de integrante. Reverter apenas componentes introduzidos, preservando dados e históricos. Archive somente após validação real e todas as tarefas concluídas. Os quatro documentos presentes não significam implementação concluída.
 
 ## Aprovação e inspeção para Apply
 
-Contrato, política e matriz aprovados pelo usuário nesta conversa. Após inspeção, o usuário autorizou criar estruturas separadas e preservar usuario (autenticação desativada, perfil único e estado booleano) e todas as APIs antigas. Issue: https://github.com/Viana-vv/Odonty/issues/1. Branch: feat/1-login-streamlit-xano. A aprovação substitui as indicações anteriores de pendência de revisão; ainda é necessária a validação real da implementação.
+Contrato, política e matriz aprovados pelo usuário nesta conversa. Após inspeção, o usuário autorizou criar estruturas separadas e preservar usuario (autenticação desativada, perfil único e estado booleano) e todas as APIs antigas. Issue: https://github.com/Viana-vv/Odonty/issues/1. Branch: feat/1-login-streamlit-xano. A aprovação substitui as indicações anteriores de pendência de revisão; a validação real foi concluída conforme evidências ao final.
+
+## Evidências finais — 23/09/2026
+
+- Python 3.10.10: 54 testes locais aprovados em `tests/test_acesso.py` e `tests/test_interface.py`.
+- Xano, workspace 149129, grupo Sorriso Acesso: 25 testes reais aprovados em 312,60 segundos. Relatório local: `test-results/xano-real.xml`.
+- Verificados: campos obrigatórios/inválidos, três perfis internos e múltiplos perfis, somente Paciente, contas bloqueadas/inativas, credenciais incorretas, ausência/token inválido, identidade própria, revogação, replay, logout repetido e após perda de acesso, segunda sessão preservada e expiração efetiva.
+- O plano não permite branches. A expiração foi comprovada em grupo temporário contendo cópias dos três endpoints com validade de oito segundos; o grupo foi removido ao final. O grupo principal continuou emitindo uma hora.
+- A primeira rodada atingiu HTTP 429; a suíte foi ajustada para espaçar chamadas. Contas fictícias da rodada anterior foram inativadas. A rodada final e sua limpeza passaram.
+- Conta de Acesso usa campo password; a transformação da senha foi conferida. Histórico desativado nos endpoints e função; histórico do grupo permaneceu vazio após os testes.
+- Playwright: computador 1440 px, tablet 768 px e celular 390 px, sem rolagem horizontal, foco visível, navegação E-mail → Senha e senha mascarada. Capturas em `test-results/login-*.png`.
+- Duplo clique em servidor simulado: uma chamada ao cliente; botão e campos desabilitados durante envio; retorno ao formulário após saída.
+- Navegador → Streamlit → Xano real: entrada da conta fictícia, nome e Dentista exibidos, saída e formulário reabilitado com senha vazia.
+- `XANO_API_BASE_URL` configurada no ambiente do usuário Windows. Conta fictícia de demonstração com credencial protegida por DPAPI local, ignorada pelo Git.
+- Correção publicada somente em auth/login após prévia sem erros: util.get_raw_input e sintaxe da validação do prazo. Tabelas e APIs legadas preservadas.
+- `git diff --check` e validação estrita do OpenSpec passaram. Revisão do conteúdo limitada a esta change; credenciais, cópias remotas e evidências temporárias não entram no Git.

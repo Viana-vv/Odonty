@@ -2,7 +2,7 @@
 
 Permitir que uma Conta de Acesso interna entre no Sorriso+ com identidade e permissões verificadas no Xano, sessão válida e logout.
 
-Rascunho para revisão. E-mail/senha e conteúdo da página inicial já aprovados. A proposta de contrato, matriz e política de uma hora descrita no design ainda aguarda aprovação; estes requisitos não comprovam implementação.
+Contrato, matriz e política de uma hora aprovados conforme registro no design. A implementação foi verificada localmente e no Xano; resultados e limitações estão registrados em tasks.md.
 
 ## ADDED Requirements
 
@@ -52,7 +52,7 @@ O sistema SHALL validar autenticação e autorização no backend em toda opera�
 - **THEN** as permissões efetivas continuam sendo aquelas validadas pelo Xano.
 
 ### Requirement: Sessão e logout
-O sistema SHALL limitar a sessão a uma hora desde o login, sem renovação automática, conforme política proposta. O logout SHALL limpar o estado local e revogar somente a sessão atual no Xano quando a operação remota for concluída. Sessões independentes da mesma conta SHALL permanecer válidas até sua própria expiração ou revogação.
+O sistema SHALL limitar a sessão a uma hora desde o login, sem renovação automática, conforme política aprovada. O logout SHALL limpar o estado local e revogar somente a sessão atual no Xano quando a operação remota for concluída. Sessões independentes da mesma conta SHALL permanecer válidas até sua própria expiração ou revogação.
 
 #### Scenario: Expiração
 - **WHEN** a sessão expira ou o backend informa que a autenticação perdeu a validade
