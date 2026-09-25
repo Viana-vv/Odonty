@@ -1,0 +1,52 @@
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+:root { --verde: #14765b; --tinta: #183d32; }
+html, body, [data-testid="stApp"] { font-family: 'DM Sans', sans-serif; }
+[data-testid="stAppViewContainer"] { background: radial-gradient(ellipse at top right, #e7f1e9 0, #f5f8f5 55%); }
+.block-container { max-width: 1190px; padding: 2rem 2.5rem 1rem; }
+h1, h2, h3 { font-family: 'Manrope', sans-serif !important; letter-spacing: -.045em; }
+.marca { color: var(--tinta); font: 800 35px 'Manrope', sans-serif; letter-spacing: -2px; margin: 0 0 26px; }
+.marca span { color: #209575; }
+.marca small { display: block; font: 600 9px 'DM Sans', sans-serif; letter-spacing: 2.2px; margin: 2px 0 0 2px; color: #688278; }
+.st-key-entrada { background: #fff; border: 1px solid #deebe1; border-radius: 28px; overflow: hidden; box-shadow: 0 18px 60px #153d3010; }
+.st-key-entrada [data-testid="stHorizontalBlock"] { gap: 0; }
+.boas-vindas { padding: 42px 42px 0; background: #edf7f0; min-height: 615px; overflow: hidden; }
+.etiqueta { display: inline-block; color: #35735a; border: 1px solid #c9dfd0; border-radius: 20px; padding: 7px 12px; font-size: 9px; font-weight: 700; letter-spacing: 1.5px; }
+.boas-vindas h1 { margin: 21px 0 13px; font-size: 36px; font-weight: 800; line-height: 1.2; color: #194b38; }
+.boas-vindas h1 em { font-style: normal; color: #25805a; }
+.boas-vindas p { color: #547466; line-height: 1.7; font-size: 14px; margin-bottom: 0; }
+.boas-vindas img { display: block; width: 330px; max-width: 100%; margin: 0 auto; border-radius: 50%; mix-blend-mode: multiply; }
+.st-key-formulario { padding: 36px 46px; }
+.st-key-formulario h1 { font-size: 29px; color: var(--tinta); margin-bottom: 4px; }
+.st-key-formulario [data-testid="stCaptionContainer"] { color: #607c70; }
+.st-key-formulario > div { gap: .7rem; }
+.st-key-formulario [data-testid="stTextInput"] input { min-height: 46px; }
+.st-key-formulario [data-testid="stFormSubmitButton"] { margin-top: 18px; }
+.st-key-formulario button[kind="primary"] { min-height: 49px; border-radius: 10px; font-weight: 600; box-shadow: 0 6px 14px #14765b18; }
+button:focus-visible, input:focus-visible { outline: 3px solid #268663 !important; outline-offset: 3px; }
+.nota-acesso { margin-top: 25px; padding-top: 21px; border-top: 1px solid #e8eee9; color: #71867c; font-size: 12px; text-align: center; }
+.st-key-acesso { max-width: 520px; margin: 50px auto; padding: 32px; background: #fff; border-radius: 20px; }
+footer { text-align: center; color: #5e7769; font-size: 11px; margin-top: 24px; padding-bottom: 10px; }
+footer span { margin: 0 9px; }
+@media (max-width: 850px) {
+ .block-container { padding: 1.2rem 1rem; }
+ .boas-vindas { padding: 30px 25px 0; min-height: 570px; }
+ .boas-vindas h1 { font-size: 30px; }
+ .st-key-formulario { padding: 30px 24px; }
+ .st-key-formulario h1 { font-size: 25px; }
+}
+@media (max-width: 640px) {
+ .marca { font-size: 29px; margin-bottom: 20px; }
+ .st-key-entrada { border-radius: 20px; }
+ .st-key-entrada [data-testid="stHorizontalBlock"] { flex-direction: column; }
+ .st-key-entrada [data-testid="stColumn"] { width: 100%; flex: 1 1 100%; min-width: 0; }
+ .boas-vindas { min-height: 0; padding: 24px; position: relative; }
+ .etiqueta { font-size: 8px; letter-spacing: .7px; }
+ .boas-vindas h1 { font-size: 25px; max-width: 72%; margin: 15px 0 0; }
+ .boas-vindas p { display: none; }
+ .boas-vindas img { width: 105px; position: absolute; right: 6px; bottom: 6px; }
+ .st-key-formulario { padding: 24px; }
+ .nota-acesso { margin-top: 15px; }
+ footer { font-size: 10px; }
+}
+</style>
