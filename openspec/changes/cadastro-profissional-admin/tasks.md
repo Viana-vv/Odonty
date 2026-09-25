@@ -1,13 +1,13 @@
 ## 1. Preparação e revisão
 
 - [x] 1.1 Criar Issue #3 para a change; verificar vínculo https://github.com/Viana-vv/Odonty/issues/3.
-- [ ] 1.2 Revisar e aprovar proposal, specs, design e tasks; verificar decisão sobre contrato, campos, senha inicial e escopo exclusivo de Dentista.
-- [ ] 1.3 Inspecionar metadados do Xano e definir estrutura física compatível; verificar preservação das tabelas/APIs legadas e registrar mapeamento sem segredos.
+- [x] 1.2 Revisar e aprovar proposal, specs, design e tasks; verificar decisão sobre contrato, campos, senha inicial e escopo exclusivo de Dentista.
+- [x] 1.3 Inspecionar metadados do Xano e definir estrutura física compatível; verificar preservação das tabelas/APIs legadas e registrar mapeamento sem segredos.
 
 ## 2. Backend Xano
 
 - [ ] 2.1 Preparar vínculo Profissional–Conta de Acesso e unicidade de CRO/e-mail; verificar índices e transformação de senha em contas fictícias.
-- [ ] 2.2 Implementar POST /profissionais com autenticação, sessão e autorização administrativa atuais; verificar 401/403 para todos os perfis e estados não autorizados.
+- [ ] 2.2 Implementar GET /especialidades e POST /profissionais com autenticação, sessão e autorização administrativa atuais; verificar 401/403 para todos os perfis e estados não autorizados.
 - [ ] 2.3 Implementar validações e criação transacional com perfil profissional fixo; verificar 201, 400, 409, rollback e concorrência sem registros parciais.
 - [ ] 2.4 Proteger respostas e histórico de requisições; verificar ausência de senha, hash e token em respostas e logs, inclusive falhas.
 

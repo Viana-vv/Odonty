@@ -24,14 +24,14 @@ Nome: texto aparado, 2 a 120 caracteres. E-mail: formato válido, até 254 carac
 
 CRO: texto obrigatório até 32 caracteres, formato UF-NUMERO (UF brasileira e 1 a 10 dígitos); converter UF para maiúsculas, remover espaços externos e normalizar zeros iniciais do número; recusar número zero. Unicidade pelo par UF/número normalizado. Sem consulta externa a registros profissionais; exemplos exclusivamente fictícios.
 
-Especialidade: texto livre obrigatório aparado, 2 a 120 caracteres, conforme opção de MVP do domínio. Não coletar CPF, RG, endereço ou telefone neste recorte. Campos futuros do domínio não são obrigatórios nesta operação. Identificador, situação ativa e datas são gerados no backend. Senhas apagadas do estado após processamento, Voltar e logout; não usar cache ou URLs para dados do formulário.
+Especialidade: seleção obrigatória de registro ativo da tabela especialidade, conforme adaptação aprovada pelo usuário. GET /especialidades, exclusivo de Administrador, retorna {"especialidades":[{"id":1,"nome":"Clínica geral"}]}. Lista vazia bloqueia envio e orienta configurar especialidades no Xano; nenhuma criação automática. Não coletar CPF, RG, endereço ou telefone neste recorte. Campos futuros do domínio não são obrigatórios nesta operação. Identificador, situação ativa e datas são gerados no backend. Senhas apagadas do estado após processamento, Voltar e logout; não usar cache ou URLs para dados do formulário.
 
 ### Contrato REST proposto
 POST /profissionais relativo a XANO_API_BASE_URL no grupo da equipe, com Authorization Bearer e JSON. Autenticação pela conta_acesso, validação de sessão existente, consulta atual da conta e exigência de situação ativo e perfil administrador antes de processar os dados.
 
-Corpo estrito: nome, email, senha, cro, especialidade, todos strings obrigatórias. Rejeitar campos extras, inclusive perfis, situacao e conta_acesso_id. Não aceitar perfil enviado pelo cliente: gerar exclusivamente ["profissional"] no backend.
+Corpo estrito: nome, email, senha e cro como strings obrigatórias e especialidade_id como inteiro positivo obrigatório. O backend rejeita especialidade inexistente ou inativa com 400. Rejeitar campos extras, inclusive perfis, situacao e conta_acesso_id. Não aceitar perfil enviado pelo cliente: gerar exclusivamente ["profissional"] no backend.
 
-201: {"profissional":{"id":123,"nome":"Dentista Ficticio","cro":"SP-123456","especialidade":"Clinica geral","situacao":"ativo"},"conta":{"id":456,"perfis":["profissional"],"situacao":"ativo"}}. Os números são ilustrativos. Não retornar senha, e-mail, hash nem token. O cliente valida tipos, IDs positivos e estrutura antes de confirmar sucesso.
+201: {"profissional":{"id":123,"nome":"Dentista Ficticio","cro":"SP-123456","especialidade":{"id":1,"nome":"Clinica geral"},"situacao":"ativo"},"conta":{"id":456,"perfis":["profissional"],"situacao":"ativo"}}. Os números são ilustrativos. Não retornar senha, e-mail, hash nem token. O cliente valida tipos, IDs positivos e estrutura antes de confirmar sucesso.
 
 400 DADOS_INVALIDOS: campos ausentes, inválidos ou extras.
 401 SESSAO_INVALIDA: credencial ausente, inválida, expirada ou revogada.
@@ -42,7 +42,7 @@ Corpo estrito: nome, email, senha, cro, especialidade, todos strings obrigatóri
 Erros controlados seguem {"codigo":"...","mensagem":"..."}; erros nativos também são sanitizados pelo cliente. Cache-Control: no-store e histórico de requisições desativado no grupo, endpoint e funções que manipulam credenciais.
 
 ### Dados e atomicidade
-Conta de Acesso usa tabela existente, nome, e-mail único, senha transformada, perfis e situação. Profissional armazena nome, CRO canônico único, especialidade, situação, datas e vínculo único conta_acesso_id. Não é Paciente; não cria Prontuário.
+Conta de Acesso usa tabela existente, nome, e-mail único, senha transformada, perfis e situação. Reutilizar profissional (883768), preservando nome, cro, telefone, email, usuario_id, especialidade_id, criado_em e situacao. Acrescentar conta_acesso_id opcional/nulo para preservar legados, atualizado_em opcional e índices únicos de cro e conta_acesso_id. Novos cadastros sempre preenchem o vínculo e as datas; especialidade_id referencia especialidade (883767). Persistir Ativo/Inativo como no legado e traduzir para ativo/inativo na API. Não alterar usuario_id nem registros antigos. Não é Paciente; não cria Prontuário.
 
 Inspecionar somente metadados de tabelas/APIs no Xano antes do Apply. Reutilizar estrutura compatível sem alterar regras legadas. Se a estrutura legada exigir migração ou modificações incompatíveis, apresentar decisão ao grupo antes de executar; não criar silenciosamente conceitos duplicados.
 
@@ -65,3 +65,7 @@ Não criar endpoint GET/listagem só para o formulário. Em timeout, não repeti
 Criar Issue e branch vinculada a partir da main integrada, preservando mudanças locais. Revisar proposta, specs, design e tarefas antes do Apply. Inspecionar metadados, publicar estruturas/endpoint com prévia e testar no Xano com dados fictícios. Depois integrar a interface e verificar login do novo Dentista e regressão do login existente.
 
 Em reversão, retirar a ação da interface e desabilitar a nova operação; preservar contas, profissionais e históricos criados. Não excluir tabelas legadas. Abrir PR com evidências e revisão de integrante; arquivar somente após conclusão e validação real.
+
+## Aprovação da adaptação
+
+Usuário aprovou Apply e, após inspeção, confirmou reutilizar a tabela profissional com seleção de especialidade existente e adição de vínculo/índices. Antes do índice, auditar apenas quantidade de CROs duplicados/não canônicos, sem expor dados; se houver conflito, interromper antes de modificar registros. Autorização da nova GET é idêntica à POST.

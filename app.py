@@ -7,7 +7,7 @@ import streamlit as st
 
 from sorrisomais.api import ClienteXano, ErroAcesso, ROTULOS
 from sorrisomais.config import Configuracao, ConfiguracaoInvalida
-from sorrisomais import sessao
+from sorrisomais import sessao, paginas_equipe
 
 RAIZ = Path(__file__).parent
 st.set_page_config(page_title="Entrar · Sorriso+", page_icon="🦷", layout="wide")
@@ -47,16 +47,7 @@ except ErroAcesso as error:
     conta = None
 
 if conta:
-    with st.container(key="acesso", border=True):
-        st.caption("SEU ACESSO")
-        st.title("Bem-vindo ao Sorriso+")
-        st.text(conta.nome)
-        st.text(" · ".join(ROTULOS[p] for p in conta.perfis))
-        if st.button("Sair", type="primary", width="stretch"):
-            with st.spinner("Encerrando seu acesso…"):
-                mensagem = sessao.sair(st.session_state, cliente)
-            st.session_state["aviso"] = ("info", mensagem)
-            st.rerun()
+    paginas_equipe.renderizar(conta, cliente)
     # Reexecuta a página no prazo de expiração mesmo sem interação.
     @st.fragment(run_every="15s")
     def verificar_prazo():

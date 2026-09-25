@@ -20,7 +20,7 @@ O sistema SHALL permitir cadastrar Profissional somente a uma Conta de Acesso at
 - **THEN** o cadastro é rejeitado e a interface interrompe o acesso administrativo.
 
 ### Requirement: Formulário da equipe separado de pacientes
-O sistema SHALL apresentar Cadastrar profissional em página administrativa protegida, separada do cadastro e login de Paciente. O cadastro SHALL exigir nome, e-mail, senha inicial, CRO e especialidade. A interface SHALL pedir confirmação da senha e identificar o perfil fixo como Dentista.
+O sistema SHALL apresentar Cadastrar profissional em página administrativa protegida, separada do cadastro e login de Paciente. O cadastro SHALL exigir nome, e-mail, senha inicial, CRO e seleção de especialidade ativa existente. A interface SHALL pedir confirmação da senha e identificar o perfil fixo como Dentista.
 
 #### Scenario: Abrir cadastro
 - **WHEN** o Administrador seleciona Cadastrar profissional
@@ -82,3 +82,18 @@ O sistema SHALL impedir submissões simultâneas pela interface, remover senha e
 #### Scenario: Logs e erros
 - **WHEN** ocorre sucesso ou erro durante o cadastro
 - **THEN** senha, token e corpos sensíveis não aparecem em logs, respostas ou mensagens técnicas.
+
+### Requirement: Seleção de especialidade existente
+O sistema SHALL oferecer somente especialidades ativas para seleção, com consulta autorizada exclusivamente para Administrador. O backend SHALL validar existência e situação da especialidade em cada cadastro.
+
+#### Scenario: Especialidade inexistente ou inativa
+- **WHEN** o envio referencia especialidade removida, inexistente ou inativa
+- **THEN** o cadastro é rejeitado sem criar registros.
+
+#### Scenario: Nenhuma especialidade disponível
+- **WHEN** a lista autorizada de especialidades está vazia
+- **THEN** o formulário impede envio e orienta configurar especialidades no Xano.
+
+#### Scenario: Consulta sem autorização
+- **WHEN** uma conta sem perfil administrador consulta especialidades por essa operação
+- **THEN** o backend nega o acesso.

@@ -9,6 +9,10 @@ CHAVE = "credencial"
 
 def limpar(estado):
     estado.pop(CHAVE, None)
+    estado.pop("pagina_equipe", None)
+    for chave in list(estado):
+        if chave.startswith("cad_"):
+            estado.pop(chave, None)
 
 
 def entrar(estado, cliente, email, senha):
