@@ -11,7 +11,7 @@ def limpar(estado):
     estado.pop(CHAVE, None)
     estado.pop("pagina_equipe", None)
     for chave in list(estado):
-        if chave.startswith("cad_"):
+        if chave.startswith(("cad_", "pac_")):
             estado.pop(chave, None)
 
 

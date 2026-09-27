@@ -4,7 +4,7 @@ MVP acadêmico com Python/Streamlit na interface e Xano para autenticação, aut
 
 ## Estado atual
 
-Login, identificação da Conta de Acesso, sessão de uma hora e logout estão implementados e validados no Xano. A página protegida mostra somente nome, perfis internos e Sair. Profissional aparece como Dentista. Cadastro, recuperação de senha e funcionalidades clínicas estão fora desta entrega.
+Login, identificação da Conta de Acesso, sessão de uma hora e logout estão implementados e validados no Xano. Administrador também pode cadastrar profissionais; Profissional aparece como Dentista. O cadastro de pacientes tem interface e cliente REST implementados localmente, mas permanece desabilitado por padrão até implementar e verificar o endpoint no Xano. Recuperação de senha e funcionalidades clínicas permanecem fora desta entrega.
 
 Issue: [#1](https://github.com/Viana-vv/Odonty/issues/1). Implementação na branch `feat/1-login-streamlit-xano`, preparada para revisão do grupo.
 
@@ -30,6 +30,7 @@ O arquivo `.env.example` é uma referência: a aplicação não carrega `.env` a
 |---|---|---|
 | `XANO_API_BASE_URL` | Streamlit | Obrigatória; HTTPS, sem credenciais, query string ou fragmento |
 | `XANO_HTTP_TIMEOUT_SECONDS` | Streamlit | Opcional; número positivo e finito, padrão 10 segundos |
+| `XANO_CADASTRO_PACIENTE_HABILITADO` | Streamlit | Padrão desabilitado; definir `1` somente depois de publicar e verificar o backend de pacientes |
 | `AUTH_SESSION_TTL_SECONDS` | Xano | Padrão 3600 segundos; valores menores somente em testes isolados |
 
 Sem configuração válida, a tela informa o problema e desabilita o formulário.
@@ -61,7 +62,9 @@ openspec validate --all --strict
 
 Em 23/09/2026, **54 testes locais e 25 testes reais passaram**. Os testes locais verificam configuração, contrato, falhas de rede, erros seguros e comportamento da interface. A suíte real verifica diretamente no Xano campos, perfis, contas bloqueadas/inativas, identidade própria, revogação, replay, logout repetido, perda de acesso, sessões independentes e expiração efetiva.
 
-Para repetir os testes reais, configure `XANO_API_BASE_URL`, `XANO_WORKSPACE_ID` e `XANO_METADATA_TOKEN` no ambiente. O token administrativo deve vir de uma fonte segura e nunca ser salvo no repositório.
+Para repetir os testes reais, configure `XANO_API_BASE_URL`, `XANO_METADATA_BASE_URL`, `XANO_WORKSPACE_ID` e `XANO_METADATA_TOKEN` no ambiente. O token administrativo deve vir de uma fonte segura e nunca ser salvo no repositório.
+
+Para inspeção de tabelas, schemas e demais chamadas da Metadata API, use `XANO_METADATA_BASE_URL=https://x8ki-letl-twmt.n7.xano.io/api:meta` com `Authorization: Bearer` usando `XANO_METADATA_TOKEN`. Acrescente `/workspace/{XANO_WORKSPACE_ID}` para operações do workspace. Não derive esse endereço de `XANO_API_BASE_URL`, que aponta exclusivamente para o grupo de API do projeto. Skills e ferramentas de inspeção devem seguir essa mesma separação.
 
 ```powershell
 $env:XANO_TESTAR_REAL = "1"
@@ -87,6 +90,52 @@ A credencial de demonstração foi protegida pelo Windows em `test-results/acess
 Esse arquivo não acompanha o repositório. Em outra máquina, um responsável deve preparar uma Conta de Acesso fictícia no Xano. Não reutilize senhas pessoais.
 
 ## Documentação
+
+### Cadastro de pacientes — implementação local
+
+O endpoint de cadastro foi publicado e validado no Xano em 27/09/2026. Nesta máquina, `XANO_CADASTRO_PACIENTE_HABILITADO=1` já está configurada no ambiente do usuário; reinicie o Streamlit para liberar **Cadastrar paciente** a Administrador e Recepcionista autenticados. A flag controla somente a disponibilização da interface; a autorização efetiva é aplicada no endpoint.
+
+- **Nome completo \***: obrigatório, de 2 a 120 caracteres após remover espaços externos.
+- **Data de nascimento \***: obrigatória, data real até hoje em `America/Sao_Paulo`.
+- **Telefone \***: obrigatório, com 10 ou 11 dígitos nacionais após normalizar espaços, parênteses e hífen.
+- **CPF \***: obrigatório, com formato e dígitos verificadores válidos; persistido sem máscara.
+- **E-mail \*** e **Celular \***: obrigatórios, normalizados e validados. Familiares podem compartilhar contato.
+
+O formulário não solicita senha nem cria login do Paciente. **Cadastrar** envia uma operação; **Voltar** limpa o formulário. Sucesso limpa os campos e preserva a sessão da equipe. Rejeição por dados inválidos ou CPF duplicado preserva os campos e permite correção. Após resultado incerto, **Reenviar mesma operação** utiliza a mesma chave e os mesmos dados; não há repetição automática. Sair ou voltar não desfaz um cadastro possivelmente concluído, e perder a sessão perde a chave local: conferir o resultado antes de abrir outra operação.
+
+Contrato publicado: `POST /pacientes`, Bearer token, JSON com `nome`, `data_nascimento` em `YYYY-MM-DD`, `telefone`, `cpf`, `email`, `celular` (todos obrigatórios) e `operacao_id` UUID v4. Resposta 201: `{"paciente":{"id":123,"nome":"Paciente Fictício","situacao":"ativo"},"operacao_id":"mesmo-UUID-enviado"}`. Erros esperados: 400, 401, 403, 409 com `CPF_DUPLICADO` ou `OPERACAO_CONFLITANTE`, 429 e indisponibilidade. Mensagens recebidas do servidor não são exibidas diretamente.
+
+**Verificado no Xano em 27/09/2026:** índice único de CPF e campos `situacao` e `atualizado_em` na tabela Paciente, após auditoria que encontrou a tabela vazia. A validação de CPF e nascimento do endpoint versionado passou em 26 testes reais, usando grupo temporário autenticado sem gravar Pacientes. O schema está em `backend/xano/table/paciente.xs`.
+
+**Cadastro de Paciente:** endpoint `POST /pacientes` publicado no grupo principal do Xano em 27/09/2026. A integração real completa passou em 62 testes no grupo temporário; o smoke test do endpoint publicado confirmou criação e replay idempotente. O fluxo visual foi verificado no Chrome para Administrador e Recepcionista em computador, tablet e celular, incluindo teclado e ausência de rolagem horizontal. Contas e Pacientes de teste foram inativados, e o grupo temporário removido. Capturas fictícias estão em `test-results/cadastro-paciente/` (ignorado pelo Git).
+
+Para repetir apenas a verificação real de CPF, nascimento e schema, configure as mesmas quatro variáveis administrativas descritas na seção de testes e execute:
+
+```powershell
+$env:XANO_TESTAR_PACIENTE = "1"
+.venv/Scripts/python -B -m pytest tests/test_xano_pacientes_real.py -q --tb=short
+```
+
+A suíte compila o trecho de validação em grupo temporário, remove esse grupo ao terminar e inativa a Conta de Acesso fictícia criada para os testes. Não cria Pacientes nem Prontuários. Sem a flag, os testes são ignorados.
+
+#### Idempotência e integração completa
+
+O comprovante guarda SHA-256 do payload normalizado, sem persistir uma cópia dos campos pessoais e sem exigir configuração de chave. Essa escolha foi feita para o projeto acadêmico com dados exclusivamente fictícios. Hash sem chave não protege dados reais contra tentativa de adivinhação; não use este desenho com dados reais. A tabela `cadastro_paciente_operacao` possui índice único por Conta de Acesso e UUID. O endpoint grava Paciente, Prontuário e comprovante na mesma transação e reconsulta o resultado confirmado após uma disputa.
+
+Essa suíte publica o endpoint completo em um grupo temporário, junto de operações auxiliares protegidas para contagens, expiração e falha de gravação. A falha é fixa no código de teste e não acrescenta parâmetros ao endpoint principal. Os testes de sucesso criam somente dados fictícios: ao terminar, Pacientes e Contas de Acesso criados pela suíte são inativados; Prontuários e comprovantes são preservados. O grupo temporário é removido. Não apagar históricos para limpar testes.
+
+Em 27/09/2026, passaram 62 testes reais da integração temporária e o smoke test de `POST /pacientes` no grupo principal (criação e replay). A regressão local teve 196 testes aprovados. A suíte de integração é opt-in. O teste em produção cria um Paciente e uma Conta fictícios, inativa ambos ao terminar e preserva Prontuário e comprovante.
+
+Execute a integração completa no Xano com dados fictícios:
+
+```powershell
+$env:XANO_TESTAR_PACIENTE_INTEGRACAO = "1"
+.venv/Scripts/python -B -m pytest tests/test_xano_pacientes_integracao.py -q --tb=short
+```
+
+```powershell
+.venv/Scripts/python -B -m pytest tests/test_acesso.py tests/test_interface.py tests/test_profissionais.py tests/test_pacientes.py -q -p no:cacheprovider
+```
 
 - [Visão do projeto](docs/project-overview.md)
 - [Modelo de domínio](docs/domain-model.md)

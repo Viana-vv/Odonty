@@ -14,9 +14,10 @@ INDISPONIVEL = "Não foi possível conectar ao serviço. Tente novamente em inst
 
 
 class ErroAcesso(Exception):
-    def __init__(self, mensagem=INDISPONIVEL, status=None):
+    def __init__(self, mensagem=INDISPONIVEL, status=None, codigo=None):
         super().__init__(mensagem)
         self.status = status
+        self.codigo = codigo
 
 
 @dataclass(frozen=True)
@@ -77,6 +78,19 @@ class ClienteXano:
             if route == "/auth/logout" and status in (204, 401):
                 return None
             if status != status_esperado:
+                if route == "/pacientes" and status == 409:
+                    try:
+                        corpo = response.json()
+                    except ValueError:
+                        corpo = None
+                    codigo = corpo.get("codigo") if isinstance(corpo, dict) else None
+                    conflitos = {
+                        "CPF_DUPLICADO": "CPF já cadastrado.",
+                        "OPERACAO_CONFLITANTE": "Esta operação já foi usada com outros dados. Confira o resultado com o responsável pelo sistema.",
+                    }
+                    if isinstance(codigo, str) and codigo in conflitos:
+                        raise ErroAcesso(conflitos[codigo], status, codigo)
+                    raise ErroAcesso()
                 messages = {
                     400: "Confira os dados informados e tente novamente.",
                     401: ("E-mail ou senha incorretos, ou conta indisponível."
@@ -121,6 +135,32 @@ class ClienteXano:
 
     def sair(self, token):
         self._request("POST", "/auth/logout", token=token)
+
+    def cadastrar_paciente(self, token, nome, data_nascimento, operacao_id,
+                           telefone, cpf, email, celular):
+        from .pacientes import validar_cadastro, validar_operacao
+        if not isinstance(token, str) or not token or any(c.isspace() for c in token):
+            raise ErroAcesso("Entre na sua conta para cadastrar um paciente.", 401)
+        dados = validar_cadastro(nome, data_nascimento, telefone, cpf, email, celular)
+        dados["operacao_id"] = validar_operacao(operacao_id)
+        try:
+            data = self._request("POST", "/pacientes", token=token,
+                                 payload=dados, status_esperado=201)
+            paciente = data.get("paciente")
+            if (not isinstance(paciente, dict)
+                    or type(paciente.get("id")) is not int or paciente["id"] <= 0
+                    or paciente.get("nome") != dados["nome"]
+                    or paciente.get("situacao") != "ativo"
+                    or data.get("operacao_id") != operacao_id):
+                raise ErroAcesso()
+            return paciente["id"]
+        except ErroAcesso as error:
+            if error.status in (400, 401, 403, 409, 429):
+                raise
+            raise ErroAcesso(
+                "Não foi possível confirmar o cadastro. Tente reenviar a mesma operação. "
+                "Não há repetição automática.", error.status,
+            ) from None
 
 
     def listar_especialidades(self, token):

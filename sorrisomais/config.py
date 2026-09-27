@@ -14,6 +14,7 @@ class ConfiguracaoInvalida(ValueError):
 class Configuracao:
     api_base_url: str
     timeout: float = 10
+    cadastro_paciente_habilitado: bool = False
 
     @classmethod
     def do_ambiente(cls):
@@ -32,4 +33,4 @@ class Configuracao:
             valid = False
         if not valid:
             raise ConfiguracaoInvalida("O acesso ainda não está configurado. Contate o responsável pela clínica.")
-        return cls(url, timeout)
+        return cls(url, timeout, os.getenv("XANO_CADASTRO_PACIENTE_HABILITADO") == "1")
