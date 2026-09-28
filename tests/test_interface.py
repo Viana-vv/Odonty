@@ -53,7 +53,7 @@ def test_login_logout_e_senha_removida(cliente_simulado):
     assert not app.session_state["processando"]
     entrar.assert_called_once()
     assert identificar.call_count >= 1
-    app.button[0].click().run()
+    app.button(key="sair").click().run()
     assert not app.exception
     sair.assert_called_once_with("token-simulado")
     assert len(app.text_input) == 2

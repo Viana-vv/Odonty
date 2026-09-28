@@ -286,13 +286,21 @@ def test_perda_acesso_durante_envio(paciente_api, status):
     assert not any(k.startswith("pac_") for k in app.session_state)
 
 
-def test_interface_aguarda_publicacao_backend(paciente_api, monkeypatch):
-    monkeypatch.delenv("XANO_CADASTRO_PACIENTE_HABILITADO")
+def test_interface_pode_ser_desabilitada_explicitamente(paciente_api, monkeypatch):
+    monkeypatch.setenv("XANO_CADASTRO_PACIENTE_HABILITADO", "0")
     app = abrir_admin(paciente_api)
     assert "Cadastrar paciente" not in [b.label for b in app.button]
     app.session_state["pagina_equipe"] = "paciente"
     app.run()
     assert not app.date_input
+
+
+def test_interface_disponivel_sem_variavel(paciente_api, monkeypatch):
+    monkeypatch.delenv("XANO_CADASTRO_PACIENTE_HABILITADO", raising=False)
+    app = abrir_admin(paciente_api)
+    assert "Cadastrar paciente" in [b.label for b in app.button]
+    botao(app, "Cadastrar paciente").click().run()
+    assert [campo.label for campo in app.text_input if campo.key.startswith("pac_")]
 
 
 def test_multiplos_perfis(paciente_api):

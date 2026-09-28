@@ -4,7 +4,9 @@ MVP acadêmico com Python/Streamlit na interface e Xano para autenticação, aut
 
 ## Estado atual
 
-Login, identificação da Conta de Acesso, sessão de uma hora e logout estão implementados e validados no Xano. Administrador também pode cadastrar profissionais; Profissional aparece como Dentista. O cadastro de pacientes tem interface e cliente REST implementados localmente, mas permanece desabilitado por padrão até implementar e verificar o endpoint no Xano. Recuperação de senha e funcionalidades clínicas permanecem fora desta entrega.
+Login, identificação da Conta de Acesso, sessão de uma hora e logout estão implementados e validados no Xano. Administrador também pode cadastrar profissionais; Profissional aparece como Dentista. O cadastro de pacientes está disponível para Administrador e Recepcionista, com autorização aplicada no Xano. Recuperação de senha e funcionalidades clínicas permanecem fora desta entrega.
+
+As telas existentes de login, início da equipe e cadastros de Paciente e Profissional usam a identidade visual Sorriso+ e o mascote local `assets/1000323602.jpg`. A navegação exibe somente ações disponíveis para o perfil autenticado; módulos que ainda não possuem fluxo não aparecem como opções.
 
 Issue: [#1](https://github.com/Viana-vv/Odonty/issues/1). Implementação na branch `feat/1-login-streamlit-xano`, preparada para revisão do grupo.
 
@@ -30,7 +32,7 @@ O arquivo `.env.example` é uma referência: a aplicação não carrega `.env` a
 |---|---|---|
 | `XANO_API_BASE_URL` | Streamlit | Obrigatória; HTTPS, sem credenciais, query string ou fragmento |
 | `XANO_HTTP_TIMEOUT_SECONDS` | Streamlit | Opcional; número positivo e finito, padrão 10 segundos |
-| `XANO_CADASTRO_PACIENTE_HABILITADO` | Streamlit | Padrão desabilitado; definir `1` somente depois de publicar e verificar o backend de pacientes |
+| `XANO_CADASTRO_PACIENTE_HABILITADO` | Streamlit | Opcional; habilitado por padrão após publicação e validação do endpoint; definir `0` para ocultar a ação |
 | `AUTH_SESSION_TTL_SECONDS` | Xano | Padrão 3600 segundos; valores menores somente em testes isolados |
 
 Sem configuração válida, a tela informa o problema e desabilita o formulário.
@@ -93,7 +95,7 @@ Esse arquivo não acompanha o repositório. Em outra máquina, um responsável d
 
 ### Cadastro de pacientes — implementação local
 
-O endpoint de cadastro foi publicado e validado no Xano em 27/09/2026. Nesta máquina, `XANO_CADASTRO_PACIENTE_HABILITADO=1` já está configurada no ambiente do usuário; reinicie o Streamlit para liberar **Cadastrar paciente** a Administrador e Recepcionista autenticados. A flag controla somente a disponibilização da interface; a autorização efetiva é aplicada no endpoint.
+O endpoint de cadastro foi publicado e validado no Xano em 27/09/2026. **Cadastrar paciente** fica disponível por padrão para Administrador e Recepcionista autenticados. Para ocultar a ação em uma implantação, defina `XANO_CADASTRO_PACIENTE_HABILITADO=0` antes de iniciar o Streamlit. Essa opção controla apenas a interface; a autorização efetiva é aplicada no endpoint.
 
 - **Nome completo \***: obrigatório, de 2 a 120 caracteres após remover espaços externos.
 - **Data de nascimento \***: obrigatória, data real até hoje em `America/Sao_Paulo`.

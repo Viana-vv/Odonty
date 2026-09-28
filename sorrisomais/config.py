@@ -14,7 +14,7 @@ class ConfiguracaoInvalida(ValueError):
 class Configuracao:
     api_base_url: str
     timeout: float = 10
-    cadastro_paciente_habilitado: bool = False
+    cadastro_paciente_habilitado: bool = True
 
     @classmethod
     def do_ambiente(cls):
@@ -33,4 +33,6 @@ class Configuracao:
             valid = False
         if not valid:
             raise ConfiguracaoInvalida("O acesso ainda não está configurado. Contate o responsável pela clínica.")
-        return cls(url, timeout, os.getenv("XANO_CADASTRO_PACIENTE_HABILITADO") == "1")
+        # O endpoint do Xano já está publicado e validado. A variável fica
+        # como opção de desligamento explícito, sem ocultar a ação por padrão.
+        return cls(url, timeout, os.getenv("XANO_CADASTRO_PACIENTE_HABILITADO") != "0")

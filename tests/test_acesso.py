@@ -52,6 +52,18 @@ def test_configuracao_rejeita_timeout(monkeypatch, timeout):
         Configuracao.do_ambiente()
 
 
+def test_cadastro_paciente_habilitado_por_padrao(monkeypatch):
+    monkeypatch.setenv("XANO_API_BASE_URL", "https://exemplo.invalid/api:teste")
+    monkeypatch.delenv("XANO_CADASTRO_PACIENTE_HABILITADO", raising=False)
+    assert Configuracao.do_ambiente().cadastro_paciente_habilitado
+
+
+def test_cadastro_paciente_pode_ser_desabilitado_explicitamente(monkeypatch):
+    monkeypatch.setenv("XANO_API_BASE_URL", "https://exemplo.invalid/api:teste")
+    monkeypatch.setenv("XANO_CADASTRO_PACIENTE_HABILITADO", "0")
+    assert not Configuracao.do_ambiente().cadastro_paciente_habilitado
+
+
 @pytest.mark.parametrize("email,senha", [("", ""), ("ficticio@example.com", ""), ("sem-arroba", "ficticia"), ("a @example.com", "ficticia")])
 def test_campos_invalidos_nao_chamam_api(cliente, http, email, senha):
     with pytest.raises(ErroAcesso):

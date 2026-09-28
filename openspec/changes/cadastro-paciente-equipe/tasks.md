@@ -100,4 +100,9 @@ Implementação autorizada pelo usuário nesta sessão. Revisados proposta, desi
 
 - Endpoint POST /pacientes publicado no grupo principal do Xano (ID 4072582); smoke test real de criação e replay passou. Paciente e Conta de Acesso fictícios inativados; histórico de Prontuário/comprovante preservado. Flag local XANO_CADASTRO_PACIENTE_HABILITADO=1 persistida para a próxima inicialização do Streamlit.
 
+### Correção de disponibilização da interface — 28/09/2026
+
+- Cadastro de Paciente habilitado por padrão para Administrador e Recepcionista, pois o endpoint já está publicado e validado. `XANO_CADASTRO_PACIENTE_HABILITADO=0` permanece disponível como desligamento explícito; autorização continua sendo aplicada no Xano.
+- Testes cobrem configuração padrão habilitada, desligamento explícito e visibilidade da interface. Não altera contrato, dados ou permissões do backend.
+
 - Navegador: 1 teste Playwright passou para Administrador e Recepcionista em Chrome, nas larguras 1440, 768 e 390 px; campos, foco pelo teclado e ausência de rolagem horizontal confirmados. Seis capturas fictícias salvas em `test-results/cadastro-paciente/`; duas contas de teste inativadas; nenhum Paciente criado.

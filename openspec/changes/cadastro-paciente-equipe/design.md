@@ -76,7 +76,7 @@ Testes locais com API simulada cobrem contratos, campos, navegação e sessão. 
 
 ## Migration Plan
 
-A interface fica desabilitada por padrão até a publicação e verificação do backend. Após essa verificação, definir `XANO_CADASTRO_PACIENTE_HABILITADO=1` no ambiente Streamlit. Essa configuração apenas controla a disponibilização; não substitui autenticação e autorização no Xano.
+O endpoint foi publicado e validado no Xano. Por isso, a ação fica habilitada por padrão para os perfis definidos na spec. `XANO_CADASTRO_PACIENTE_HABILITADO=0` pode ocultá-la explicitamente em uma implantação; ausência ou outro valor mantém a ação disponível. Essa configuração apenas controla a interface e não substitui autenticação e autorização no Xano.
 
 Após revisão, criar Issue e branch vinculada, inspecionar metadados e preparar scripts compatíveis. Publicar tabelas, índices, configuração secreta de idempotência e endpoint antes de habilitar a interface. Executar testes reais e locais, atualizar README e abrir PR com evidências. Reversão: retirar a ação e desabilitar a nova operação, preservando Pacientes, Prontuários e comprovantes já criados. Não arquivar enquanto validações ou revisão estiverem pendentes. O TBD preexistente da spec principal é pendência separada; não alterá-la manualmente nesta change.
 
