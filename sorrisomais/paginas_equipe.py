@@ -2,7 +2,7 @@
 import streamlit as st
 
 from .api import ErroAcesso, ROTULOS
-from . import sessao
+from . import sessao, pagina_paciente
 
 
 def limpar_formulario():
@@ -115,13 +115,22 @@ def renderizar_cadastro(cliente):
 
 def renderizar(conta, cliente):
     administrador = "administrador" in conta.perfis
+    pode_cadastrar_paciente = (cliente.configuracao.cadastro_paciente_habilitado
+                              and bool(set(conta.perfis) & {"administrador", "recepcionista"}))
     if not administrador:
         limpar_formulario()
-        st.session_state.pop("pagina_equipe", None)
+        if st.session_state.get("pagina_equipe") == "cadastro":
+            st.session_state.pop("pagina_equipe", None)
+    if not pode_cadastrar_paciente:
+        pagina_paciente.limpar()
+        if st.session_state.get("pagina_equipe") == "paciente":
+            st.session_state.pop("pagina_equipe", None)
     with st.container(key="acesso", border=True):
         st.caption("SEU ACESSO")
         if administrador and st.session_state.get("pagina_equipe") == "cadastro":
             renderizar_cadastro(cliente)
+        elif pode_cadastrar_paciente and st.session_state.get("pagina_equipe") == "paciente":
+            pagina_paciente.renderizar(cliente)
         else:
             st.title("Página do Administrador" if administrador else "Bem-vindo ao Sorriso+")
             st.text(conta.nome)
@@ -129,8 +138,11 @@ def renderizar(conta, cliente):
             if administrador:
                 st.button("Cadastrar profissional", type="primary",
                           on_click=abrir_cadastro, width="stretch")
+            if pode_cadastrar_paciente:
+                st.button("Cadastrar paciente", on_click=pagina_paciente.abrir, width="stretch")
         if st.button("Sair", key="sair", width="stretch",
-                     disabled=st.session_state.get("cad_processando", False)):
+                     disabled=st.session_state.get("cad_processando", False)
+                     or st.session_state.get("pac_processando", False)):
             with st.spinner("Encerrando seu acesso…"):
                 mensagem = sessao.sair(st.session_state, cliente)
             st.session_state["aviso"] = ("info", mensagem)
