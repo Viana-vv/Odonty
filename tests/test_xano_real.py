@@ -1,7 +1,7 @@
 """Testes reais opt-in. Criam contas ficticias e as inativam ao terminar.
 
 Executar somente com XANO_TESTAR_REAL=1, XANO_API_BASE_URL,
-XANO_METADATA_TOKEN e XANO_WORKSPACE_ID configurados no ambiente.
+XANO_METADATA_BASE_URL, XANO_METADATA_TOKEN e XANO_WORKSPACE_ID configurados no ambiente.
 Nenhum segredo ou corpo de autenticacao e registrado.
 """
 import os
@@ -28,7 +28,10 @@ class Ambiente:
         partes = urlsplit(self.base)
         assert partes.scheme == "https" and not partes.username
         self.origem = f"{partes.scheme}://{partes.netloc}"
-        self.meta = self.origem + "/api:meta/workspace/" + os.environ["XANO_WORKSPACE_ID"]
+        base_metadados = os.environ["XANO_METADATA_BASE_URL"].rstrip("/")
+        partes_metadados = urlsplit(base_metadados)
+        assert partes_metadados.scheme == "https" and not partes_metadados.username
+        self.meta = base_metadados + "/workspace/" + os.environ["XANO_WORKSPACE_ID"]
         self.admin = requests.Session()
         self.admin.headers["Authorization"] = "Bearer " + os.environ["XANO_METADATA_TOKEN"]
         tabelas = self.listar("/table")

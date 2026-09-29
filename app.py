@@ -38,8 +38,6 @@ except ConfiguracaoInvalida as error:
     sessao.limpar(st.session_state)
     configuracao_mensagem = str(error)
 
-st.html('<div class="marca">sorriso<span>+</span><small>GESTÃO ODONTOLÓGICA</small></div>')
-
 try:
     conta = sessao.identificar(st.session_state, cliente) if cliente else None
 except ErroAcesso as error:
@@ -62,18 +60,24 @@ else:
     with st.container(key="entrada"):
         ilustracao, formulario = st.columns([1.05, 1], gap="large", vertical_alignment="center")
         with ilustracao:
-            imagem = base64.b64encode((RAIZ / "assets" / "mascote-sorriso.png").read_bytes()).decode("ascii")
+            imagem = base64.b64encode((RAIZ / "assets" / "1000323602.jpg").read_bytes()).decode("ascii")
             st.html(f'''<section class="boas-vindas">
-              <span class="etiqueta">CUIDAR COMEÇA COM UM SORRISO</span>
-              <h1>Um novo dia.<br>Mais motivos para <em>sorrir.</em></h1>
-              <p>Seu espaço para cuidar da clínica<br>e de quem faz parte dela.</p>
-              <img src="data:image/png;base64,{imagem}" alt="Mascote do Sorriso+: um dente sorridente com escova e creme dental" />
+              <div class="marca marca-clara"><span class="marca-icone">S</span><span class="marca-nome">Sorriso<span>+</span></span></div>
+              <span class="etiqueta">GESTÃO ODONTOLÓGICA</span>
+              <h1>Sua clínica mais organizada.<br>Seu atendimento mais <em>humano.</em></h1>
+              <p>Agenda, pacientes e prontuários em um só lugar, para sua equipe cuidar do que realmente importa.</p>
+              <div class="beneficios">
+                <div><b>✓</b><span><strong>Rotina centralizada</strong><small>Mais clareza para toda a equipe.</small></span></div>
+                <div><b>✓</b><span><strong>Dados fictícios e seguros</strong><small>Ambiente demonstrativo para apresentar.</small></span></div>
+              </div>
+              <div class="mascote-moldura"><img src="data:image/jpeg;base64,{imagem}" alt="Mascote dentista do Sorriso+" /></div>
+              <small class="marca-rodape">MVP acadêmico · Sorriso+</small>
             </section>''')
         with formulario:
             with st.container(key="formulario"):
                 st.caption("BEM-VINDO DE VOLTA")
-                st.title("Entre na sua conta")
-                st.markdown("Acesse o Sorriso+ com seu e-mail e senha.")
+                st.title("Acesse a clínica")
+                st.markdown("Entre com sua Conta de Acesso da equipe.")
                 aviso()
                 if not cliente:
                     st.info(configuracao_mensagem)

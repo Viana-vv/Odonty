@@ -1,0 +1,23 @@
+[
+  {
+    "dispositivo": "desktop",
+    "largura": 1440,
+    "sem_rolagem_horizontal": true,
+    "teclado_email_senha": true,
+    "foco": "solid"
+  },
+  {
+    "dispositivo": "tablet",
+    "largura": 768,
+    "sem_rolagem_horizontal": true,
+    "teclado_email_senha": true,
+    "foco": "solid"
+  },
+  {
+    "dispositivo": "celular",
+    "largura": 390,
+    "sem_rolagem_horizontal": true,
+    "teclado_email_senha": true,
+    "foco": "solid"
+  }
+]
