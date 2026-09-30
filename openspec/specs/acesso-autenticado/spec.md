@@ -25,7 +25,7 @@ O sistema SHALL autenticar por e-mail e senha pelo Xano e obter identidade, situ
 
 #### Scenario: Entrada válida
 - **WHEN** o Xano autentica uma conta ativa e autoriza seu acesso inicial
-- **THEN** a aplicação estabelece sessão conforme o contrato e apresenta somente o nome e o perfil da Conta de Acesso retornados pelo backend e o botão “Sair”, sem dados clínicos.
+- **THEN** a aplicação estabelece sessão conforme o contrato e apresenta nome, perfis e Sair; Administrador também acessa Cadastrar profissional e Cadastrar paciente, e Recepcionista acessa Cadastrar paciente, sem dados clínicos.
 
 #### Scenario: Entrada rejeitada
 - **WHEN** as credenciais são incorretas ou a conta está inativa ou bloqueada
@@ -76,11 +76,11 @@ O sistema SHALL apresentar cadastro ou recuperação de senha somente após defi
 - **THEN** a tela não oferece ações que simulem esses processos.
 
 ### Requirement: Acesso inicial limitado à própria identificação
-O sistema SHALL permitir aos perfis internos Administrador, Recepcionista e Profissional consultar somente o próprio nome e perfis nesta página. A conta SHALL estar ativa. Contas somente com perfil Paciente ou sem perfil interno reconhecido SHALL NOT acessar a aplicação interna. Esta change SHALL NOT conceder operações clínicas ou de administração de outras contas.
+O sistema SHALL permitir aos perfis internos Administrador, Recepcionista e Profissional consultar o próprio nome e perfis. Administrador SHALL acessar Cadastrar profissional conforme cadastro-profissional; Administrador e Recepcionista SHALL acessar Cadastrar paciente conforme cadastro-paciente. A conta SHALL estar ativa. Contas somente com perfil Paciente ou sem perfil interno reconhecido SHALL NOT acessar a aplicação interna. O acesso inicial SHALL NOT conceder operações clínicas; a criação vinculada de Conta de Acesso de Profissional SHALL ser exclusiva de Administrador.
 
 #### Scenario: Vários perfis internos
 - **WHEN** a conta possui mais de um perfil interno autorizado
-- **THEN** a página comum apresenta os perfis internos retornados pelo backend, sem exigir escolha ou conceder privilégios por seleção.
+- **THEN** a página apresenta os perfis internos retornados pelo backend e as ações autorizadas pela presença de administrador ou recepcionista, sem exigir escolha nem conceder privilégios por seleção local.
 
 #### Scenario: Conta fora do recorte interno
 - **WHEN** uma conta possui somente perfil Paciente ou nenhum perfil interno reconhecido
@@ -89,6 +89,14 @@ O sistema SHALL permitir aos perfis internos Administrador, Recepcionista e Prof
 #### Scenario: Identidade de outra conta
 - **WHEN** alguém tenta fornecer um identificador para consultar outra conta pela operação de identidade
 - **THEN** a operação não retorna dados dessa outra conta.
+
+#### Scenario: Equipe separada de Paciente
+- **WHEN** uma pessoa abre o login da equipe
+- **THEN** encontra acesso exclusivo aos perfis internos, sem cadastro público ou login de Paciente nessa superfície; o cadastro administrativo de Paciente exige autenticação da equipe.
+
+#### Scenario: Recepcionista sem gestão de profissionais
+- **WHEN** uma conta apenas de Recepcionista acessa sua página
+- **THEN** encontra Cadastrar paciente e Sair, sem ação de cadastro de Profissional.
 
 ### Requirement: Encerramento verificável e perda de sessão
 O sistema SHALL exigir novo login quando o estado da sessão do frontend for perdido e SHALL NOT persistir credenciais para restaurá-lo. A interface SHALL bloquear a apresentação protegida quando não conseguir revalidar a identidade no backend.
