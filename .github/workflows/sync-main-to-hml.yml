@@ -25,4 +25,4 @@ jobs:
 
           git checkout hml
           git merge origin/main --no-edit
-          git push origin hmlf
+          git push origin hml
