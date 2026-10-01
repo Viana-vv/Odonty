@@ -144,7 +144,7 @@ def renderizar_inicio(conta, administrador, pode_cadastrar_paciente):
                 st.info("Seu acesso à equipe está ativo.")
     with col_mascote:
         with st.container(key="cartao-mascote", border=True):
-            mascote = Path(__file__).resolve().parents[1] / "assets" / "1000323602.jpg"
+            mascote = Path(__file__).resolve().parents[1] / "assets" / "mascote-sorriso.png"
             st.image(str(mascote), caption="Sorriso+", width=190)
             st.caption("Cuidar começa com uma boa organização.")
 

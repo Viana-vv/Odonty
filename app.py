@@ -60,7 +60,7 @@ else:
     with st.container(key="entrada"):
         ilustracao, formulario = st.columns([1.05, 1], gap="large", vertical_alignment="center")
         with ilustracao:
-            imagem = base64.b64encode((RAIZ / "assets" / "1000323602.jpg").read_bytes()).decode("ascii")
+            imagem = base64.b64encode((RAIZ / "assets" / "mascote-sorriso.png").read_bytes()).decode("ascii")
             st.html(f'''<section class="boas-vindas">
               <div class="marca marca-clara"><span class="marca-icone">S</span><span class="marca-nome">Sorriso<span>+</span></span></div>
               <span class="etiqueta">GESTÃO ODONTOLÓGICA</span>
@@ -70,7 +70,7 @@ else:
                 <div><b>✓</b><span><strong>Rotina centralizada</strong><small>Mais clareza para toda a equipe.</small></span></div>
                 <div><b>✓</b><span><strong>Dados fictícios e seguros</strong><small>Ambiente demonstrativo para apresentar.</small></span></div>
               </div>
-              <div class="mascote-moldura"><img src="data:image/jpeg;base64,{imagem}" alt="Mascote dentista do Sorriso+" /></div>
+              <div class="mascote-moldura"><img src="data:image/png;base64,{imagem}" alt="Mascote dentista do Sorriso+" /></div>
               <small class="marca-rodape">MVP acadêmico · Sorriso+</small>
             </section>''')
         with formulario:
