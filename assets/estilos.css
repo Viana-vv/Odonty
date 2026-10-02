@@ -1,11 +1,11 @@
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
-:root { --verde: #367d78; --verde-escuro: #1d615d; --tinta: #203b3a; --fundo: #f4f8f7; --linha: #e6edeb; }
-html, body, [data-testid="stApp"] { font-family: 'DM Sans', sans-serif; color: var(--tinta); }
+/* Paleta e tipografia do kit Sorriso Mais. Sem dependência de fontes externas. */
+:root { --verde: #147c78; --verde-escuro: #0f6562; --tinta: #173038; --fundo: #f5f8f7; --linha: #e4ecec; }
+html, body, [data-testid="stApp"] { font-family: Arial, Helvetica, sans-serif; color: var(--tinta); }
 [data-testid="stAppViewContainer"] { background: var(--fundo); }
-[data-testid="stHeader"] { background: transparent; }
+[data-testid="stHeader"] { display: none; height: 0; }
 .block-container { max-width: 1500px; padding: 1.5rem clamp(1rem, 3vw, 2.75rem) 1rem; }
-h1, h2, h3 { font-family: 'Manrope', sans-serif !important; letter-spacing: -.04em; color: var(--tinta); }
+h1, h2, h3 { font-family: Arial, Helvetica, sans-serif !important; letter-spacing: -.035em; color: var(--tinta); }
 [data-testid="stTextInput"] input, [data-testid="stDateInput"] input, [data-testid="stSelectbox"] [data-baseweb="select"] { min-height: 46px; border-radius: 9px; }
 [data-testid="stForm"] { border-color: var(--linha); border-radius: 16px; background: #fff; padding: 1.25rem; }
 button[kind="primary"], [data-testid="stFormSubmitButton"] button[kind="primary"] { min-height: 48px; border-radius: 10px; background: var(--verde); border-color: var(--verde); font-weight: 700; box-shadow: 0 5px 15px #367d781f; }
@@ -15,7 +15,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 /* Login */
 .st-key-entrada { display: flex; overflow: hidden; border: 1px solid #dce7e5; border-radius: 24px; background: #fff; box-shadow: 0 18px 60px #173f3514; }
 .st-key-entrada [data-testid="stHorizontalBlock"] { gap: 0; }
-.boas-vindas { position: relative; min-height: 650px; height: 100%; overflow: hidden; padding: 34px 42px 38px; color: #fff; background: linear-gradient(150deg, #276f6c 0%, #216764 55%, #2e817a 100%); }
+.boas-vindas { position: relative; min-height: 650px; height: 100%; overflow: hidden; padding: 34px 42px 38px; color: #fff; background: linear-gradient(150deg, #147c78 0%, #0f6562 70%, #1c8a81 100%); }
+.boas-vindas::after { content: ""; position: absolute; right: -150px; bottom: -235px; width: 520px; height: 520px; border: 1px solid #ffffff1f; border-radius: 50%; box-shadow: 0 0 0 38px #ffffff0a, 0 0 0 82px #ffffff08; pointer-events: none; }
 .marca-clara { display: flex; align-items: center; gap: 11px; margin-bottom: 92px; color: #fff; }
 .marca-icone { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 12px; background: #fff; color: var(--verde-escuro); font: 800 19px 'Manrope', sans-serif; }
 .marca-nome { font: 800 22px 'Manrope', sans-serif; letter-spacing: -.8px; }
@@ -42,13 +43,17 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .nota-acesso { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--linha); color: #778987; font-size: 12px; text-align: center; }
 
 /* Área autenticada e formulários */
-.st-key-layout-equipe { max-width: 1360px; margin: 12px auto 40px; }
+.st-key-layout-equipe { max-width: 1500px; margin: 0 auto 40px; }
+.st-key-topbar-equipe { margin: 0 0 24px; padding: 10px 4px 16px; border-bottom: 1px solid var(--linha); }
+.st-key-topbar-equipe [data-testid="stHorizontalBlock"] { align-items: center; }
+.st-key-topbar-equipe [data-testid="stCaptionContainer"] { margin: 0; color: #738481; }
+.st-key-topbar-equipe [data-testid="stMarkdownContainer"] { text-align: right; color: #526764; font-size: 12px; }
 .st-key-layout-equipe [data-testid="stHorizontalBlock"] { align-items: stretch; gap: 1.25rem; }
-.st-key-menu-equipe { display: flex; min-height: 720px; flex-direction: column; padding: 20px 16px; border: 1px solid var(--linha); border-radius: 18px; background: #fff; }
+.st-key-menu-equipe { display: flex; min-height: calc(100vh - 72px); flex-direction: column; padding: 20px 16px; border: 1px solid var(--linha); border-radius: 0 18px 18px 0; background: #fff; }
 .st-key-menu-equipe h3 { font-size: 20px; letter-spacing: -.04em; }
 .st-key-menu-equipe [data-testid="stButton"] button { justify-content: flex-start; min-height: 44px; border: 0; border-radius: 10px; background: transparent; color: #637572; text-align: left; }
 .st-key-menu-equipe [data-testid="stButton"] button:hover { background: #edf5f3; color: var(--verde-escuro); }
-.st-key-conteudo-equipe { min-height: 720px; padding: clamp(22px, 3vw, 42px); border: 1px solid var(--linha); border-radius: 18px; background: #f8faf9; }
+.st-key-conteudo-equipe { min-height: calc(100vh - 72px); padding: clamp(22px, 3vw, 42px); border: 0; border-radius: 18px; background: #f4f8f7; }
 .st-key-conteudo-equipe h1 { margin-top: 0; font-size: clamp(28px, 3vw, 38px); }
 .st-key-formulario-equipe { max-width: 880px; margin: 18px auto; padding: clamp(22px, 4vw, 44px); border: 1px solid var(--linha); border-radius: 18px; background: #fff; box-shadow: 0 12px 35px #213e380b; }
 .st-key-formulario-equipe [data-testid="stForm"] { padding: 1.5rem; }
@@ -56,9 +61,24 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .st-key-cartao-acesso h3 { font-size: 18px; }
 .st-key-cartao-mascote { padding: 20px; border: 1px solid #d9e9e5; border-radius: 18px; background: #eaf4f1; text-align: center; }
 .st-key-cartao-mascote img { width: min(100%, 190px); height: 175px; object-fit: cover; object-position: top; }
+.st-key-metrica-xano-0, .st-key-metrica-xano-1, .st-key-metrica-xano-2, .st-key-metrica-xano-3 { min-height: 150px; padding: 16px; border: 1px solid var(--linha); border-radius: 15px; background: #fff; box-shadow: 0 6px 20px #1e48400a; }
+.icone-metrica { display: inline-grid; width: 38px; height: 38px; place-items: center; margin-bottom: 9px; border-radius: 10px; background: #edf5f3; color: var(--verde); font-size: 19px; font-weight: 700; }
+.valor-metrica { display: block; margin: -5px 0 1px; color: #263b3a; font: 700 25px 'Manrope', sans-serif; }
+.st-key-agenda-xano-vazia, .st-key-cartao-acesso { padding: 20px; border: 1px solid var(--linha); border-radius: 16px; background: #fff; box-shadow: 0 6px 20px #1e48400a; }
+.st-key-agenda-xano-vazia [data-testid="stAlert"] { margin-top: 20px; }
+body:has(.st-key-modal-paciente, .st-key-modal-profissional)::before { content: ""; position: fixed; inset: 0; z-index: 999; background: #23393785; backdrop-filter: blur(4px); }
+.st-key-modal-paciente, .st-key-modal-profissional { position: fixed !important; z-index: 1000; top: 50%; left: 50%; width: min(650px, calc(100vw - 36px)); max-height: calc(100dvh - 40px); overflow-y: auto; transform: translate(-50%, -50%); padding: 22px 24px 20px; border: 1px solid #e2e8e7; border-radius: 18px; background: #fff; box-shadow: 0 24px 100px #102c2b55; }
+.st-key-modal-paciente [data-testid="stForm"], .st-key-modal-profissional [data-testid="stForm"] { padding: 5px 0 0; border: 0; background: transparent; }
+.st-key-modal-paciente [data-testid="stTextInput"] input,
+.st-key-modal-paciente [data-testid="stDateInput"] input,
+.st-key-modal-profissional [data-testid="stTextInput"] input,
+.st-key-modal-profissional [data-testid="stSelectbox"] [data-baseweb="select"] { min-height: 44px; }
+.st-key-modal-paciente [data-testid="stFormSubmitButton"] button:not([kind="primary"]),
+.st-key-modal-profissional [data-testid="stFormSubmitButton"] button:not([kind="primary"]) { background: #fff; border: 1px solid var(--linha); }
+.st-key-modal-paciente h3, .st-key-modal-profissional h3 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -.02em; }
+.st-key-modal-paciente [data-testid="stButton"] button, .st-key-modal-profissional [data-testid="stButton"] button { min-width: 38px; min-height: 38px; padding: 0; border: 1px solid var(--linha); background: #fff; }
 .st-key-layout-equipe [data-testid="stCaptionContainer"] { color: #738481; }
-footer { margin-top: 25px; padding-bottom: 12px; color: #748582; font-size: 11px; text-align: center; }
-footer span { margin: 0 9px; }
+footer { display: none !important; }
 
 @media (max-width: 1000px) {
  .block-container { padding: 1.1rem 1rem .7rem; }
@@ -68,6 +88,7 @@ footer span { margin: 0 9px; }
  .mascote-moldura img { width: 260px; height: 260px; }
  .st-key-formulario { min-height: 625px; padding: 34px 28px; }
  .st-key-layout-equipe { margin-top: 4px; }
+ .st-key-topbar-equipe { margin-bottom: 10px; padding: 5px 2px 10px; }
  .st-key-menu-equipe, .st-key-conteudo-equipe { min-height: 650px; }
 }
 @media (max-width: 700px) {
@@ -93,11 +114,47 @@ footer span { margin: 0 9px; }
  .st-key-formulario h1 { font-size: 27px; }
  .st-key-layout-equipe [data-testid="stHorizontalBlock"] { flex-direction: column; }
  .st-key-layout-equipe [data-testid="stColumn"] { width: 100%; flex: 1 1 100%; min-width: 0; }
- .st-key-menu-equipe { min-height: 0; padding: 12px; }
+ .st-key-menu-equipe { min-height: 0; padding: 12px; border-radius: 16px; }
  .st-key-conteudo-equipe { min-height: 0; padding: 20px 14px; }
  .st-key-formulario-equipe { margin: 8px auto; padding: 16px 12px; }
  .st-key-formulario-equipe [data-testid="stForm"] { padding: .8rem; }
  .st-key-cartao-acesso { min-height: 0; padding: 16px; }
- footer { font-size: 9px; }
+ .st-key-modal-paciente, .st-key-modal-profissional { top: 12px; left: 12px; width: calc(100vw - 24px); max-height: calc(100dvh - 24px); transform: none; padding: 16px 14px; }
+ .st-key-modal-paciente [data-testid="stHorizontalBlock"], .st-key-modal-profissional [data-testid="stHorizontalBlock"] { flex-direction: column; }
+ .st-key-modal-paciente [data-testid="stColumn"], .st-key-modal-profissional [data-testid="stColumn"] { width: 100%; flex: 1 1 100%; min-width: 0; }
+}
+
+/* Ajustes de composição para acompanhar as referências do kit. */
+.st-key-entrada { min-height: min(780px, calc(100vh - 48px)); border: 0; border-radius: 0; box-shadow: none; }
+.boas-vindas { min-height: min(780px, calc(100vh - 48px)); padding: 38px clamp(30px, 5vw, 72px); }
+.marca-clara { margin-bottom: clamp(100px, 18vh, 170px); }
+.boas-vindas h1 { font-size: clamp(34px, 3.2vw, 46px); }
+.boas-vindas > p { font-size: 16px; }
+.marca-rodape { left: clamp(30px, 5vw, 72px); bottom: 28px; }
+.st-key-layout-equipe { max-width: 1600px; }
+.st-key-layout-equipe > [data-testid="stHorizontalBlock"] { gap: 0; }
+.st-key-menu-equipe { min-height: calc(100vh - 28px); padding: 26px 18px 18px; border: 0; border-right: 1px solid var(--linha); border-radius: 0; box-shadow: none; }
+.st-key-conteudo-equipe { min-height: calc(100vh - 28px); padding: 22px clamp(24px, 3.5vw, 56px); border: 0; border-radius: 0; background: #f5f8f7; }
+.st-key-topbar-equipe { margin-bottom: 32px; padding: 8px 0 18px; }
+.st-key-topbar-equipe [data-testid="stMarkdownContainer"] { text-align: right; }
+.st-key-metrica-xano-0, .st-key-metrica-xano-1, .st-key-metrica-xano-2, .st-key-metrica-xano-3 { min-height: 144px; padding: 18px; border-radius: 12px; box-shadow: 0 2px 8px #17303808; }
+.st-key-agenda-xano-vazia, .st-key-cartao-acesso { border-radius: 12px; box-shadow: 0 2px 8px #17303808; }
+.st-key-modal-paciente, .st-key-modal-profissional { width: min(610px, calc(100vw - 36px)); border-radius: 12px; box-shadow: 0 18px 65px #102c2b33; }
+.st-key-modal-paciente h3, .st-key-modal-profissional h3 { margin: 0; letter-spacing: -.02em; }
+.marca-menu { display:flex; align-items:center; gap:10px; margin:0 0 30px; color:#173038; font-size:19px; letter-spacing:-.6px; }
+.marca-menu > span { display:grid; width:34px; height:34px; place-items:center; border-radius:10px; background:#e7f3f1; color:#147c78; font-weight:800; }
+.marca-menu em { color:#147c78; font-style:normal; }
+.perfil-topo { display:flex; align-items:center; justify-content:flex-end; gap:10px; color:#173038; font-size:12px; }
+.perfil-topo small { display:block; margin-top:3px; color:#73848a; font-size:10px; }
+.perfil-avatar { display:grid; width:36px; height:36px; place-items:center; border-radius:50%; background:#e7f3f1; color:#0f6562; font-weight:700; }
+@media (max-width: 700px) {
+ .st-key-entrada { min-height: 0; }
+ .boas-vindas { min-height: 320px; padding: 24px; }
+ .marca-clara { margin-bottom: 50px; }
+ .boas-vindas h1 { max-width: 100%; font-size: 28px; }
+ .boas-vindas > p { max-width: 100%; font-size: 13px; }
+ .marca-rodape { left: 24px; bottom: 12px; }
+ .st-key-menu-equipe { min-height: 0; border-right: 0; border-radius: 12px; }
+ .st-key-conteudo-equipe { min-height: 0; padding: 20px 14px; }
 }
 </style>

@@ -108,3 +108,11 @@ Explore → Propose → Review → Apply → Testes → Archive
 
 O GitHub será a fonte oficial do código, da documentação, das decisões,
 dos testes e do histórico do projeto.
+
+## 12. Padrão visual das telas
+
+As telas novas e as telas refeitas devem seguir as referências visuais aprovadas
+do kit Sorriso Mais. Reutilize sua hierarquia, espaçamento, cores, componentes e
+comportamento responsivo. Quando não houver uma referência específica para uma
+ação, aplique o padrão mais próximo do kit. Preserve os contratos e regras do
+domínio e não substitua controles funcionais por imagens ou HTML sem interação.

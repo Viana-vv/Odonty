@@ -45,9 +45,23 @@ O arquivo `.env.example` é uma referência: a aplicação não carrega `.env` a
 | `XANO_API_BASE_URL` | Streamlit | Obrigatória; HTTPS, sem credenciais, query string ou fragmento |
 | `XANO_HTTP_TIMEOUT_SECONDS` | Streamlit | Opcional; número positivo e finito, padrão 10 segundos |
 | `XANO_CADASTRO_PACIENTE_HABILITADO` | Streamlit | Opcional; habilitado por padrão após publicação e validação do endpoint; definir `0` para ocultar a ação |
+| `SORRISOMAIS_MODO_DEMONSTRACAO` | Streamlit | Opcional; padrão `0`; definir `1` para habilitar telas com dados fictícios limitados à sessão. O login continua usando Xano |
 | `AUTH_SESSION_TTL_SECONDS` | Xano | Padrão 3600 segundos; valores menores somente em testes isolados |
 
 Sem configuração válida, a tela informa o problema e desabilita o formulário.
+
+No modo Xano atual, permanecem disponíveis login, identificação e logout,
+cadastro de Paciente, cadastro de Profissional e listagem de Especialidades
+necessária ao cadastro. Agenda, Consultas, listagens e perfil de Paciente,
+Prontuários e Registros Clínicos ainda não têm integração Xano confirmada;
+essas áreas aparecem somente na demonstração fictícia até aprovação de uma
+change própria baseada no contrato real.
+
+Para respeitar o limite de requisições do workspace, a Conta de Acesso é
+revalidada no máximo uma vez a cada 20 segundos durante reruns da interface.
+O Xano continua validando cada operação protegida. A lista de Especialidades
+fica no estado da sessão por 5 minutos; depois de erro, uma nova tentativa
+aguarda 20 segundos. Nenhum desses caches é compartilhado entre sessões.
 
 ## Estrutura e contrato
 
@@ -71,9 +85,20 @@ O token fica no estado da sessão Streamlit. A identidade é revalidada antes da
 
 Os comandos abaixo usam diretamente o Python do ambiente virtual e funcionam sem ativar o ambiente. No Windows, use `.venv\Scripts\python.exe` no lugar de `.venv/bin/python`.
 
+Para navegar pelas telas demonstrativas, defina `SORRISOMAIS_MODO_DEMONSTRACAO=1`. É necessário autenticar no Xano; os dados demonstrativos não são gravados no backend e desaparecem ao encerrar a sessão.
+
 ```sh
 .venv/bin/python -m pytest tests/test_acesso.py tests/test_interface.py -q
 openspec validate --all --strict
+```
+
+Cada rota REST `GET` ou `POST` possui testes unitários separados em Python
+(`tests/api_contracts/`) e JavaScript (`tests/js/api_contracts/`). Execute-os
+sem rede com:
+
+```sh
+.venv/bin/python -B -m pytest tests/api_contracts -q -p no:cacheprovider
+node --test tests/js/api_contracts/auth-login.test.mjs tests/js/api_contracts/auth-me.test.mjs tests/js/api_contracts/auth-logout.test.mjs tests/js/api_contracts/pacientes-post.test.mjs tests/js/api_contracts/profissionais-post.test.mjs tests/js/api_contracts/especialidades-get.test.mjs tests/js/api_contracts/client-options.test.mjs
 ```
 
 Em 23/09/2026, **54 testes locais e 25 testes reais passaram**. Os testes locais verificam configuração, contrato, falhas de rede, erros seguros e comportamento da interface. A suíte real verifica diretamente no Xano campos, perfis, contas bloqueadas/inativas, identidade própria, revogação, replay, logout repetido, perda de acesso, sessões independentes e expiração efetiva.

@@ -127,7 +127,17 @@ def api(monkeypatch):
 
 
 def botao(app, label):
-    return next(b for b in app.button if b.label == label)
+    botoes = list(app.button)
+    equivalentes = {
+        "Cadastrar": ("Cadastrar paciente", "Cadastrar profissional"),
+        "Voltar": ("Cancelar",),
+    }
+    encontrados = [b for b in botoes if b.label == label or b.label in equivalentes.get(label, ())]
+    if label == "Cadastrar":
+        enviar = next((b for b in encontrados if str(b.key).startswith("FormSubmitter")), None)
+        if enviar:
+            return enviar
+    return next((b for b in encontrados if not b.disabled), encontrados[0])
 
 
 def abrir_admin(api):
@@ -146,6 +156,23 @@ def abrir_form(api):
     return app
 
 
+def test_especialidades_nao_sao_recarregadas_a_cada_rerun(api):
+    app = abrir_form(api)
+    assert api["listar_especialidades"].call_count == 1
+    app.text_input(key="cad_nome").set_value("Dentista Fictício").run()
+    app.text_input(key="cad_email").set_value("dentista@example.com").run()
+    assert api["listar_especialidades"].call_count == 1
+
+
+def test_limite_especialidades_nao_repete_get_antes_de_20_segundos(api):
+    api["listar_especialidades"].side_effect = ErroAcesso("Muitas tentativas.", 429)
+    app = abrir_form(api)
+    assert api["listar_especialidades"].call_count == 1
+    botao(app, "Tentar novamente").click().run()
+    assert not app.exception
+    assert api["listar_especialidades"].call_count == 1
+
+
 def preencher(app, confirmacao=None):
     for campo in ["nome", "email", "senha", "cro"]:
         app.text_input(key="cad_"+campo).set_value(DADOS[campo])
@@ -158,12 +185,12 @@ def test_admin_cria_sem_trocar_identidade(api):
     preencher(app)
     botao(app, "Cadastrar").click().run()
     assert not app.exception
+    api["cadastrar_profissional"].assert_called_once_with("token-adm", **DADOS)
     assert app.success
     assert app.text_input(key="cad_senha").value == ""
     assert app.text_input(key="cad_confirmacao").value == ""
     assert app.text_input(key="cad_nome").value == ""
     assert app.session_state[sessao.CHAVE].token == "token-adm"
-    api["cadastrar_profissional"].assert_called_once_with("token-adm", **DADOS)
 
 
 def test_primeiro_envio_preserva_campos_apos_rejeicao_e_permite_corrigir(api):
@@ -263,6 +290,8 @@ def test_perda_perfil_apos_abrir_remove_formulario(api):
     preencher(app)
     conta = api["identificar"].return_value
     api["identificar"].return_value = ContaAcesso(1, conta.nome, ("profissional",), conta.expira_em)
+    app.session_state[sessao.CHAVE_VERIFICADA] -= timedelta(
+        seconds=sessao.INTERVALO_REVALIDACAO_SEGUNDOS + 1)
     app.run()
     assert not app.exception
     assert len(app.text_input) == 0

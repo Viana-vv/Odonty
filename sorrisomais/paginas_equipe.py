@@ -1,14 +1,41 @@
 """Páginas da equipe. A identidade é revalidada por app.py antes de renderizar."""
+from datetime import date
+from time import monotonic
+
 import streamlit as st
-from pathlib import Path
 
 from .api import ErroAcesso, ROTULOS
-from . import sessao, pagina_paciente
+from . import sessao, pagina_paciente, navegacao
+
+ESPECIALIDADES_CACHE_TTL_SEGUNDOS = 300
+ESPECIALIDADES_RETRY_SEGUNDOS = 20
+
+
+def listar_especialidades_sessao(cliente, token):
+    agora = monotonic()
+    carregadas = st.session_state.get("cad_especialidades_cache")
+    carregadas_em = st.session_state.get("cad_especialidades_cache_em", 0)
+    if isinstance(carregadas, list) and agora - carregadas_em < ESPECIALIDADES_CACHE_TTL_SEGUNDOS:
+        return carregadas
+    erro_em = st.session_state.get("cad_especialidades_erro_em", 0)
+    if agora - erro_em < ESPECIALIDADES_RETRY_SEGUNDOS:
+        raise ErroAcesso("Aguarde alguns segundos antes de tentar carregar as especialidades novamente.", 429)
+    try:
+        carregadas = cliente.listar_especialidades(token)
+    except ErroAcesso:
+        st.session_state["cad_especialidades_erro_em"] = agora
+        raise
+    st.session_state["cad_especialidades_cache"] = carregadas
+    st.session_state["cad_especialidades_cache_em"] = agora
+    st.session_state.pop("cad_especialidades_erro_em", None)
+    return carregadas
 
 
 def limpar_formulario():
+    cache_sessao = {"cad_especialidades_cache", "cad_especialidades_cache_em",
+                    "cad_especialidades_erro_em"}
     for chave in list(st.session_state):
-        if chave.startswith("cad_"):
+        if chave.startswith("cad_") and chave not in cache_sessao:
             del st.session_state[chave]
 
 
@@ -55,14 +82,10 @@ def renderizar_cadastro(cliente):
     if st.session_state.pop("cad_limpar", False):
         limpar_formulario()
         st.success("Profissional cadastrado. Ele já pode entrar pelo login da equipe.")
-    st.caption("EQUIPE DA CLÍNICA")
-    st.title("Novo profissional")
-    st.markdown("Cadastre o Dentista e associe uma especialidade ativa.")
-    st.button("Voltar", key="voltar", on_click=voltar,
-              disabled=st.session_state.get("cad_processando", False))
+    st.caption("Cadastre um dentista e associe uma especialidade ativa.")
     token = st.session_state[sessao.CHAVE].token
     try:
-        especialidades = cliente.listar_especialidades(token)
+        especialidades = listar_especialidades_sessao(cliente, token)
     except ErroAcesso as error:
         limpar_formulario()
         if error.status in (401, 403):
@@ -79,22 +102,28 @@ def renderizar_cadastro(cliente):
     mensagem = st.session_state.pop("cad_aviso", None)
     if mensagem:
         getattr(st, mensagem[0])(mensagem[1])
-    with st.form("cadastro_profissional", border=True):
-        st.text_input("Nome completo", key="cad_nome", max_chars=120, disabled=ocupado)
-        st.text_input("E-mail do profissional", key="cad_email", max_chars=254, disabled=ocupado)
-        st.text_input("Senha inicial", key="cad_senha", type="password", max_chars=128,
-                      help="De 12 a 128 caracteres.", disabled=ocupado)
+    with st.form("cadastro_profissional", border=False):
+        st.text_input("Nome completo", key="cad_nome", max_chars=120,
+                      placeholder="Nome do profissional", disabled=ocupado)
+        especialidade, cro = st.columns(2, gap="medium")
+        especialidade.selectbox("Especialidade", options=list(opcoes), index=None,
+                                 format_func=lambda value: opcoes.get(value, ""),
+                                 placeholder="Ex.: Ortodontia", key="cad_especialidade",
+                                 disabled=ocupado or not opcoes)
+        cro.text_input("CRO", key="cad_cro", placeholder="CRO-SP 00000", max_chars=32,
+                       disabled=ocupado)
+        email, senha = st.columns(2, gap="medium")
+        email.text_input("E-mail do profissional", key="cad_email", max_chars=254,
+                         placeholder="profissional@clinica.com", disabled=ocupado)
+        senha.text_input("Senha inicial", key="cad_senha", type="password", max_chars=128,
+                         help="De 12 a 128 caracteres.", disabled=ocupado)
         st.text_input("Confirmar senha", key="cad_confirmacao", type="password",
                       max_chars=128, disabled=ocupado)
-        st.markdown("**Perfil de acesso: Dentista**")
-        st.text_input("CRO", key="cad_cro", placeholder="SP-123456", max_chars=32, disabled=ocupado)
-        st.selectbox("Especialidade", options=list(opcoes), index=None,
-                     format_func=lambda value: opcoes.get(value, ""),
-                     placeholder="Selecione a especialidade", key="cad_especialidade",
-                     disabled=ocupado or not opcoes)
-        st.form_submit_button("Cadastrando…" if ocupado else "Cadastrar",
-                              type="primary", width="stretch",
-                              on_click=solicitar_cadastro, disabled=ocupado or not opcoes)
+        cancelar, enviar = st.columns([1, 1.3], gap="small", vertical_alignment="center")
+        cancelar.form_submit_button("Cancelar", on_click=voltar, disabled=ocupado, width="stretch")
+        enviar.form_submit_button("Cadastrando…" if ocupado else "Cadastrar profissional",
+                                  type="primary", width="stretch",
+                                  on_click=solicitar_cadastro, disabled=ocupado or not opcoes)
     if ocupado:
         dados = st.session_state.pop("cad_pendente", None)
         try:
@@ -121,35 +150,78 @@ def renderizar_cadastro(cliente):
         st.rerun()
 
 
-def renderizar_inicio(conta, administrador, pode_cadastrar_paciente):
-    st.caption("VISÃO GERAL")
-    st.header(f"Olá, {conta.nome}!")
-    st.write("Aqui está seu espaço para cuidar da rotina da clínica.")
-    rotulos = ("Dentista" if perfil == "profissional" else ROTULOS[perfil]
-               for perfil in conta.perfis)
-    st.text(" · ".join(rotulos))
+def renderizar_cadastro_modal(cliente):
+    with st.container(key="modal-profissional"):
+        cabecalho, fechar = st.columns([8, 1], vertical_alignment="center")
+        cabecalho.markdown("### Novo profissional")
+        if fechar.button("×", key="cad-fechar-modal", help="Fechar cadastro"):
+            voltar()
+            st.rerun()
+        st.divider()
+        renderizar_cadastro(cliente)
 
-    col_acoes, col_mascote = st.columns([1.55, 1], gap="large", vertical_alignment="top")
-    with col_acoes:
+
+def renderizar_inicio(conta, administrador, pode_cadastrar_paciente):
+    dia = date.today()
+    dias = ("SEGUNDA-FEIRA", "TERÇA-FEIRA", "QUARTA-FEIRA", "QUINTA-FEIRA",
+            "SEXTA-FEIRA", "SÁBADO", "DOMINGO")
+    meses = ("JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO",
+             "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO")
+    st.caption(f"{dias[dia.weekday()]}, {dia.day} DE {meses[dia.month - 1]}")
+    titulo, acao = st.columns([3, 1], vertical_alignment="center")
+    primeiro_nome = conta.nome.split()[0] if conta.nome.strip() else "equipe"
+    titulo.title(f"Olá, {primeiro_nome}! 👋")
+    titulo.caption("Aqui está um resumo da clínica hoje.")
+    acao.button("＋ Nova consulta", key="inicio-nova-consulta", disabled=True,
+                width="stretch", help="A integração de Consultas com o Xano ainda não está disponível.")
+
+    indicadores = (
+        ("Consultas hoje", "▢"), ("Atendimentos", "✓"),
+        ("Pacientes ativos", "♙"), ("Próxima consulta", "◷"),
+    )
+    metricas = st.columns(4, gap="small")
+    for indice, (rotulo, icone) in enumerate(indicadores):
+        with metricas[indice]:
+            with st.container(key=f"metrica-xano-{indice}", border=True):
+                st.markdown(f"<span class='icone-metrica'>{icone}</span>", unsafe_allow_html=True)
+                st.caption(rotulo)
+                st.markdown("<strong class='valor-metrica'>—</strong>", unsafe_allow_html=True)
+                st.caption("Dados indisponíveis")
+
+    agenda, atalhos = st.columns([1.75, 1], gap="medium", vertical_alignment="top")
+    with agenda:
+        with st.container(key="agenda-xano-vazia", border=True):
+            titulo_agenda, abrir_agenda = st.columns([2, 1], vertical_alignment="center")
+            titulo_agenda.subheader("Agenda de hoje")
+            abrir_agenda.caption("Hoje")
+            st.divider()
+            st.info("Nenhuma consulta disponível para exibir.")
+    with atalhos:
         with st.container(key="cartao-acesso", border=True):
             st.subheader("Acesso rápido")
-            st.caption("Abra uma das ações disponíveis para o seu perfil.")
+            st.caption("Acesse as áreas da clínica.")
             if pode_cadastrar_paciente:
-                st.button("Cadastrar paciente", on_click=pagina_paciente.abrir,
+                st.button("＋  Novo paciente", on_click=pagina_paciente.abrir,
                           key="inicio-cadastrar-paciente", type="primary", width="stretch")
+            st.button("▤  Abrir prontuário", key="inicio-prontuario-indisponivel",
+                      disabled=True, width="stretch",
+                      help="A listagem de Prontuários ainda não está integrada ao Xano.")
+            st.button("▦  Visualizar agenda", key="inicio-agenda-indisponivel",
+                      disabled=True, width="stretch",
+                      help="A agenda ainda não está integrada ao Xano.")
             if administrador:
-                st.button("Cadastrar profissional", on_click=abrir_cadastro,
+                st.button("＋  Novo profissional", on_click=abrir_cadastro,
                           key="inicio-cadastrar-profissional", width="stretch")
             if not administrador and not pode_cadastrar_paciente:
                 st.info("Seu acesso à equipe está ativo.")
-    with col_mascote:
-        with st.container(key="cartao-mascote", border=True):
-            mascote = Path(__file__).resolve().parents[1] / "assets" / "mascote-sorriso.png"
-            st.image(str(mascote), caption="Sorriso+", width=190)
-            st.caption("Cuidar começa com uma boa organização.")
 
 
 def renderizar(conta, cliente):
+    if cliente.configuracao.modo_demonstracao:
+        from . import paginas_demo
+        paginas_demo.renderizar(conta, cliente)
+        return
+
     administrador = "administrador" in conta.perfis
     pode_cadastrar_paciente = (cliente.configuracao.cadastro_paciente_habilitado
                               and bool(set(conta.perfis) & {"administrador", "recepcionista"}))
@@ -165,13 +237,21 @@ def renderizar(conta, cliente):
     ocupado = (st.session_state.get("cad_processando", False)
                or st.session_state.get("pac_processando", False))
     with st.container(key="layout-equipe"):
-        menu, conteudo = st.columns([0.24, 0.76], gap="medium", vertical_alignment="top")
+        menu, conteudo = st.columns([0.17, 0.83], gap="medium", vertical_alignment="top")
         with menu:
             with st.container(key="menu-equipe", border=True):
-                st.markdown("### Sorriso+")
-                st.caption("EQUIPE DA CLÍNICA")
+                st.markdown("<div class='marca-menu'><span>S</span><b>Sorriso<em>+</em></b></div>", unsafe_allow_html=True)
                 st.button("Visão geral", on_click=abrir_inicio, key="menu-inicio",
                           disabled=ocupado, width="stretch")
+                for area in navegacao.areas_visiveis(
+                    conta.perfis, modo_demonstracao=False,
+                    cadastro_paciente_habilitado=cliente.configuracao.cadastro_paciente_habilitado,
+                ):
+                    if area["chave"] != "inicio":
+                        st.button(area["rotulo"], key=f"menu-indisponivel-{area['chave']}",
+                                  disabled=True, width="stretch",
+                                  help="A integração desta área com o Xano ainda não está disponível.")
+                st.caption("Cadastros integrados")
                 if pode_cadastrar_paciente:
                     st.button("Cadastrar paciente", on_click=pagina_paciente.abrir,
                               key="menu-cadastrar-paciente", disabled=ocupado or pagina == "paciente",
@@ -191,11 +271,27 @@ def renderizar(conta, cliente):
                     st.rerun()
         with conteudo:
             with st.container(key="conteudo-equipe", border=True):
-                if administrador and pagina == "cadastro":
-                    with st.container(key="formulario-equipe"):
-                        renderizar_cadastro(cliente)
-                elif pode_cadastrar_paciente and pagina == "paciente":
-                    with st.container(key="formulario-equipe"):
-                        pagina_paciente.renderizar(cliente)
-                else:
-                    renderizar_inicio(conta, administrador, pode_cadastrar_paciente)
+                renderizar_topbar(conta, "inicio")
+                renderizar_inicio(conta, administrador, pode_cadastrar_paciente)
+    if administrador and pagina == "cadastro":
+        renderizar_cadastro_modal(cliente)
+    elif pode_cadastrar_paciente and pagina == "paciente":
+        pagina_paciente.renderizar_modal(cliente)
+
+
+def renderizar_topbar(conta, pagina):
+    """Faixa superior inspirada no breadcrumb e perfil das referências."""
+    titulos = {
+        "inicio": "Visão geral", "agenda": "Agenda", "pacientes": "Pacientes",
+        "profissionais": "Profissionais", "prontuarios": "Prontuários",
+        "procedimentos": "Procedimentos", "paciente": "Novo paciente",
+        "cadastro": "Novo profissional", "nova_consulta": "Nova consulta",
+    }
+    with st.container(key="topbar-equipe"):
+        breadcrumb, perfil = st.columns([3, 1], vertical_alignment="center")
+        breadcrumb.caption(f"Sorriso+  /  {titulos.get(pagina, 'Equipe')}")
+        nome_perfil = " · ".join("Dentista" if p == "profissional" else ROTULOS[p]
+                                 for p in conta.perfis)
+        iniciais = "".join(parte[0] for parte in conta.nome.split()[:2]).upper() or "S"
+        perfil.markdown(f"**◉ {iniciais} · {conta.nome}**")
+        perfil.text(nome_perfil)

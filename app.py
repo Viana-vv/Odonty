@@ -1,7 +1,6 @@
 """Execute com: python -m streamlit run app.py."""
 
 from pathlib import Path
-import base64
 
 import streamlit as st
 
@@ -60,18 +59,12 @@ else:
     with st.container(key="entrada"):
         ilustracao, formulario = st.columns([1.05, 1], gap="large", vertical_alignment="center")
         with ilustracao:
-            imagem = base64.b64encode((RAIZ / "assets" / "mascote-sorriso.png").read_bytes()).decode("ascii")
-            st.html(f'''<section class="boas-vindas">
+            st.html('''<section class="boas-vindas">
               <div class="marca marca-clara"><span class="marca-icone">S</span><span class="marca-nome">Sorriso<span>+</span></span></div>
               <span class="etiqueta">GESTÃO ODONTOLÓGICA</span>
               <h1>Sua clínica mais organizada.<br>Seu atendimento mais <em>humano.</em></h1>
               <p>Agenda, pacientes e prontuários em um só lugar, para sua equipe cuidar do que realmente importa.</p>
-              <div class="beneficios">
-                <div><b>✓</b><span><strong>Rotina centralizada</strong><small>Mais clareza para toda a equipe.</small></span></div>
-                <div><b>✓</b><span><strong>Dados fictícios e seguros</strong><small>Ambiente demonstrativo para apresentar.</small></span></div>
-              </div>
-              <div class="mascote-moldura"><img src="data:image/png;base64,{imagem}" alt="Mascote dentista do Sorriso+" /></div>
-              <small class="marca-rodape">MVP acadêmico · Sorriso+</small>
+              <div class="marca-rodape">Cuidado que transforma sorrisos.</div>
             </section>''')
         with formulario:
             with st.container(key="formulario"):
@@ -87,7 +80,7 @@ else:
                     st.text_input("Senha", key="senha", type="password", placeholder="Digite sua senha", disabled=ocupado or not cliente)
                     st.form_submit_button(
                         "Entrando…" if ocupado else "Entrar", type="primary", width="stretch",
-                        disabled=ocupado or not cliente, on_click=solicitar_entrada,
+                        disabled=ocupado or not cliente, on_click=solicitar_entrada, key="login-entrar",
                     )
                 st.caption("Acesso exclusivo à equipe da clínica.")
                 st.html('<div class="nota-acesso">Seu cuidado faz a diferença. Vamos começar?</div>')
@@ -102,5 +95,3 @@ else:
                         senha = None
                         st.session_state["processando"] = False
                     st.rerun()
-
-st.html('<footer>Sorriso+ <span>·</span> MVP acadêmico <span>·</span> Somente dados fictícios</footer>')

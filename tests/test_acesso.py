@@ -64,6 +64,20 @@ def test_cadastro_paciente_pode_ser_desabilitado_explicitamente(monkeypatch):
     assert not Configuracao.do_ambiente().cadastro_paciente_habilitado
 
 
+@pytest.mark.parametrize("valor,esperado", [("0", False), ("false", False), ("1", True), ("true", True)])
+def test_modo_demonstrativo_configuravel(monkeypatch, valor, esperado):
+    monkeypatch.setenv("XANO_API_BASE_URL", "https://exemplo.invalid/api:teste")
+    monkeypatch.setenv("SORRISOMAIS_MODO_DEMONSTRACAO", valor)
+    assert Configuracao.do_ambiente().modo_demonstracao is esperado
+
+
+def test_modo_demonstrativo_rejeita_valor_ambiguo(monkeypatch):
+    monkeypatch.setenv("XANO_API_BASE_URL", "https://exemplo.invalid/api:teste")
+    monkeypatch.setenv("SORRISOMAIS_MODO_DEMONSTRACAO", "sim-talvez")
+    with pytest.raises(ConfiguracaoInvalida):
+        Configuracao.do_ambiente()
+
+
 @pytest.mark.parametrize("email,senha", [("", ""), ("ficticio@example.com", ""), ("sem-arroba", "ficticia"), ("a @example.com", "ficticia")])
 def test_campos_invalidos_nao_chamam_api(cliente, http, email, senha):
     with pytest.raises(ErroAcesso):
@@ -149,7 +163,8 @@ def test_sessoes_isoladas_e_identidade_revalidada():
     sessao.entrar(a, client, "teste@example.com", "ficticia")
     assert sessao.identificar(b, client) is None
     assert sessao.identificar(a, client).id == 1
-    assert client.identificar.call_count == 2
+    assert client.identificar.call_count == 1  # identidade verificada no login e reutilizada no rerun
+    a[sessao.CHAVE_VERIFICADA] -= timedelta(seconds=sessao.INTERVALO_REVALIDACAO_SEGUNDOS + 1)
     client.identificar.side_effect = ErroAcesso(status=403)
     with pytest.raises(ErroAcesso):
         sessao.identificar(a, client)

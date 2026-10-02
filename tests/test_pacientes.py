@@ -193,6 +193,7 @@ def test_sucesso_limpa_preserva_equipe(paciente_api):
     preencher(app)
     botao(app, "Cadastrar").click().run()
     assert not app.exception
+    paciente_api["cadastrar_paciente"].assert_called_once()
     assert app.success
     assert app.text_input(key="pac_nome").value == ""
     assert app.date_input(key="pac_data_nascimento").value is None
@@ -202,7 +203,6 @@ def test_sucesso_limpa_preserva_equipe(paciente_api):
     assert app.text_input(key="pac_celular").value == ""
     assert app.session_state["pac_operacao_id"] != operacao
     assert app.session_state[sessao.CHAVE].token == "token-adm"
-    paciente_api["cadastrar_paciente"].assert_called_once()
 
 
 @pytest.mark.parametrize("erro", [ErroAcesso("Corrija", 400), ErroAcesso("Duplicado", 409, "CPF_DUPLICADO")])
@@ -265,9 +265,13 @@ def test_saida_limpa_dados(paciente_api, acao):
     if acao == "perda_perfil":
         atual = paciente_api["identificar"].return_value
         paciente_api["identificar"].return_value = ContaAcesso(1, atual.nome, ("profissional",), atual.expira_em)
+        app.session_state[sessao.CHAVE_VERIFICADA] -= timedelta(
+            seconds=sessao.INTERVALO_REVALIDACAO_SEGUNDOS + 1)
         app.run()
     elif acao in ("expiracao", "falha_revalidacao"):
         paciente_api["identificar"].side_effect = ErroAcesso("Sessão indisponível", 401 if acao == "expiracao" else 503)
+        app.session_state[sessao.CHAVE_VERIFICADA] -= timedelta(
+            seconds=sessao.INTERVALO_REVALIDACAO_SEGUNDOS + 1)
         app.run()
     else:
         botao(app, acao).click().run()

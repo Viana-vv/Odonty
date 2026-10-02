@@ -78,6 +78,8 @@ def test_falha_revalidacao_retira_conteudo(cliente_simulado):
     app = abrir()
     enviar(app)
     identificar.side_effect = ErroAcesso("Servico indisponivel.", 503)
+    app.session_state[sessao.CHAVE_VERIFICADA] -= timedelta(
+        seconds=sessao.INTERVALO_REVALIDACAO_SEGUNDOS + 1)
     app.run()
     assert not app.exception
     assert len(app.text_input) == 2

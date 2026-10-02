@@ -58,11 +58,9 @@ def renderizar(cliente):
     for campo, valor in restaurar.items():
         st.session_state["pac_" + campo] = valor
     st.session_state.setdefault("pac_operacao_id", str(uuid4()))
-    st.title("Cadastrar paciente")
-    st.caption("Todos os campos são obrigatórios. Use somente dados fictícios.")
+    st.caption("Preencha os dados cadastrais para criar um Paciente com prontuário vazio.")
     ocupado = st.session_state.get("pac_processando", False)
     pendente = st.session_state.get("pac_pendente")
-    st.button("Voltar", key="pac_voltar", on_click=voltar, disabled=ocupado)
     aviso = st.session_state.pop("pac_aviso", None)
     if aviso:
         st.error(aviso)
@@ -72,17 +70,26 @@ def renderizar(cliente):
                    "Se sair, confira o resultado com o responsável antes de abrir outro cadastro.")
         bloqueado = st.session_state.get("pac_conflitante", False)
         st.button("Reenviar mesma operação", on_click=reenviar, disabled=ocupado or bloqueado)
-    with st.form("cadastro_paciente"):
+    with st.form("cadastro_paciente", border=False):
         bloqueado = ocupado or bool(pendente)
-        st.text_input("Nome completo *", key="pac_nome", max_chars=120, disabled=bloqueado)
-        st.date_input("Data de nascimento *", key="pac_data_nascimento", value=None,
-                      min_value=date.min, max_value=hoje(), format="DD/MM/YYYY", disabled=bloqueado)
-        st.text_input("Telefone *", key="pac_telefone", disabled=bloqueado)
-        st.text_input("CPF *", key="pac_cpf", max_chars=14, disabled=bloqueado)
-        st.text_input("E-mail *", key="pac_email", max_chars=254, disabled=bloqueado)
-        st.text_input("Celular *", key="pac_celular", disabled=bloqueado)
-        st.form_submit_button("Cadastrando…" if ocupado else "Cadastrar", type="primary",
-                              width="stretch", on_click=solicitar, disabled=bloqueado)
+        st.text_input("Nome completo *", key="pac_nome", max_chars=120,
+                      placeholder="Ex.: Maria de Souza", disabled=bloqueado)
+        cpf, nascimento = st.columns(2, gap="medium")
+        cpf.text_input("CPF *", key="pac_cpf", max_chars=14,
+                       placeholder="000.000.000-00", disabled=bloqueado)
+        nascimento.date_input("Data de nascimento *", key="pac_data_nascimento", value=None,
+                              min_value=date.min, max_value=hoje(), format="DD/MM/YYYY", disabled=bloqueado)
+        telefone, email = st.columns(2, gap="medium")
+        telefone.text_input("Telefone *", key="pac_telefone", placeholder="(00) 00000-0000",
+                            disabled=bloqueado)
+        email.text_input("E-mail *", key="pac_email", max_chars=254,
+                         placeholder="paciente@email.com", disabled=bloqueado)
+        st.text_input("Celular *", key="pac_celular", placeholder="(00) 00000-0000",
+                      disabled=bloqueado)
+        cancelar, enviar = st.columns([1, 1.3], gap="small", vertical_alignment="center")
+        cancelar.form_submit_button("Cancelar", on_click=voltar, disabled=ocupado, width="stretch")
+        enviar.form_submit_button("Cadastrando…" if ocupado else "Cadastrar paciente", type="primary",
+                                  on_click=solicitar, disabled=bloqueado or ocupado, width="stretch")
     if ocupado and pendente:
         dados = dict(pendente)
         campos = {campo: dados[campo] or "" for campo in ("nome", "telefone", "cpf", "email", "celular")}
@@ -107,3 +114,14 @@ def renderizar(cliente):
             if sessao.CHAVE in st.session_state:
                 st.session_state["pac_processando"] = False
         st.rerun()
+
+
+def renderizar_modal(cliente):
+    with st.container(key="modal-paciente"):
+        cabecalho, fechar = st.columns([8, 1], vertical_alignment="center")
+        cabecalho.markdown("### Novo paciente")
+        if fechar.button("×", key="pac-fechar-modal", help="Fechar cadastro"):
+            voltar()
+            st.rerun()
+        st.divider()
+        renderizar(cliente)

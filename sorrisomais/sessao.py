@@ -1,14 +1,19 @@
-"""Estado por conexão Streamlit; toda revalidação consulta o Xano."""
+"""Estado por conexão Streamlit; identidade é atualizada com limite de chamadas."""
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
-from .api import Credencial, ErroAcesso
+from .api import ContaAcesso, Credencial, ErroAcesso
 
 CHAVE = "credencial"
+CHAVE_CONTA = "conta_acesso_cache"
+CHAVE_VERIFICADA = "conta_acesso_verificada_em"
+INTERVALO_REVALIDACAO_SEGUNDOS = 20
 
 
 def limpar(estado):
-    estado.pop(CHAVE, None)
+    for chave in (CHAVE, CHAVE_CONTA, CHAVE_VERIFICADA, "cad_especialidades_cache",
+                  "cad_especialidades_cache_em", "cad_especialidades_erro_em"):
+        estado.pop(chave, None)
     estado.pop("pagina_equipe", None)
     for chave in list(estado):
         if chave.startswith(("cad_", "pac_")):
@@ -29,6 +34,8 @@ def entrar(estado, cliente, email, senha):
             pass
         raise
     estado[CHAVE] = credencial
+    estado[CHAVE_CONTA] = conta
+    estado[CHAVE_VERIFICADA] = datetime.now(timezone.utc)
 
 
 def identificar(estado, cliente):
@@ -38,9 +45,20 @@ def identificar(estado, cliente):
     try:
         if not isinstance(credencial, Credencial) or credencial.expira_em <= datetime.now(timezone.utc):
             raise ErroAcesso("Sua sessão expirou. Entre novamente.", 401)
+        agora = datetime.now(timezone.utc)
+        conta_cache = estado.get(CHAVE_CONTA)
+        verificada_em = estado.get(CHAVE_VERIFICADA)
+        if (isinstance(conta_cache, ContaAcesso)
+                and conta_cache.expira_em == credencial.expira_em
+                and isinstance(verificada_em, datetime)
+                and timedelta(0) <= agora - verificada_em
+                < timedelta(seconds=INTERVALO_REVALIDACAO_SEGUNDOS)):
+            return conta_cache
         conta = cliente.identificar(credencial.token)
         if conta.expira_em != credencial.expira_em:
             raise ErroAcesso()
+        estado[CHAVE_CONTA] = conta
+        estado[CHAVE_VERIFICADA] = agora
         return conta
     except ErroAcesso:
         limpar(estado)

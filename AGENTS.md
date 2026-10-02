@@ -166,6 +166,13 @@ Verifique, quando aplicável:
 
 Não declare uma tarefa concluída sem informar como ela foi testada.
 
+- Para cada contrato de API REST `GET` ou `POST`, crie um teste unitário em Python e outro em JavaScript. Mantenha arquivos de teste separados por rota e não envie requisições reais à rede nos testes unitários.
+
+## 10.1 Referências visuais
+
+- Toda tela nova ou refeita deve seguir as referências visuais aprovadas do kit Sorriso Mais. Reutilize cores, hierarquia, espaçamentos e padrões responsivos.
+- Quando não houver uma referência para a tela específica, siga a composição mais próxima do kit. Preserve os controles funcionais, os contratos de API e os nomes do domínio.
+
 ## 11. Git e GitHub
 
 - Não faça commits diretamente na branch `main`.
