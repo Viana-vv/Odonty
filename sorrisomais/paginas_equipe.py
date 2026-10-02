@@ -120,7 +120,7 @@ def renderizar_cadastro(cliente):
         st.text_input("Confirmar senha", key="cad_confirmacao", type="password",
                       max_chars=128, disabled=ocupado)
         cancelar, enviar = st.columns([1, 1.3], gap="small", vertical_alignment="center")
-        cancelar.form_submit_button("Cancelar", on_click=voltar, disabled=ocupado, width="stretch")
+        cancelar.form_submit_button("Voltar", on_click=voltar, disabled=ocupado, width="stretch")
         enviar.form_submit_button("Cadastrando…" if ocupado else "Cadastrar profissional",
                                   type="primary", width="stretch",
                                   on_click=solicitar_cadastro, disabled=ocupado or not opcoes)

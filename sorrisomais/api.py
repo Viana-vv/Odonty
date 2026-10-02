@@ -59,7 +59,7 @@ class ClienteXano:
     def __init__(self, configuracao: Configuracao):
         self.configuracao = configuracao
 
-    def _request(self, method, route, token=None, payload=None, status_esperado=200):
+    def _request(self, method, route, token=None, payload=None, status_esperado=200, params=None):
         headers = {"Accept": "application/json"}
         if token:
             if not isinstance(token, str) or any(c.isspace() for c in token):
@@ -69,7 +69,7 @@ class ClienteXano:
             response = requests.request(
                 method, self.configuracao.api_base_url + route,
                 json=payload, headers=headers, timeout=self.configuracao.timeout,
-                allow_redirects=False,
+                allow_redirects=False, params=params,
             )
         except requests.RequestException:
             raise ErroAcesso() from None
@@ -97,8 +97,21 @@ class ClienteXano:
                           if route == "/auth/login" else "Sua sessão expirou ou não é válida. Entre novamente."),
                     403: "Sua conta não tem permissão para acessar esta área.",
                     409: "E-mail ou CRO já cadastrado.",
+                    404: "O recurso solicitado não foi encontrado.",
                     429: "Muitas tentativas. Aguarde um pouco antes de tentar novamente.",
                 }
+                if status == 409:
+                    if route == "/consultas":
+                        message = "Este horário não está mais disponível. Escolha outro."
+                    elif route.startswith("/disponibilidades/"):
+                        message = "Não foi possível atualizar este horário. Confira a Agenda e tente novamente."
+                    elif route.startswith("/consultas/"):
+                        message = "Não foi possível atualizar a Consulta. Confira a situação e tente novamente."
+                    elif route.startswith("/registros-clinicos"):
+                        message = "Não foi possível concluir a operação clínica. Confira o Registro e tente novamente."
+                    else:
+                        message = messages[409]
+                    raise ErroAcesso(message, status)
                 raise ErroAcesso(messages.get(status, INDISPONIVEL), status)
             try:
                 data = response.json()
@@ -208,3 +221,202 @@ class ClienteXano:
                 "Antes de tentar novamente, confira o resultado com o responsável pelo sistema.",
                 error.status,
             ) from None
+
+    @staticmethod
+    def _token_obrigatorio(token):
+        if not isinstance(token, str) or not token or any(c.isspace() for c in token):
+            raise ErroAcesso("Entre na sua conta para continuar.", 401)
+
+    @staticmethod
+    def _item_resposta(data, chave, campos):
+        item = data.get(chave)
+        if not isinstance(item, dict) or type(item.get("id")) is not int or item["id"] <= 0:
+            raise ErroAcesso()
+        resultado = {"id": item["id"]}
+        for campo, tipo in campos.items():
+            valor = item.get(campo)
+            if tipo is int:
+                if type(valor) is not int or valor <= 0:
+                    raise ErroAcesso()
+            elif tipo is str:
+                if not isinstance(valor, str) or not valor.strip():
+                    raise ErroAcesso()
+            elif tipo is bool:
+                if type(valor) is not bool:
+                    raise ErroAcesso()
+            resultado[campo] = valor
+        return resultado
+
+    @classmethod
+    def _lista_resposta(cls, data, chave, campos):
+        itens = data.get(chave)
+        if not isinstance(itens, list):
+            raise ErroAcesso()
+        vistos = set()
+        resultado = []
+        for item in itens:
+            normalizado = cls._item_resposta({chave: item}, chave, campos)
+            if normalizado["id"] in vistos:
+                raise ErroAcesso()
+            vistos.add(normalizado["id"])
+            resultado.append(normalizado)
+        return resultado
+
+    def listar_disponibilidades(self, token, profissional_id=None, inicio=None, fim=None):
+        from .contratos_clinicos import DadosContratoInvalidos, validar_data_hora, validar_id, validar_intervalo
+
+        self._token_obrigatorio(token)
+        params = {}
+        if profissional_id is not None:
+            params["profissional_id"] = validar_id(profissional_id, "Profissional")
+        if (inicio is None) != (fim is None):
+            raise DadosContratoInvalidos("Informe início e fim juntos.")
+        if inicio is not None:
+            params["inicio"], params["fim"] = validar_intervalo(inicio, fim)
+        data = self._request("GET", "/disponibilidades", token=token, params=params or None)
+        return self._lista_resposta(data, "disponibilidades", {
+            "profissional_id": int, "inicio": str, "fim": str, "situacao": str,
+        })
+
+    def criar_disponibilidade(self, token, profissional_id, inicio, fim):
+        from .contratos_clinicos import validar_id, validar_intervalo
+
+        self._token_obrigatorio(token)
+        inicio, fim = validar_intervalo(inicio, fim)
+        payload = {"profissional_id": validar_id(profissional_id, "Profissional"),
+                   "inicio": inicio, "fim": fim}
+        data = self._request("POST", "/disponibilidades", token=token,
+                             payload=payload, status_esperado=201)
+        return self._item_resposta(data, "disponibilidade", {
+            "profissional_id": int, "inicio": str, "fim": str, "situacao": str,
+        })
+
+    def atualizar_disponibilidade(self, token, disponibilidade_id, *, inicio=None, fim=None, situacao=None):
+        from .contratos_clinicos import DadosContratoInvalidos, validar_id, validar_intervalo
+
+        self._token_obrigatorio(token)
+        disponibilidade_id = validar_id(disponibilidade_id, "Disponibilidade")
+        payload = {}
+        if (inicio is None) != (fim is None):
+            raise DadosContratoInvalidos("Informe início e fim juntos.")
+        if inicio is not None:
+            payload["inicio"], payload["fim"] = validar_intervalo(inicio, fim)
+        if situacao is not None:
+            if situacao not in {"disponivel", "bloqueado"}:
+                raise DadosContratoInvalidos("Informe uma situação permitida para a Disponibilidade.")
+            payload["situacao"] = situacao
+        if not payload:
+            raise DadosContratoInvalidos("Informe ao menos um campo para atualizar.")
+        data = self._request("PATCH", f"/disponibilidades/{disponibilidade_id}",
+                             token=token, payload=payload)
+        return self._item_resposta(data, "disponibilidade", {
+            "profissional_id": int, "inicio": str, "fim": str, "situacao": str,
+        })
+
+    def agendar_consulta(self, token, paciente_id, disponibilidade_id, procedimento_ids, motivo=None):
+        from .contratos_clinicos import DadosContratoInvalidos, validar_id, validar_ids_procedimentos, validar_texto
+
+        self._token_obrigatorio(token)
+        payload = {
+            "paciente_id": validar_id(paciente_id, "Paciente"),
+            "disponibilidade_id": validar_id(disponibilidade_id, "Disponibilidade"),
+            "procedimento_ids": validar_ids_procedimentos(procedimento_ids),
+        }
+        if motivo is not None:
+            payload["motivo"] = validar_texto(motivo, "o motivo", 1000)
+        data = self._request("POST", "/consultas", token=token,
+                             payload=payload, status_esperado=201)
+        return self._item_resposta(data, "consulta", {
+            "paciente_id": int, "profissional_id": int, "disponibilidade_id": int,
+            "situacao": str,
+        })
+
+    def listar_consultas(self, token, *, paciente_id=None, profissional_id=None,
+                         situacao=None, inicio=None, fim=None):
+        from .contratos_clinicos import DadosContratoInvalidos, validar_data_hora, validar_id, validar_intervalo
+
+        self._token_obrigatorio(token)
+        params = {}
+        for nome, valor in (("paciente_id", paciente_id), ("profissional_id", profissional_id)):
+            if valor is not None:
+                params[nome] = validar_id(valor, "Paciente" if nome == "paciente_id" else "Profissional")
+        if situacao is not None:
+            if situacao not in {"Agendada", "Confirmada", "Em atendimento", "Realizada", "Cancelada", "Falta"}:
+                raise DadosContratoInvalidos("Informe uma situação válida de Consulta.")
+            params["situacao"] = situacao
+        if (inicio is None) != (fim is None):
+            raise DadosContratoInvalidos("Informe início e fim juntos.")
+        if inicio is not None:
+            params["inicio"], params["fim"] = validar_intervalo(inicio, fim)
+        data = self._request("GET", "/consultas", token=token, params=params or None)
+        return self._lista_resposta(data, "consultas", {
+            "paciente_id": int, "profissional_id": int, "disponibilidade_id": int,
+            "situacao": str,
+        })
+
+    def atualizar_situacao_consulta(self, token, consulta_id, nova, motivo_cancelamento=None):
+        from .contratos_clinicos import DadosContratoInvalidos, SITUACOES_CONSULTA, validar_id, validar_texto
+
+        self._token_obrigatorio(token)
+        consulta_id = validar_id(consulta_id, "Consulta")
+        if nova not in SITUACOES_CONSULTA:
+            raise DadosContratoInvalidos("Informe uma situação válida de Consulta.")
+        if nova == "Cancelada" and motivo_cancelamento is None:
+            raise DadosContratoInvalidos("Informe o motivo do cancelamento.")
+        payload = {"situacao": nova}
+        if motivo_cancelamento is not None:
+            payload["motivo_cancelamento"] = validar_texto(motivo_cancelamento, "o motivo do cancelamento", 1000)
+        data = self._request("PATCH", f"/consultas/{consulta_id}/situacao", token=token, payload=payload)
+        return self._item_resposta(data, "consulta", {
+            "paciente_id": int, "profissional_id": int, "disponibilidade_id": int, "situacao": str,
+        })
+
+    def registrar_clinico(self, token, paciente_id, conteudo, *, consulta_id=None, liberado_paciente=False):
+        from .contratos_clinicos import DadosContratoInvalidos, validar_id, validar_texto
+
+        self._token_obrigatorio(token)
+        if type(liberado_paciente) is not bool:
+            raise DadosContratoInvalidos("Informe se o Registro Clínico foi liberado ao Paciente.")
+        payload = {
+            "paciente_id": validar_id(paciente_id, "Paciente"),
+            "conteudo": validar_texto(conteudo, "o conteúdo clínico"),
+            "liberado_paciente": liberado_paciente,
+        }
+        if consulta_id is not None:
+            payload["consulta_id"] = validar_id(consulta_id, "Consulta")
+        data = self._request("POST", "/registros-clinicos", token=token,
+                             payload=payload, status_esperado=201)
+        return self._item_resposta(data, "registro_clinico", {
+            "paciente_id": int, "profissional_id": int, "prontuario_id": int,
+            "liberado_paciente": bool,
+        })
+
+    def listar_registros_clinicos(self, token, *, paciente_id=None, consulta_id=None):
+        from .contratos_clinicos import validar_id
+
+        self._token_obrigatorio(token)
+        params = {}
+        if paciente_id is not None:
+            params["paciente_id"] = validar_id(paciente_id, "Paciente")
+        if consulta_id is not None:
+            params["consulta_id"] = validar_id(consulta_id, "Consulta")
+        data = self._request("GET", "/registros-clinicos", token=token, params=params or None)
+        return self._lista_resposta(data, "registros_clinicos", {
+            "paciente_id": int, "profissional_id": int, "prontuario_id": int,
+            "conteudo": str, "liberado_paciente": bool,
+        })
+
+    def retificar_registro_clinico(self, token, registro_id, conteudo, justificativa):
+        from .contratos_clinicos import validar_id, validar_texto
+
+        self._token_obrigatorio(token)
+        registro_id = validar_id(registro_id, "Registro Clínico")
+        payload = {
+            "conteudo": validar_texto(conteudo, "o conteúdo clínico"),
+            "justificativa": validar_texto(justificativa, "a justificativa", 1000),
+        }
+        data = self._request("POST", f"/registros-clinicos/{registro_id}/retificacoes",
+                             token=token, payload=payload, status_esperado=201)
+        return self._item_resposta(data, "retificacao", {
+            "registro_clinico_id": int, "profissional_id": int,
+        })

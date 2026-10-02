@@ -14,3 +14,10 @@ export function assertApiContract(method, route, exportPath) {
   assert.ok(existsSync(xanoExport), `export Xano ausente: ${exportPath}`);
   return readFileSync(xanoExport, 'utf8');
 }
+
+export function assertClientContract(method, route, methodName) {
+  const escapedRoute = route.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const call = new RegExp(`_request\\(\\"${method}\\",\\s*\\"${escapedRoute}\\"`);
+  assert.match(clientSource, call, `cliente sem chamada ${method} ${route}`);
+  assert.match(clientSource, new RegExp(`def ${methodName}\\(`), `método ${methodName} ausente`);
+}

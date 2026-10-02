@@ -57,6 +57,14 @@ Prontuários e Registros Clínicos ainda não têm integração Xano confirmada;
 essas áreas aparecem somente na demonstração fictícia até aprovação de uma
 change própria baseada no contrato real.
 
+Na branch `feat/3-retomada-cadastro-profissional`, os métodos clientes e os
+testes unitários locais dos contratos propostos para Disponibilidades, Consultas
+e Registros Clínicos foram iniciados conforme a change
+`agenda-consultas-registros-clinicos-api`. Isso não significa que as rotas estejam
+publicadas ou validadas no Xano. A criação das tabelas e endpoints, autorização,
+transações, concorrência e isolamento clínico ainda dependem de verificação em
+um workspace de teste do Xano.
+
 Para respeitar o limite de requisições do workspace, a Conta de Acesso é
 revalidada no máximo uma vez a cada 20 segundos durante reruns da interface.
 O Xano continua validando cada operação protegida. A lista de Especialidades
@@ -76,6 +84,14 @@ aguarda 20 segundos. Nenhum desses caches é compartilhado entre sessões.
 | `POST /auth/login` | JSON com `email` e `senha` | 200 com `token`, `tipo_token` e `expira_em` |
 | `GET /auth/me` | Bearer token | 200 com `conta` e `expira_em` |
 | `POST /auth/logout` | Bearer token | 204 sem corpo |
+| `GET /especialidades` | Bearer token de Administrador | 200 com especialidades ativas |
+| `POST /profissionais` | Bearer token de Administrador e JSON estrito | 201 com Profissional e Conta de Acesso vinculados |
+
+O cadastro de Profissional exige `nome`, `email`, `senha`, `cro` e `especialidade_id`. A confirmação da senha é validada somente na interface e não é enviada. O backend normaliza e-mail e CRO, exige uma especialidade ativa e define o único perfil da nova Conta de Acesso como `profissional`. A resposta não contém senha, e-mail, hash ou token. A autorização é verificada no Xano em cada chamada.
+
+Erros esperados no cadastro: 400 para dados inválidos, 401 para sessão inválida, 403 para acesso não autorizado, 409 para e-mail ou CRO duplicado e 429 para limite de requisições. Timeout, erro 5xx ou resposta incompatível são tratados como resultado não confirmado; o cliente não repete automaticamente a operação. Consulte a [especificação de cadastro de Profissional](openspec/specs/cadastro-profissional/spec.md) para os requisitos e cenários do fluxo.
+
+Na auditoria local de 02/10/2026, passaram 156 testes Python de contratos, cadastro, autenticação e interface. Os cinco testes JavaScript de login, identidade, logout, especialidades e cadastro de Profissional também passaram. Esses testes substituem a rede por respostas simuladas e não fazem parte de uma validação do Xano publicado; não comprovam permissões, transações ou concorrência no backend.
 
 O [design](openspec/changes/archive/2026-09-25-login-streamlit-xano/design.md) detalha o contrato e as permissões. As tabelas legadas e APIs de outras funcionalidades foram preservadas.
 

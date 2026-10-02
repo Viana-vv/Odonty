@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from sorrisomais.api import ErroAcesso
@@ -36,3 +38,23 @@ def test_post_profissionais_rejeita_resposta_incompativel(cliente, http, respost
             "token-ficticio", "Profissional Fictício", "dentista@example.com",
             "senha-ficticia-segura", "SP-123456", 2,
         )
+
+
+def test_export_xano_profissionais_valida_admin_e_cria_vinculo_atomico():
+    arquivo = (Path(__file__).resolve().parents[2]
+               / "backend" / "xano" / "api" / "sorriso_acesso" / "profissionais_POST.xs")
+    codigo = arquivo.read_text(encoding="utf-8-sig")
+    assert 'auth = "conta_acesso"' in codigo
+    assert "function.run sorriso_validar_sessao" in codigo
+    assert 'perfis|intersect:["administrador"]' in codigo
+    assert '"HTTP/1.1 403 Forbidden"' in codigo
+    assert '"HTTP/1.1 400 Bad Request"' in codigo
+    assert '"HTTP/1.1 409 Conflict"' in codigo
+    assert "db.transaction" in codigo
+    assert "db.add conta_acesso" in codigo
+    assert 'perfis: ["profissional"]' in codigo
+    assert "db.add profissional" in codigo
+    assert 'Cache-Control: no-store' in codigo
+    assert "history = false" in codigo
+    resposta = codigo.split("\n  response = {", 1)[1].split("\n  history = false", 1)[0]
+    assert all(segredo not in resposta.lower() for segredo in ("senha", "email", "token"))
