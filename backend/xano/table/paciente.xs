@@ -14,6 +14,11 @@ table paciente {
   
     // Celular obrigatorio para novos cadastros; contatos existentes permanecem inalterados
     text? celular?
+
+    // Ligacao opcional usada para limitar operacoes do proprio Paciente.
+    int? conta_acesso_id? {
+      table = "conta_acesso"
+    }
   
     // Situacao do Paciente; novos cadastros sao ativos, sem classificar legados automaticamente.
     enum? situacao? {
@@ -26,5 +31,6 @@ table paciente {
   index = [
     {type: "primary", field: [{name: "id"}]}
     {type: "btree|unique", field: [{name: "cpf", op: "asc"}]}
+    {type: "btree|unique", field: [{name: "conta_acesso_id", op: "asc"}]}
   ]
 }

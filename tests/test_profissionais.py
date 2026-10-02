@@ -10,7 +10,7 @@ from streamlit.testing.v1 import AppTest
 from sorrisomais.api import ClienteXano, ContaAcesso, Credencial, ErroAcesso
 from sorrisomais.config import Configuracao
 from sorrisomais.profissionais import validar_cadastro
-from sorrisomais import sessao
+from sorrisomais import paginas_equipe, sessao
 
 DADOS = dict(nome="Dentista Fictício", email="dentista@example.com",
              senha="senha-ficticia-segura", cro="SP-123456", especialidade_id=1)
@@ -215,6 +215,45 @@ def test_primeiro_envio_preserva_campos_apos_rejeicao_e_permite_corrigir(api):
     assert app.session_state[sessao.CHAVE].token == "token-adm"
 
 
+def test_reenvio_durante_processamento_nao_duplica_requisicao(api):
+    app = abrir_form(api)
+    preencher(app)
+
+    def tentar_segundo_envio(*args, **kwargs):
+        assert app.session_state["cad_processando"] is True
+        paginas_equipe.solicitar_cadastro()
+        return 10
+
+    api["cadastrar_profissional"].side_effect = tentar_segundo_envio
+    botao(app, "Cadastrar").click().run()
+    assert not app.exception
+    api["cadastrar_profissional"].assert_called_once_with("token-adm", **DADOS)
+    assert "cad_pendente" not in app.session_state
+
+
+def test_dentista_pode_entrar_sem_receber_acao_administrativa(api):
+    prazo = datetime.now(timezone.utc) + timedelta(hours=1)
+    conta_admin = ContaAcesso(1, "Administrador Fictício", ("administrador",), prazo)
+    conta_dentista = ContaAcesso(20, "Dentista Fictício", ("profissional",), prazo)
+    api["entrar"].side_effect = [Credencial("token-adm", prazo),
+                                 Credencial("token-dentista", prazo)]
+    api["identificar"].side_effect = [conta_admin, conta_dentista]
+
+    app = abrir_form(api)
+    preencher(app)
+    botao(app, "Cadastrar").click().run()
+    assert app.session_state[sessao.CHAVE].token == "token-adm"
+
+    next(botao for botao in app.button if botao.label == "Sair").click().run()
+    app.text_input(key="email").set_value(DADOS["email"])
+    app.text_input(key="senha").set_value(DADOS["senha"])
+    botao(app, "Entrar").click().run()
+
+    assert not app.exception
+    assert app.session_state[sessao.CHAVE].token == "token-dentista"
+    assert all(botao.label != "Cadastrar profissional" for botao in app.button)
+
+
 @pytest.mark.parametrize("perfil", ["profissional", "recepcionista"])
 def test_outros_perfis_sem_cadastro(api, perfil):
     conta = api["identificar"].return_value
@@ -265,6 +304,7 @@ def test_perda_autorizacao_no_envio_sai(api, status):
 def test_voltar_limpa_campos(api):
     app = abrir_form(api)
     preencher(app)
+    assert any(botao.label == "Voltar" for botao in app.button)
     botao(app, "Voltar").click().run()
     assert not app.exception
     assert all(k not in app.session_state for k in ("cad_senha", "cad_confirmacao", "cad_pendente"))

@@ -26,6 +26,8 @@ table profissional {
     }
   
     timestamp? atualizado_em?
+    // Versao incrementada dentro da transacao para serializar alteracoes da Agenda.
+    int? agenda_lock_version?=0
   }
 
   index = [

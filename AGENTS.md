@@ -149,6 +149,8 @@ Consulte `docs/domain-model.md` para conhecer todas as regras e os relacionament
 
 Toda mudança funcional deve possuir uma forma de verificação.
 
+Quando uma verificação depender de ação manual do usuário (por exemplo, inspeção visual ou teste em dispositivo/conta externa), informe o que precisa ser verificado diretamente na conversa; não crie uma tarefa OpenSpec para essa ação.
+
 Verifique, quando aplicável:
 
 - cenário de sucesso;
