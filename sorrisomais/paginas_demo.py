@@ -352,7 +352,7 @@ def renderizar(conta, cliente):
     ocupada = bool(st.session_state.get("cad_processando") or st.session_state.get("pac_processando"))
     with st.container(key="layout-equipe"):
         renderizar_topbar(conta, atual.split(":", 1)[0])
-        menu, conteudo = st.columns([0.22, 0.78], gap="medium", vertical_alignment="top")
+        menu, conteudo = st.columns([0.205, 0.795], gap="medium", vertical_alignment="top")
         with menu:
             with st.container(key="menu-equipe", border=True):
                 st.markdown("### Sorriso+")

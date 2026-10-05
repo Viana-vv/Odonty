@@ -4,7 +4,7 @@
 html, body, [data-testid="stApp"] { font-family: Arial, Helvetica, sans-serif; color: var(--tinta); }
 [data-testid="stAppViewContainer"] { background: var(--fundo); }
 [data-testid="stHeader"] { display: none; height: 0; }
-.block-container { max-width: 1500px; padding: 1.5rem clamp(1rem, 3vw, 2.75rem) 1rem; }
+.block-container { width: 100%; max-width: none; margin: 0; padding: 0 !important; }
 h1, h2, h3 { font-family: Arial, Helvetica, sans-serif !important; letter-spacing: -.035em; color: var(--tinta); }
 [data-testid="stTextInput"] input, [data-testid="stDateInput"] input, [data-testid="stSelectbox"] [data-baseweb="select"] { min-height: 46px; border-radius: 9px; }
 [data-testid="stForm"] { border-color: var(--linha); border-radius: 16px; background: #fff; padding: 1.25rem; }
@@ -43,17 +43,17 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .nota-acesso { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--linha); color: #778987; font-size: 12px; text-align: center; }
 
 /* Área autenticada e formulários */
-.st-key-layout-equipe { max-width: 1500px; margin: 0 auto 40px; }
+.st-key-layout-equipe { width: 100%; max-width: none; min-height: 100dvh; margin: 0; }
 .st-key-topbar-equipe { margin: 0 0 24px; padding: 10px 4px 16px; border-bottom: 1px solid var(--linha); }
 .st-key-topbar-equipe [data-testid="stHorizontalBlock"] { align-items: center; }
 .st-key-topbar-equipe [data-testid="stCaptionContainer"] { margin: 0; color: #738481; }
 .st-key-topbar-equipe [data-testid="stMarkdownContainer"] { text-align: right; color: #526764; font-size: 12px; }
 .st-key-layout-equipe [data-testid="stHorizontalBlock"] { align-items: stretch; gap: 1.25rem; }
-.st-key-menu-equipe { display: flex; min-height: calc(100vh - 72px); flex-direction: column; padding: 20px 16px; border: 1px solid var(--linha); border-radius: 0 18px 18px 0; background: #fff; }
+.st-key-menu-equipe { display: flex; min-height: 100dvh; flex-direction: column; padding: 20px 16px; border: 1px solid var(--linha); border-radius: 0 18px 18px 0; background: #fff; }
 .st-key-menu-equipe h3 { font-size: 20px; letter-spacing: -.04em; }
 .st-key-menu-equipe [data-testid="stButton"] button { justify-content: flex-start; min-height: 44px; border: 0; border-radius: 10px; background: transparent; color: #637572; text-align: left; }
 .st-key-menu-equipe [data-testid="stButton"] button:hover { background: #edf5f3; color: var(--verde-escuro); }
-.st-key-conteudo-equipe { min-height: calc(100vh - 72px); padding: clamp(22px, 3vw, 42px); border: 0; border-radius: 18px; background: #f4f8f7; }
+.st-key-conteudo-equipe { min-height: 100dvh; padding: clamp(22px, 3vw, 42px); border: 0; border-radius: 18px; background: #f4f8f7; }
 .st-key-conteudo-equipe h1 { margin-top: 0; font-size: clamp(28px, 3vw, 38px); }
 .st-key-formulario-equipe { max-width: 880px; margin: 18px auto; padding: clamp(22px, 4vw, 44px); border: 1px solid var(--linha); border-radius: 18px; background: #fff; box-shadow: 0 12px 35px #213e380b; }
 .st-key-formulario-equipe [data-testid="stForm"] { padding: 1.5rem; }
@@ -81,18 +81,18 @@ body:has(.st-key-modal-paciente, .st-key-modal-profissional)::before { content: 
 footer { display: none !important; }
 
 @media (max-width: 1000px) {
- .block-container { padding: 1.1rem 1rem .7rem; }
+ .block-container { padding: 0 !important; }
  .boas-vindas { min-height: 625px; padding: 28px 30px; }
  .marca-clara { margin-bottom: 60px; }
  .mascote-moldura { right: 18px; bottom: 45px; width: 190px; height: 180px; }
  .mascote-moldura img { width: 260px; height: 260px; }
  .st-key-formulario { min-height: 625px; padding: 34px 28px; }
- .st-key-layout-equipe { margin-top: 4px; }
+ .st-key-layout-equipe { margin-top: 0; }
  .st-key-topbar-equipe { margin-bottom: 10px; padding: 5px 2px 10px; }
  .st-key-menu-equipe, .st-key-conteudo-equipe { min-height: 650px; }
 }
 @media (max-width: 700px) {
- .block-container { padding: .6rem .65rem .4rem; }
+ .block-container { padding: 0 !important; }
  .st-key-entrada { flex-direction: column; border-radius: 18px; }
  .st-key-entrada [data-testid="stHorizontalBlock"] { flex-direction: column; }
  .st-key-entrada [data-testid="stColumn"] { width: 100%; flex: 1 1 100%; min-width: 0; }
@@ -124,17 +124,17 @@ footer { display: none !important; }
  .st-key-modal-paciente [data-testid="stColumn"], .st-key-modal-profissional [data-testid="stColumn"] { width: 100%; flex: 1 1 100%; min-width: 0; }
 }
 
-/* Ajustes de composição para acompanhar as referências do kit. */
-.st-key-entrada { min-height: min(780px, calc(100vh - 48px)); border: 0; border-radius: 0; box-shadow: none; }
-.boas-vindas { min-height: min(780px, calc(100vh - 48px)); padding: 38px clamp(30px, 5vw, 72px); }
+/* As telas ocupam a janela; o espaço visual fica dentro dos próprios blocos. */
+.st-key-entrada { min-height: 100dvh; border: 0; border-radius: 0; box-shadow: none; }
+.boas-vindas { min-height: 100dvh; padding: 38px clamp(30px, 5vw, 72px); }
 .marca-clara { margin-bottom: clamp(100px, 18vh, 170px); }
 .boas-vindas h1 { font-size: clamp(34px, 3.2vw, 46px); }
 .boas-vindas > p { font-size: 16px; }
 .marca-rodape { left: clamp(30px, 5vw, 72px); bottom: 28px; }
-.st-key-layout-equipe { max-width: 1600px; }
+.st-key-layout-equipe { width: 100%; max-width: none; min-height: 100dvh; margin: 0; }
 .st-key-layout-equipe > [data-testid="stHorizontalBlock"] { gap: 0; }
-.st-key-menu-equipe { min-height: calc(100vh - 28px); padding: 26px 18px 18px; border: 0; border-right: 1px solid var(--linha); border-radius: 0; box-shadow: none; }
-.st-key-conteudo-equipe { min-height: calc(100vh - 28px); padding: 22px clamp(24px, 3.5vw, 56px); border: 0; border-radius: 0; background: #f5f8f7; }
+.st-key-menu-equipe { min-height: 100dvh; padding: 26px 18px 18px; border: 0; border-right: 1px solid var(--linha); border-radius: 0; box-shadow: none; }
+.st-key-conteudo-equipe { min-height: 100dvh; padding: 22px clamp(24px, 3.5vw, 56px); border: 0; border-radius: 0; background: #f5f8f7; }
 .st-key-topbar-equipe { margin-bottom: 32px; padding: 8px 0 18px; }
 .st-key-topbar-equipe [data-testid="stMarkdownContainer"] { text-align: right; }
 .st-key-metrica-xano-0, .st-key-metrica-xano-1, .st-key-metrica-xano-2, .st-key-metrica-xano-3 { min-height: 144px; padding: 18px; border-radius: 12px; box-shadow: 0 2px 8px #17303808; }
