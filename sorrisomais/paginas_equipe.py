@@ -237,7 +237,7 @@ def renderizar(conta, cliente):
     ocupado = (st.session_state.get("cad_processando", False)
                or st.session_state.get("pac_processando", False))
     with st.container(key="layout-equipe"):
-        menu, conteudo = st.columns([0.17, 0.83], gap="medium", vertical_alignment="top")
+        menu, conteudo = st.columns([0.205, 0.795], gap="medium", vertical_alignment="top")
         with menu:
             with st.container(key="menu-equipe", border=True):
                 st.markdown("<div class='marca-menu'><span>S</span><b>Sorriso<em>+</em></b></div>", unsafe_allow_html=True)
