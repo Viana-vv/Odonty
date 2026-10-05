@@ -24,11 +24,11 @@
 ## 4. Verificação e entrega
 
 - [x] 4.1 Executar testes unitários locais sem rede: Python, 262 aprovados e 115 ignorados (cenários externos opt-in); JavaScript, 7 aprovados. O CLI não encontrou testes unitários/workflow cadastrados no workspace.
-- [ ] 4.1a Executar no Xano real testes com dados fictícios de concorrência, rollback, duplicação, adulteração de perfil e autorização; os testes dependem de Conta de Acesso fictícia autorizada.
+- [x] 4.1a Executar no Xano real testes com dados fictícios de concorrência, rollback, duplicação, adulteração de perfil e autorização; os testes dependem de Conta de Acesso fictícia autorizada.
 - [x] 4.2 Verificar fluxo completo Administrador → cadastro → login Dentista no navegador, em computador/tablet/celular e por teclado.
 - [x] 4.3 Atualizar README e documentação de execução/contrato; verificar instruções reproduzíveis e validar `cadastro-profissional`, `acesso-autenticado` e `cadastro-paciente` com `--strict`.
-- [ ] 4.4 Revisar diff, publicar PR de implementação ligado à Issue e solicitar revisão; verificar ausência de segredos e mudanças fora de escopo.
-- [ ] 4.5 Após conclusão verificada, arquivar e sincronizar pela CLI OpenSpec; verificar todas as tarefas e specs principais sem edição manual.
+- [x] 4.4 Revisar diff, publicar PR de implementação ligado à Issue e solicitar revisão; verificar ausência de segredos e mudanças fora de escopo.
+- [x] 4.5 Após conclusão verificada, arquivar e sincronizar pela CLI OpenSpec; verificar todas as tarefas e specs principais sem edição manual.
 
 ## Verificação da correção do cadastro — 25/09/2026
 

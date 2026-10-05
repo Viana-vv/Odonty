@@ -169,9 +169,9 @@ def formulario(api):
 def preencher(app):
     app.text_input(key="pac_nome").set_value(DADOS["nome"])
     app.date_input(key="pac_data_nascimento").set_value(date(2000, 2, 29))
-    for campo in ("telefone", "cpf", "email", "celular"):
-        app.text_input(key="pac_" + campo).set_value(DADOS[campo])
-    for campo in ("telefone", "cpf", "email", "celular"):
+    for campo in ("telefone", "celular"):
+        app.number_input(key="pac_" + campo).set_value(int(DADOS[campo]))
+    for campo in ("cpf", "email"):
         app.text_input(key="pac_" + campo).set_value(DADOS[campo])
 
 
@@ -197,10 +197,10 @@ def test_sucesso_limpa_preserva_equipe(paciente_api):
     assert app.success
     assert app.text_input(key="pac_nome").value == ""
     assert app.date_input(key="pac_data_nascimento").value is None
-    assert app.text_input(key="pac_telefone").value == ""
+    assert app.number_input(key="pac_telefone").value is None
     assert app.text_input(key="pac_cpf").value == ""
     assert app.text_input(key="pac_email").value == ""
-    assert app.text_input(key="pac_celular").value == ""
+    assert app.number_input(key="pac_celular").value is None
     assert app.session_state["pac_operacao_id"] != operacao
     assert app.session_state[sessao.CHAVE].token == "token-adm"
 
@@ -311,6 +311,13 @@ def test_campos_de_telefone_limitam_tamanho_no_formulario(paciente_api):
     app = formulario(paciente_api)
     assert app.text_input(key="pac_telefone").max_chars == 15
     assert app.text_input(key="pac_celular").max_chars == 15
+def test_campos_de_telefone_aceitam_somente_numeros_nacionais(paciente_api):
+    app = formulario(paciente_api)
+    for campo in ("pac_telefone", "pac_celular"):
+        widget = app.number_input(key=campo)
+        assert widget.min == 0
+        assert widget.max == 99_999_999_999
+        assert widget.step == 1
 
 
 def test_multiplos_perfis(paciente_api):
