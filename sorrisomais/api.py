@@ -262,6 +262,40 @@ class ClienteXano:
             resultado.append(normalizado)
         return resultado
 
+    @classmethod
+    def _consultas_resposta(cls, data):
+        itens = data.get("consultas")
+        if not isinstance(itens, list):
+            raise ErroAcesso()
+        vistos = set()
+        resultado = []
+        campos = {"paciente_id": int, "profissional_id": int, "situacao": str}
+        for item in itens:
+            normalizado = cls._item_resposta({"consulta": item}, "consulta", campos)
+            disponibilidade_id = item.get("disponibilidade_id")
+            if disponibilidade_id is not None and (type(disponibilidade_id) is not int or disponibilidade_id <= 0):
+                raise ErroAcesso()
+            if normalizado["id"] in vistos:
+                raise ErroAcesso()
+            vistos.add(normalizado["id"])
+            normalizado["disponibilidade_id"] = disponibilidade_id
+            resultado.append(normalizado)
+        return resultado
+
+    @classmethod
+    def _consulta_resposta(cls, data):
+        consulta = data.get("consulta")
+        if not isinstance(consulta, dict):
+            raise ErroAcesso()
+        resultado = cls._item_resposta({"consulta": consulta}, "consulta", {
+            "paciente_id": int, "profissional_id": int, "situacao": str,
+        })
+        disponibilidade_id = consulta.get("disponibilidade_id")
+        if disponibilidade_id is not None and (type(disponibilidade_id) is not int or disponibilidade_id <= 0):
+            raise ErroAcesso()
+        resultado["disponibilidade_id"] = disponibilidade_id
+        return resultado
+
     def listar_disponibilidades(self, token, profissional_id=None, inicio=None, fim=None):
         from .contratos_clinicos import DadosContratoInvalidos, validar_data_hora, validar_id, validar_intervalo
 
@@ -349,10 +383,7 @@ class ClienteXano:
         if inicio is not None:
             params["inicio"], params["fim"] = validar_intervalo(inicio, fim)
         data = self._request("GET", "/consultas", token=token, params=params or None)
-        return self._lista_resposta(data, "consultas", {
-            "paciente_id": int, "profissional_id": int, "disponibilidade_id": int,
-            "situacao": str,
-        })
+        return self._consultas_resposta(data)
 
     def atualizar_situacao_consulta(self, token, consulta_id, nova, motivo_cancelamento=None):
         from .contratos_clinicos import DadosContratoInvalidos, SITUACOES_CONSULTA, validar_id, validar_texto
@@ -367,9 +398,7 @@ class ClienteXano:
         if motivo_cancelamento is not None:
             payload["motivo_cancelamento"] = validar_texto(motivo_cancelamento, "o motivo do cancelamento", 1000)
         data = self._request("PATCH", f"/consultas/{consulta_id}/situacao", token=token, payload=payload)
-        return self._item_resposta(data, "consulta", {
-            "paciente_id": int, "profissional_id": int, "disponibilidade_id": int, "situacao": str,
-        })
+        return self._consulta_resposta(data)
 
     def registrar_clinico(self, token, paciente_id, conteudo, *, consulta_id=None, liberado_paciente=False):
         from .contratos_clinicos import DadosContratoInvalidos, validar_id, validar_texto

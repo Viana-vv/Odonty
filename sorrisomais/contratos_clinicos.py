@@ -58,7 +58,7 @@ def validar_texto(valor, campo, tamanho_maximo=8000):
 
 def validar_transicao_consulta(atual, nova):
     transicoes = {
-        "Agendada": {"Confirmada", "Cancelada", "Falta"},
+        "Agendada": {"Confirmada", "Cancelada"},
         "Confirmada": {"Em atendimento", "Cancelada", "Falta"},
         "Em atendimento": {"Realizada"},
     }

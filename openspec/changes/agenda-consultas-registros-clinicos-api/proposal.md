@@ -6,6 +6,7 @@ O workspace Xano ainda não oferece os contratos necessários para disponibilida
 
 - Especificar APIs REST para consultar e administrar disponibilidades da Agenda e para criar, consultar e atualizar a situação das Consultas, com validação e autorização no Xano.
 - Definir listagens de Consultas com escopo por perfil e sem exposição de informações clínicas em listagens administrativas.
+- Permitir ao Paciente consultar as próprias Consultas passadas e futuras, reservar agendamento às Contas de Acesso administrativas autorizadas e permitir cancelamento por Profissional, Administrador ou Recepcionista autorizados; o Paciente solicita cancelamento à clínica fora do sistema.
 - Especificar Registros Clínicos relacionados ao Prontuário, Paciente, Profissional e, quando aplicável, à Consulta, preservando o histórico e restringindo acesso por perfil.
 - Definir uma estratégia não destrutiva para compatibilidade das estruturas legadas `consulta` e `prontuario`; nenhuma migração de registros existentes será feita sem revisão do contrato e da estratégia.
 - Manter fora desta change as telas Streamlit, APIs de Exame, implantação e migração de dados existentes.
