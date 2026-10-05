@@ -88,6 +88,12 @@ def renderizar(cliente):
         nascimento.date_input("Data de nascimento *", key="pac_data_nascimento", value=None,
                               min_value=date.min, max_value=hoje(), format="DD/MM/YYYY", disabled=bloqueado)
         telefone, email = st.columns(2, gap="medium")
+        telefone.text_input("Telefone *", key="pac_telefone", max_chars=15, placeholder="(00) 00000-0000",
+                            disabled=bloqueado)
+        email.text_input("E-mail *", key="pac_email", max_chars=254,
+                         placeholder="paciente@email.com", disabled=bloqueado)
+        st.text_input("Celular *", key="pac_celular", max_chars=15, placeholder="(00) 00000-0000",
+                      disabled=bloqueado)
         telefone.number_input("Telefone *", key="pac_telefone", min_value=0, max_value=99_999_999_999,
                               step=1, format="%d", value=None, placeholder="11900000000", disabled=bloqueado)
         email.text_input("E-mail *", key="pac_email", max_chars=254,
