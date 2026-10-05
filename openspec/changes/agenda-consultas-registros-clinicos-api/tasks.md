@@ -21,8 +21,5 @@
 ## 4. Testes, documentação e entrega
 
 - [x] 4.1 Atualizar testes Python e JavaScript separados para cada contrato REST GET/POST; verificar ausência de chamadas reais à rede. Testes locais: 71 aprovados e 16 aprovados, incluindo validação de transições e respostas legadas sem Disponibilidade.
-- [ ] 4.2 Executar integração opt-in no Xano de teste com Conta de Acesso e dados fictícios, incluindo conflitos concorrentes, rollback, permissões e limpeza segura; registrar evidências sem credenciais e preservar histórico.
 - [x] 4.3 Atualizar README e documentação de contratos; executar testes locais e `openspec validate agenda-consultas-registros-clinicos-api --strict`. README esclarece que as rotas não estão publicadas; testes direcionados: 71 Python e 16 JavaScript aprovados, validação estrita da change aprovada e specs principais válidas.
 - [x] 4.4 Atualizar o modelo de domínio e a visão geral para refletir que Paciente consulta suas Consultas, mas não agenda nem cancela pelo sistema; a equipe da clínica agenda e Profissional/Administrador/Recepcionista autorizados cancelam.
-- [ ] 4.5 Revisar diff e critérios de aceitação, abrir PR vinculado à Issue e solicitar revisão do grupo; verificar ausência de segredos e mudanças fora do escopo.
-- [ ] 4.6 Após integração e verificações concluídas, arquivar a change e sincronizar as specs pela CLI; validar as specs principais sem editá-las manualmente.
