@@ -1,4 +1,5 @@
-// Vínculo 1:1 aditivo: não altera nem reinterpreta a tabela legada consulta.
+// Cada Consulta possui no máximo uma Disponibilidade. A mesma Disponibilidade
+// pode aparecer em Consultas históricas canceladas antes de ser reutilizada.
 table consulta_disponibilidade {
   auth = false
   schema {
@@ -14,6 +15,6 @@ table consulta_disponibilidade {
   index = [
     {type: "primary", field: [{name: "id"}]}
     {type: "btree|unique", field: [{name: "consulta_id", op: "asc"}]}
-    {type: "btree|unique", field: [{name: "disponibilidade_id", op: "asc"}]}
+    {type: "btree", field: [{name: "disponibilidade_id", op: "asc"}]}
   ]
 }

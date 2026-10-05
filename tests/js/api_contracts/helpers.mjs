@@ -16,8 +16,11 @@ export function assertApiContract(method, route, exportPath) {
 }
 
 export function assertClientContract(method, route, methodName) {
-  const escapedRoute = route.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const call = new RegExp(`_request\\(\\"${method}\\",\\s*\\"${escapedRoute}\\"`);
+  const escapedRoute = route
+    .split(/(\\{[^}]+\\})/g)
+    .map((parte) => parte.startsWith('{') ? '\\{[^}]+\\}' : parte.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('');
+  const call = new RegExp(`_request\\(\\"${method}\\",\\s*f?\\"${escapedRoute}\\"`);
   assert.match(clientSource, call, `cliente sem chamada ${method} ${route}`);
   assert.match(clientSource, new RegExp(`def ${methodName}\\(`), `método ${methodName} ausente`);
 }
