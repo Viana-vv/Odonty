@@ -26,7 +26,7 @@ Criar uma estrutura própria para Disponibilidade da Agenda e uma estrutura `reg
 
 ### Preservar estruturas e relações legadas
 
-Manter a tabela `consulta` e seus campos existentes. Adicionar vínculo opcional de novas Consultas à Disponibilidade e uma relação N:N para Procedimentos; manter `procedimento_id` legado até revisão de compatibilidade. Não inferir nem converter silenciosamente dados antigos. `prontuario_paciente` permanece o prontuário único do Paciente, e a tabela legada `prontuario` não será renomeada nem removida nesta change.
+Manter a tabela `consulta` e seus campos existentes, permitindo `procedimento_id` nulo para novas Consultas sem Procedimento; os valores históricos permanecem intactos. Adicionar vínculo de novas Consultas à Disponibilidade e uma relação N:N para Procedimentos; quando houver Procedimentos, o primeiro também preenche o campo legado. Não inferir nem converter silenciosamente dados antigos. `prontuario_paciente` permanece o prontuário único do Paciente, e a tabela legada `prontuario` não será renomeada nem removida nesta change.
 
 ### Garantir conflitos no backend
 
@@ -44,15 +44,33 @@ O grupo aprovou os caminhos e a forma dos contratos abaixo em 02/10/2026. A impl
 | --- | --- | --- |
 | `GET /disponibilidades` | `profissional_id`, `inicio`, `fim` como filtros de consulta | Conta autenticada; retorna apenas horários futuros livres de Profissionais ativos. |
 | `POST /disponibilidades` | `profissional_id`, `inicio`, `fim` | Profissional ativo na própria agenda ou Administrador/Recepcionista autorizados; cria intervalo livre sem sobreposição. |
-| `PATCH /disponibilidades/{id}` | Campos de intervalo e/ou situação permitidos | Mesmo escopo da criação; não permite alterar disponibilidade reservada como se estivesse livre. |
-| `POST /consultas` | `paciente_id`, `disponibilidade_id`, `procedimento_ids` e motivo opcional | Paciente agenda para si; Administrador/Recepcionista podem agendar no escopo administrativo. O Profissional é derivado da Disponibilidade no Xano. Consulta e reserva são atômicas. |
-| `GET /consultas` | Filtros opcionais `paciente_id`, `profissional_id`, `situacao`, `inicio`, `fim` | O Xano aplica o escopo do perfil sem confiar nos filtros enviados pelo cliente e não retorna conteúdo clínico em listagens administrativas. |
-| `PATCH /consultas/{id}/situacao` | `situacao` e `motivo_cancelamento` quando aplicável | Atualiza somente transições permitidas, registra responsável/data/motivo e preserva o histórico. |
+| `PATCH /disponibilidades/{id}` | `inicio`, `fim` ou `situacao` nos limites definidos na spec | Mesmo escopo da criação; permite bloquear/desbloquear somente intervalos futuros livres. Intervalo reservado não pode ser editado ou liberado diretamente. |
+| `POST /consultas` | `paciente_id`, `disponibilidade_id`, `procedimento_ids` (pode ser vazio) e motivo opcional | Somente Administrador/Recepcionista autorizados agendam para um Paciente. O Xano valida o Paciente e os Procedimentos informados, deriva o Profissional da Disponibilidade e persiste a operação atomicamente. |
+| `GET /consultas` | Filtros opcionais `paciente_id`, `profissional_id`, `situacao`, `inicio`, `fim` | Paciente recebe suas Consultas passadas e futuras; o Xano deriva seu identificador da sessão e ignora/rejeita filtro de outro Paciente. Profissional e equipe administrativa recebem apenas o próprio escopo autorizado; listagens administrativas não contêm dados clínicos. |
+| `PATCH /consultas/{id}/situacao` | `situacao` e `motivo_cancelamento` quando aplicável | Aplica apenas as transições e os perfis autorizados definidos na spec, registra responsável/data/motivo e preserva o histórico. Paciente não pode alterar situação. |
 | `POST /registros-clinicos` | `paciente_id`, `consulta_id` opcional, conteúdo clínico e `liberado_paciente` (padrão `false`) | Somente Profissional ativo autorizado; vínculos são resolvidos e conferidos no Xano. |
 | `GET /registros-clinicos` | Filtros opcionais `paciente_id`, `consulta_id` | Profissional recebe registros do escopo de atendimento; Paciente recebe somente registros próprios com `liberado_paciente=true`; perfil administrativo não recebe conteúdo clínico. |
 | `POST /registros-clinicos/{id}/retificacoes` | Novo conteúdo e `justificativa` | Somente Profissional autorizado; adiciona retificação imutável vinculada ao registro original, sem sobrescrever o conteúdo anterior. |
 
 Todas as rotas protegidas validam sessão, estado e perfil no Xano. Recursos fora do escopo respondem 404 para evitar confirmar sua existência. Nenhum endpoint específico será publicado por inferência a partir do nome atual das tabelas.
+
+As respostas de sucesso usam a chave de recurso prevista no cliente REST: `{ "disponibilidades": [...] }`, `{ "disponibilidade": {...} }`, `{ "consultas": [...] }`, `{ "consulta": {...} }`, `{ "registros_clinicos": [...] }`, `{ "registro_clinico": {...} }` e `{ "retificacao": {...} }`. Erros usam `{ "codigo": "<código estável>", "mensagem": "<mensagem segura>" }`, padrão já adotado pelo grupo Sorriso Acesso. Os códigos HTTP são 200 para consulta/atualização, 201 para criação, 400 para entrada inválida, 401 para sessão ausente ou inválida, 403 para perfil sem permissão, 404 para recurso inexistente ou fora do escopo e 409 para conflito. Mensagens não incluem conteúdo clínico, credenciais nem detalhes internos.
+
+A API apresenta `Realizada` para Consulta armazenada com situação legada `Concluída`. As demais situações da API mantêm os valores aceitos pela tabela `consulta`; a tradução evita alterar registros históricos ou remover valores do enum legado.
+
+### Definir transições e responsáveis da Consulta
+
+O Xano aceita somente as transições `agendada → confirmada`, `agendada → cancelada`, `confirmada → em atendimento`, `confirmada → cancelada`, `confirmada → falta` e `em atendimento → realizada`. Profissional, Administrador ou Recepcionista podem confirmar e cancelar dentro do próprio escopo; somente Profissional autorizado pode iniciar atendimento, concluir Consulta ou registrar falta. O Paciente não agenda nem altera a situação. O cancelamento exige motivo e grava uma linha append-only em `consulta_situacao_historico` com situação anterior/nova, Conta de Acesso responsável, data e motivo. A Consulta e seu horário original permanecem no histórico; se a Disponibilidade ainda for futura, ela volta a ficar livre. Uma Disponibilidade pode, ao longo do tempo, estar vinculada a várias Consultas históricas, mas no máximo uma ativa; o vínculo de cada Consulta cancelada permanece preservado. Estados finais não podem ser reabertos por esse endpoint.
+
+### Restringir alteração de Disponibilidade
+
+`PATCH /disponibilidades/{id}` aceita alteração do intervalo ou da situação entre `disponível` e `bloqueado` somente quando a Disponibilidade estiver livre e futura. `reservado` e `indisponível` são controlados pelo fluxo de agendamento/cancelamento. Para mudar intervalo reservado, a Consulta deve ser cancelada por Conta de Acesso autorizada; a alteração posterior segue as mesmas regras de escopo e sobreposição da criação.
+
+### Resolver Paciente e Consultas pela sessão
+
+Em `GET /consultas`, o Xano resolve a associação entre Conta de Acesso e Paciente autenticado. Filtros enviados pelo Paciente não ampliam o escopo; `paciente_id` ausente retorna as Consultas próprias e um identificador divergente é rejeitado ou ignorado sem revelar dados de terceiros. O `POST /consultas` não é disponível ao perfil Paciente.
+
+Em retificações, `liberado_paciente` herda o valor do Registro Clínico original. A retificação não pode ampliar a visibilidade. Nova liberação depende de operação autorizada separada, fora do endpoint de retificação.
 
 ## Risks / Trade-offs
 

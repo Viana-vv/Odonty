@@ -17,10 +17,11 @@ Pode:
 
 - consultar profissionais;
 - visualizar horários disponíveis;
-- agendar consultas;
-- consultar seus agendamentos;
-- cancelar consultas permitidas;
+- consultar suas Consultas passadas e futuras;
+- solicitar à clínica o cancelamento de uma Consulta;
 - visualizar informações liberadas pela clínica.
+
+O Paciente não agenda nem cancela Consultas pelo sistema. A equipe administrativa autorizada agenda; Profissional, Administrador ou Recepcionista autorizados registram cancelamentos no sistema.
 
 ### Profissional
 
@@ -561,7 +562,7 @@ Profissional 1 ---- N Consulta
 
 Profissional 1 ---- N Disponibilidade
 
-Disponibilidade 1 - 0..1 Consulta
+Disponibilidade 1 - 0..N Consultas históricas; no máximo 1 ativa
 
 Consulta 1 -------- 0..1 Registro Clínico
 
@@ -583,8 +584,8 @@ Paciente 1 -------- N Exame
 | Consultar agenda | Sim | Sim | Sim |
 | Criar disponibilidade | Não | Sim | Sim |
 | Bloquear horário | Não | Sim | Sim |
-| Agendar consulta | Sim | Conforme regra | Sim |
-| Cancelar consulta | Própria | Conforme regra | Sim |
+| Agendar consulta | Não | Não | Sim |
+| Cancelar consulta | Não | Sim, no próprio escopo | Sim, conforme permissão |
 | Consultar prontuário | Próprio, de forma limitada | Pacientes autorizados | Somente com permissão |
 | Criar registro clínico | Não | Sim | Não |
 | Alterar registro clínico | Não | Profissional autorizado | Não |
@@ -667,9 +668,9 @@ A Dra. Mariana é uma profissional ativa, com especialidade em clínica geral.
 
 A Dra. Mariana cria uma disponibilidade para o dia 28/09, das 14h às 15h.
 
-Carlos consulta os horários disponíveis e escolhe esse horário.
+A equipe administrativa agenda uma Consulta para Carlos nesse horário.
 
-O sistema verifica que a disponibilidade continua livre, cria a consulta e altera o horário para reservado.
+O sistema verifica que a disponibilidade continua livre, cria a Consulta e altera o horário para reservado. Carlos pode consultar a Consulta em sua conta; se precisar cancelar, solicita à clínica, e uma Conta de Acesso autorizada registra o cancelamento.
 
 Durante a consulta, Carlos relata dor no dente 26.
 

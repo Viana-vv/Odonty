@@ -39,7 +39,7 @@ Registros Clínicos concluídos MUST permanecer no histórico e não podem ser r
 
 #### Scenario: Corrigir registro concluído
 - **WHEN** Profissional autorizado solicita correção de Registro Clínico concluído
-- **THEN** o sistema registra retificação vinculada ao original e mantém o conteúdo anterior auditável
+- **THEN** o sistema registra retificação vinculada ao original, mantém o conteúdo anterior auditável e herda o valor de `liberado_paciente` do original sem ampliar a visibilidade
 
 #### Scenario: Impedir exclusão de registro concluído
 - **WHEN** qualquer operação tenta excluir ou substituir Registro Clínico concluído

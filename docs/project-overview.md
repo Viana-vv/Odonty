@@ -28,8 +28,10 @@ Antes de concluir esta seção, o grupo entrevistará profissionais da
 
 ### Paciente
 
-Pode cadastrar-se, consultar horários, agendar consultas e acompanhar
-seus agendamentos.
+Pode cadastrar-se e acompanhar suas Consultas passadas e futuras. O
+agendamento é realizado pela equipe administrativa autorizada. Para cancelar,
+o Paciente solicita à clínica; uma Conta de Acesso autorizada registra o
+cancelamento no sistema.
 
 ### Profissional
 
