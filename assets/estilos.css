@@ -8,8 +8,8 @@ html, body, [data-testid="stApp"] { font-family: Arial, Helvetica, sans-serif; c
 h1, h2, h3 { font-family: Arial, Helvetica, sans-serif !important; letter-spacing: -.035em; color: var(--tinta); }
 [data-testid="stTextInput"] input, [data-testid="stDateInput"] input, [data-testid="stSelectbox"] [data-baseweb="select"] { min-height: 46px; border-radius: 9px; }
 [data-testid="stForm"] { border-color: var(--linha); border-radius: 16px; background: #fff; padding: 1.25rem; }
-button[kind="primary"], [data-testid="stFormSubmitButton"] button[kind="primary"] { min-height: 48px; border-radius: 10px; background: var(--verde); border-color: var(--verde); font-weight: 700; box-shadow: 0 5px 15px #367d781f; }
-button[kind="primary"]:hover { background: var(--verde-escuro); border-color: var(--verde-escuro); }
+button[kind="primary"], button[kind="primaryFormSubmit"] { min-height: 48px; border-radius: 10px; background: var(--verde); border-color: var(--verde); font-weight: 700; box-shadow: 0 5px 15px #367d781f; }
+button[kind="primary"]:hover, button[kind="primaryFormSubmit"]:hover { background: var(--verde-escuro); border-color: var(--verde-escuro); }
 button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid #328e88 !important; outline-offset: 3px; }
 
 /* Login */
@@ -73,8 +73,8 @@ body:has(.st-key-modal-paciente, .st-key-modal-profissional)::before { content: 
 .st-key-modal-paciente [data-testid="stDateInput"] input,
 .st-key-modal-profissional [data-testid="stTextInput"] input,
 .st-key-modal-profissional [data-testid="stSelectbox"] [data-baseweb="select"] { min-height: 44px; }
-.st-key-modal-paciente [data-testid="stFormSubmitButton"] button:not([kind="primary"]),
-.st-key-modal-profissional [data-testid="stFormSubmitButton"] button:not([kind="primary"]) { background: #fff; border: 1px solid var(--linha); }
+.st-key-modal-paciente [data-testid="stFormSubmitButton"] button:not([kind="primary"]):not([kind="primaryFormSubmit"]),
+.st-key-modal-profissional [data-testid="stFormSubmitButton"] button:not([kind="primary"]):not([kind="primaryFormSubmit"]) { background: #fff; border: 1px solid var(--linha); }
 .st-key-modal-paciente h3, .st-key-modal-profissional h3 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -.02em; }
 .st-key-modal-paciente [data-testid="stButton"] button, .st-key-modal-profissional [data-testid="stButton"] button { min-width: 38px; min-height: 38px; padding: 0; border: 1px solid var(--linha); background: #fff; }
 .st-key-layout-equipe [data-testid="stCaptionContainer"] { color: #738481; }

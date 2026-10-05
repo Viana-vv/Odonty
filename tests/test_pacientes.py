@@ -307,6 +307,12 @@ def test_interface_disponivel_sem_variavel(paciente_api, monkeypatch):
     assert [campo.label for campo in app.text_input if campo.key.startswith("pac_")]
 
 
+def test_campos_de_telefone_limitam_tamanho_no_formulario(paciente_api):
+    app = formulario(paciente_api)
+    assert app.text_input(key="pac_telefone").max_chars == 15
+    assert app.text_input(key="pac_celular").max_chars == 15
+
+
 def test_multiplos_perfis(paciente_api):
     atual = paciente_api["identificar"].return_value
     paciente_api["identificar"].return_value = ContaAcesso(
