@@ -7,7 +7,7 @@ import streamlit as st
 
 from . import demonstracao, navegacao, sessao
 from .api import ROTULOS
-from .paginas_equipe import renderizar_topbar
+from .paginas_equipe import renderizar_marca_menu, renderizar_topbar
 
 STATUS_CONSULTA = ("Agendada", "Confirmada", "Em atendimento", "Realizada", "Cancelada", "Falta")
 RAIZ = Path(__file__).resolve().parents[1]
@@ -355,7 +355,7 @@ def renderizar(conta, cliente):
         menu, conteudo = st.columns([0.205, 0.795], gap="medium", vertical_alignment="top")
         with menu:
             with st.container(key="menu-equipe", border=True):
-                st.markdown("### Sorriso+")
+                renderizar_marca_menu()
                 st.caption("EQUIPE DA CLÍNICA")
                 for area in areas:
                     selecionada = area["chave"] == atual.split(":", 1)[0]

@@ -52,8 +52,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .st-key-layout-equipe [data-testid="stHorizontalBlock"] { align-items: stretch; gap: 1.25rem; }
 .st-key-menu-equipe { display: flex; min-height: 100dvh; flex-direction: column; padding: 20px 16px; border: 1px solid var(--linha); border-radius: 0 18px 18px 0; background: #fff; }
 .st-key-menu-equipe h3 { font-size: 20px; letter-spacing: -.04em; }
-.st-key-menu-equipe [data-testid="stButton"] button { justify-content: flex-start; min-height: 44px; border: 0; border-radius: 10px; background: transparent; color: #637572; text-align: left; }
-.st-key-menu-equipe [data-testid="stButton"] button:hover { background: #edf5f3; color: var(--verde-escuro); }
+.st-key-menu-equipe [data-testid="stButton"] button { justify-content: flex-start; min-height: 44px; border: 0; border-radius: 10px; background: var(--verde); color: #fff; text-align: left; }
+.st-key-menu-equipe [data-testid="stButton"] button:hover { background: var(--verde-escuro); color: #fff; }
 .st-key-conteudo-equipe { min-height: 100dvh; padding: clamp(22px, 3vw, 42px); border: 0; border-radius: 18px; background: #f4f8f7; }
 .st-key-conteudo-equipe h1 { margin-top: 0; font-size: clamp(28px, 3vw, 38px); }
 .st-key-formulario-equipe { max-width: 880px; margin: 18px auto; padding: clamp(22px, 4vw, 44px); border: 1px solid var(--linha); border-radius: 18px; background: #fff; box-shadow: 0 12px 35px #213e380b; }
@@ -142,9 +142,10 @@ footer { display: none !important; }
 .st-key-agenda-xano-vazia, .st-key-cartao-acesso { border-radius: 12px; box-shadow: 0 2px 8px #17303808; }
 .st-key-modal-paciente, .st-key-modal-profissional { width: min(610px, calc(100vw - 36px)); border-radius: 12px; box-shadow: 0 18px 65px #102c2b33; }
 .st-key-modal-paciente h3, .st-key-modal-profissional h3 { margin: 0; letter-spacing: -.02em; }
-.marca-menu { display:flex; align-items:center; gap:10px; margin:0 0 30px; color:#173038; font-size:19px; letter-spacing:-.6px; }
-.marca-menu > span { display:grid; width:34px; height:34px; place-items:center; border-radius:10px; background:#e7f3f1; color:#147c78; font-weight:800; }
-.marca-menu em { color:#147c78; font-style:normal; }
+.st-key-marca-menu { margin:0 0 30px; }
+.st-key-marca-menu [data-testid="stImage"] img { width:56px; height:56px; object-fit:cover; border:0; border-radius:10px; background:transparent; }
+.marca-menu-nome { color:#173038; font-size:19px; font-weight:700; letter-spacing:-.6px; }
+.marca-menu-nome em { color:#147c78; font-style:normal; }
 .perfil-topo { display:flex; align-items:center; justify-content:flex-end; gap:10px; color:#173038; font-size:12px; }
 .perfil-topo small { display:block; margin-top:3px; color:#73848a; font-size:10px; }
 .perfil-avatar { display:grid; width:36px; height:36px; place-items:center; border-radius:50%; background:#e7f3f1; color:#0f6562; font-weight:700; }

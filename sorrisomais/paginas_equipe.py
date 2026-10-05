@@ -1,5 +1,6 @@
 """Páginas da equipe. A identidade é revalidada por app.py antes de renderizar."""
 from datetime import date
+from pathlib import Path
 from time import monotonic
 
 import streamlit as st
@@ -9,6 +10,15 @@ from . import sessao, pagina_paciente, navegacao
 
 ESPECIALIDADES_CACHE_TTL_SEGUNDOS = 300
 ESPECIALIDADES_RETRY_SEGUNDOS = 20
+RAIZ = Path(__file__).resolve().parents[1]
+
+
+def renderizar_marca_menu():
+    with st.container(key="marca-menu"):
+        imagem, nome = st.columns([0.42, 1], gap="small", vertical_alignment="center")
+        imagem.image(str(RAIZ / "assets" / "mascote-sorriso.png"), width=56)
+        nome.markdown("<div class='marca-menu-nome'>Sorriso<em>+</em></div>",
+                      unsafe_allow_html=True)
 
 
 def listar_especialidades_sessao(cliente, token):
@@ -240,7 +250,7 @@ def renderizar(conta, cliente):
         menu, conteudo = st.columns([0.205, 0.795], gap="medium", vertical_alignment="top")
         with menu:
             with st.container(key="menu-equipe", border=True):
-                st.markdown("<div class='marca-menu'><span>S</span><b>Sorriso<em>+</em></b></div>", unsafe_allow_html=True)
+                renderizar_marca_menu()
                 st.button("Visão geral", on_click=abrir_inicio, key="menu-inicio",
                           disabled=ocupado, width="stretch")
                 for area in navegacao.areas_visiveis(
