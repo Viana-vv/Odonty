@@ -10,6 +10,12 @@ from .api import ErroAcesso
 from .pacientes import hoje, validar_cadastro
 
 
+def _texto_telefone(valor):
+    if isinstance(valor, int) and not isinstance(valor, bool):
+        return str(valor)
+    return valor
+
+
 def limpar():
     for chave in list(st.session_state):
         if chave.startswith("pac_"):
@@ -34,8 +40,8 @@ def solicitar():
         dados = validar_cadastro(
             st.session_state.get("pac_nome"),
             nascimento.isoformat() if isinstance(nascimento, date) else None,
-            st.session_state.get("pac_telefone"), st.session_state.get("pac_cpf"),
-            st.session_state.get("pac_email"), st.session_state.get("pac_celular"),
+            _texto_telefone(st.session_state.get("pac_telefone")), st.session_state.get("pac_cpf"),
+            st.session_state.get("pac_email"), _texto_telefone(st.session_state.get("pac_celular")),
         )
     except ErroAcesso as error:
         st.session_state["pac_aviso"] = str(error)
@@ -56,6 +62,8 @@ def renderizar(cliente):
         st.success("Paciente cadastrado com prontuário vazio. Este cadastro não cria login.")
     restaurar = st.session_state.pop("pac_restaurar", {})
     for campo, valor in restaurar.items():
+        if campo in ("telefone", "celular") and valor:
+            valor = int(valor)
         st.session_state["pac_" + campo] = valor
     st.session_state.setdefault("pac_operacao_id", str(uuid4()))
     st.caption("Preencha os dados cadastrais para criar um Paciente com prontuário vazio.")
@@ -80,12 +88,12 @@ def renderizar(cliente):
         nascimento.date_input("Data de nascimento *", key="pac_data_nascimento", value=None,
                               min_value=date.min, max_value=hoje(), format="DD/MM/YYYY", disabled=bloqueado)
         telefone, email = st.columns(2, gap="medium")
-        telefone.text_input("Telefone *", key="pac_telefone", max_chars=15, placeholder="(00) 00000-0000",
-                            disabled=bloqueado)
+        telefone.number_input("Telefone *", key="pac_telefone", min_value=0, max_value=99_999_999_999,
+                              step=1, format="%d", value=None, placeholder="11900000000", disabled=bloqueado)
         email.text_input("E-mail *", key="pac_email", max_chars=254,
                          placeholder="paciente@email.com", disabled=bloqueado)
-        st.text_input("Celular *", key="pac_celular", max_chars=15, placeholder="(00) 00000-0000",
-                      disabled=bloqueado)
+        st.number_input("Celular *", key="pac_celular", min_value=0, max_value=99_999_999_999,
+                         step=1, format="%d", value=None, placeholder="11900000000", disabled=bloqueado)
         cancelar, enviar = st.columns([1, 1.3], gap="small", vertical_alignment="center")
         cancelar.form_submit_button("Cancelar", on_click=voltar, disabled=ocupado, width="stretch")
         enviar.form_submit_button("Cadastrando…" if ocupado else "Cadastrar paciente", type="primary",
