@@ -8,7 +8,10 @@ query disponibilidades verb=GET {
     timestamp fim?
   }
   stack {
-    util.set_header { value = "Cache-Control: no-store" duplicates = "replace" }
+    util.set_header {
+      value = "Cache-Control: no-store"
+      duplicates = "replace"
+    }
     function.run sorriso_validar_sessao {
       input = {conta_id: $auth.id, sessao_id: $auth.extras.sessao_id}
     } as $sessao
@@ -38,6 +41,7 @@ query disponibilidades verb=GET {
         }
       }
       where = $db.disponibilidade_agenda.situacao == "disponivel" && $db.disponibilidade_agenda.inicio > now && $db.profissional.situacao == "Ativo" && ($input.profissional_id == null || $db.disponibilidade_agenda.profissional_id == $input.profissional_id) && ($input.inicio == null || $db.disponibilidade_agenda.inicio >= $input.inicio) && ($input.fim == null || $db.disponibilidade_agenda.fim <= $input.fim)
+      eval = {inicio: $db.disponibilidade_agenda.inicio|format_timestamp:"c":"UTC", fim: $db.disponibilidade_agenda.fim|format_timestamp:"c":"UTC"}
       sort = {disponibilidade_agenda.inicio: "asc", disponibilidade_agenda.id: "asc"}
       return = {type: "list"}
       output = ["id", "profissional_id", "inicio", "fim", "situacao"]
@@ -45,4 +49,5 @@ query disponibilidades verb=GET {
   }
   response = {disponibilidades: $disponibilidades}
   history = false
+  guid = "pUtbBUXNHljnuXDvpE9dnmJsOXM"
 }

@@ -269,18 +269,42 @@ class ClienteXano:
             raise ErroAcesso()
         vistos = set()
         resultado = []
-        campos = {"paciente_id": int, "profissional_id": int, "situacao": str}
+        campos = {"paciente_id": int, "profissional_id": int, "situacao": str,
+                  "inicio_em": str, "fim_em": str}
         for item in itens:
             normalizado = cls._item_resposta({"consulta": item}, "consulta", campos)
             disponibilidade_id = item.get("disponibilidade_id")
             if disponibilidade_id is not None and (type(disponibilidade_id) is not int or disponibilidade_id <= 0):
                 raise ErroAcesso()
-            if normalizado["id"] in vistos:
-                raise ErroAcesso()
-            vistos.add(normalizado["id"])
             normalizado["disponibilidade_id"] = disponibilidade_id
+            for campo in ("paciente_nome", "profissional_nome"):
+                valor = item.get(campo)
+                if not isinstance(valor, str) or not valor.strip():
+                    raise ErroAcesso()
+                normalizado[campo] = valor.strip()
+            nomes = []
+            for campo in ("procedimento_nome", "procedimento_vinculado_nome"):
+                nome = item.get(campo)
+                if nome is not None and (not isinstance(nome, str) or not nome.strip()):
+                    raise ErroAcesso()
+                if nome and nome.strip() not in nomes:
+                    nomes.append(nome.strip())
+            if normalizado["id"] in vistos:
+                anterior = next(c for c in resultado if c["id"] == normalizado["id"])
+                anterior["procedimentos"] = list(dict.fromkeys(anterior["procedimentos"] + nomes))
+                continue
+            vistos.add(normalizado["id"])
+            normalizado["procedimentos"] = nomes
             resultado.append(normalizado)
         return resultado
+
+    def listar_opcoes_agenda(self, token):
+        self._token_obrigatorio(token)
+        data = self._request("GET", "/agenda/opcoes", token=token)
+        opcoes = {}
+        for chave in ("pacientes", "profissionais", "procedimentos"):
+            opcoes[chave] = self._lista_resposta(data, chave, {"nome": str})
+        return opcoes
 
     @classmethod
     def _consulta_resposta(cls, data):

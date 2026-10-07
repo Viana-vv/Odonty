@@ -19,6 +19,8 @@ def test_patch_disponibilidades_altera_situacao_sem_rede_real(cliente, http):
     )
 
     assert resultado["situacao"] == "bloqueado"
+    assert resultado["inicio"] == inicio
+    assert resultado["fim"] == fim
     assert http.call_args.args[:2] == (
         "PATCH", "https://exemplo.invalid/api:teste/disponibilidades/15",
     )

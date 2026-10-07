@@ -6,7 +6,10 @@ query "disponibilidades/{id}" verb=PATCH {
     int id
   }
   stack {
-    util.set_header { value = "Cache-Control: no-store" duplicates = "replace" }
+    util.set_header {
+      value = "Cache-Control: no-store"
+      duplicates = "replace"
+    }
     function.run sorriso_validar_sessao {
       input = {conta_id: $auth.id, sessao_id: $auth.extras.sessao_id}
     } as $sessao
@@ -140,6 +143,7 @@ query "disponibilidades/{id}" verb=PATCH {
       }
     }
   }
-  response = {disponibilidade: {id: $atualizada.id, profissional_id: $atualizada.profissional_id, inicio: $atualizada.inicio, fim: $atualizada.fim, situacao: $atualizada.situacao}}
+  response = {disponibilidade: {id: $atualizada.id, profissional_id: $atualizada.profissional_id, inicio: $atualizada.inicio|format_timestamp:"c":"UTC", fim: $atualizada.fim|format_timestamp:"c":"UTC", situacao: $atualizada.situacao}}
   history = false
+  guid = "1M4HA6wvpx-IpDXnqZizBuSq4Dk"
 }

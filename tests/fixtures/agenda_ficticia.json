@@ -1,0 +1,14 @@
+{
+  "data": "2026-10-05",
+  "opcoes": {
+    "pacientes": [{"id": 101, "nome": "Paciente Fictícia Aurora"}, {"id": 102, "nome": "Paciente Fictício Horizonte"}],
+    "profissionais": [{"id": 201, "nome": "Dra. Exemplo Sorriso"}],
+    "procedimentos": [{"id": 301, "nome": "Avaliação fictícia"}, {"id": 302, "nome": "Profilaxia fictícia"}]
+  },
+  "consultas": [
+    {"id": 501, "paciente_id": 101, "profissional_id": 201, "disponibilidade_id": 401, "situacao": "Agendada", "inicio_em": "2026-10-05T13:00:00-03:00", "fim_em": "2026-10-05T13:45:00-03:00", "paciente_nome": "Paciente Fictícia Aurora", "profissional_nome": "Dra. Exemplo Sorriso", "procedimento_nome": "Avaliação fictícia", "procedimento_vinculado_nome": "Avaliação fictícia"},
+    {"id": 501, "paciente_id": 101, "profissional_id": 201, "disponibilidade_id": 401, "situacao": "Agendada", "inicio_em": "2026-10-05T13:00:00-03:00", "fim_em": "2026-10-05T13:45:00-03:00", "paciente_nome": "Paciente Fictícia Aurora", "profissional_nome": "Dra. Exemplo Sorriso", "procedimento_nome": "Avaliação fictícia", "procedimento_vinculado_nome": "Profilaxia fictícia"},
+    {"id": 502, "paciente_id": 102, "profissional_id": 201, "disponibilidade_id": 402, "situacao": "Confirmada", "inicio_em": "2026-10-05T14:00:00-03:00", "fim_em": "2026-10-05T14:45:00-03:00", "paciente_nome": "Paciente Fictício Horizonte", "profissional_nome": "Dra. Exemplo Sorriso", "procedimento_nome": null, "procedimento_vinculado_nome": null}
+  ],
+  "disponibilidades": [{"id": 403, "profissional_id": 201, "inicio": "2026-10-06T10:00:00-03:00", "fim": "2026-10-06T10:45:00-03:00", "situacao": "disponivel"}]
+}

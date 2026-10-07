@@ -11,6 +11,8 @@ def test_post_disponibilidades_cria_intervalo(cliente, http):
     }}, 201)
     resultado = cliente.criar_disponibilidade("token-ficticio", 8, inicio, fim)
     assert resultado["id"] == 15
+    assert resultado["inicio"] == inicio
+    assert resultado["fim"] == fim
     assert http.call_args.args[:2] == ("POST", "https://exemplo.invalid/api:teste/disponibilidades")
     assert http.call_args.kwargs["json"] == {"profissional_id": 8, "inicio": inicio, "fim": fim}
 

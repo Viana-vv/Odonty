@@ -10,7 +10,7 @@ AREAS = (
 )
 
 # No modo conectado, só as rotas com operações existentes são interativas.
-AREAS_XANO_DISPONIVEIS = {"inicio"}
+AREAS_XANO_DISPONIVEIS = {"inicio", "agenda"}
 
 
 def areas_visiveis(perfis, modo_demonstracao=False, cadastro_paciente_habilitado=True):

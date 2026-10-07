@@ -5,6 +5,9 @@ def test_get_consultas_preserva_consulta_legada_sem_disponibilidade(cliente, htt
     http.return_value = resposta({"consultas": [{
         "id": 13, "paciente_id": 4, "profissional_id": 8,
         "disponibilidade_id": None, "situacao": "Realizada",
+        "inicio_em": "2026-09-15T10:00:00-03:00", "fim_em": "2026-09-15T10:45:00-03:00",
+        "paciente_nome": "Paciente Histórico Fictício", "profissional_nome": "Profissional Histórico Fictício",
+        "procedimento_nome": None, "procedimento_vinculado_nome": None,
     }]})
 
     consultas = cliente.listar_consultas("token-ficticio", paciente_id=4)
@@ -12,6 +15,9 @@ def test_get_consultas_preserva_consulta_legada_sem_disponibilidade(cliente, htt
     assert consultas == [{
         "id": 13, "paciente_id": 4, "profissional_id": 8,
         "disponibilidade_id": None, "situacao": "Realizada",
+        "inicio_em": "2026-09-15T10:00:00-03:00", "fim_em": "2026-09-15T10:45:00-03:00",
+        "paciente_nome": "Paciente Histórico Fictício", "profissional_nome": "Profissional Histórico Fictício",
+        "procedimentos": [],
     }]
 
 

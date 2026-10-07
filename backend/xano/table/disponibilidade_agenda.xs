@@ -18,4 +18,5 @@ table disponibilidade_agenda {
     {type: "primary", field: [{name: "id"}]}
     {type: "btree", field: [{name: "profissional_id", op: "asc"}, {name: "inicio", op: "asc"}]}
   ]
+  guid = "7-cD4Lzic77EDfOpf5PTkOdfVxY"
 }

@@ -4,7 +4,10 @@ query consultas verb=POST {
   auth = "conta_acesso"
   input { }
   stack {
-    util.set_header { value = "Cache-Control: no-store" duplicates = "replace" }
+    util.set_header {
+      value = "Cache-Control: no-store"
+      duplicates = "replace"
+    }
     function.run sorriso_validar_sessao {
       input = {conta_id: $auth.id, sessao_id: $auth.extras.sessao_id}
     } as $sessao
@@ -244,4 +247,5 @@ query consultas verb=POST {
   }
   response = {consulta: {id: $nova_consulta.id, paciente_id: $nova_consulta.paciente_id, profissional_id: $nova_consulta.profissional_id, disponibilidade_id: $bruto.disponibilidade_id, situacao: $nova_consulta.situacao}}
   history = false
+  guid = "cRymQDMiqAXdp63TPPRMfX1IK9Y"
 }
