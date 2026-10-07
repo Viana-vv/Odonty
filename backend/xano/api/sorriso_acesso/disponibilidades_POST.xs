@@ -4,7 +4,10 @@ query disponibilidades verb=POST {
   auth = "conta_acesso"
   input { }
   stack {
-    util.set_header { value = "Cache-Control: no-store" duplicates = "replace" }
+    util.set_header {
+      value = "Cache-Control: no-store"
+      duplicates = "replace"
+    }
     function.run sorriso_validar_sessao {
       input = {conta_id: $auth.id, sessao_id: $auth.extras.sessao_id}
     } as $sessao
@@ -112,6 +115,7 @@ query disponibilidades verb=POST {
     }
     util.set_header { value = "HTTP/1.1 201 Created" }
   }
-  response = {disponibilidade: {id: $criada.id, profissional_id: $criada.profissional_id, inicio: $criada.inicio, fim: $criada.fim, situacao: $criada.situacao}}
+  response = {disponibilidade: {id: $criada.id, profissional_id: $criada.profissional_id, inicio: $criada.inicio|format_timestamp:"c":"UTC", fim: $criada.fim|format_timestamp:"c":"UTC", situacao: $criada.situacao}}
   history = false
+  guid = "AaNU0ytM5bB2ANS_yMc5qsGG9oM"
 }

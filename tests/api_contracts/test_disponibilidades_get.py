@@ -15,6 +15,8 @@ def test_get_disponibilidades_envia_filtros_e_valida_resposta(cliente, http):
         "token-ficticio", 8, FUTURO.isoformat(), (FUTURO + timedelta(hours=1)).isoformat(),
     )
     assert resultado[0]["id"] == 3
+    assert resultado[0]["inicio"] == FUTURO.isoformat()
+    assert resultado[0]["fim"] == (FUTURO + timedelta(hours=1)).isoformat()
     assert http.call_args.args[:2] == ("GET", "https://exemplo.invalid/api:teste/disponibilidades")
     assert http.call_args.kwargs["params"] == {
         "profissional_id": 8, "inicio": FUTURO.isoformat(),

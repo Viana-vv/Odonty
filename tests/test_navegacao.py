@@ -16,13 +16,13 @@ def test_dentista_recebe_prontuario_mas_nao_areas_administrativas():
     assert not pode_acessar({"profissional"}, "procedimentos")
 
 
-def test_modo_xano_identifica_areas_sem_operacao_confirmada():
+def test_modo_xano_habilita_agenda_ja_integrada():
     areas = {item["chave"]: item["disponivel"]
              for item in areas_visiveis({"recepcionista"}, modo_demonstracao=False)}
     assert areas["inicio"]
     assert not areas["pacientes"]
     assert not areas["profissionais"]
-    assert not areas["agenda"]
+    assert areas["agenda"]
     assert "prontuarios" not in areas
 
 

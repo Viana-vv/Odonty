@@ -10,7 +10,10 @@ query consultas verb=GET {
     timestamp fim?
   }
   stack {
-    util.set_header { value = "Cache-Control: no-store" duplicates = "replace" }
+    util.set_header {
+      value = "Cache-Control: no-store"
+      duplicates = "replace"
+    }
     function.run sorriso_validar_sessao {
       input = {conta_id: $auth.id, sessao_id: $auth.extras.sessao_id}
     } as $sessao
@@ -73,15 +76,41 @@ query consultas verb=GET {
           table: "consulta_disponibilidade"
           type: "left"
           where: $db.consulta.id == $db.consulta_disponibilidade.consulta_id
+        },
+        paciente: {
+          table: "paciente"
+          type: "inner"
+          where: $db.consulta.paciente_id == $db.paciente.id
+        },
+        profissional: {
+          table: "profissional"
+          type: "inner"
+          where: $db.consulta.profissional_id == $db.profissional.id
+        },
+        procedimento: {
+          table: "procedimento"
+          type: "left"
+          where: $db.consulta.procedimento_id == $db.procedimento.id
+        },
+        consulta_procedimento: {
+          table: "consulta_procedimento"
+          type: "left"
+          where: $db.consulta.id == $db.consulta_procedimento.consulta_id
+        },
+        procedimento_vinculado: {
+          table: "procedimento"
+          type: "left"
+          where: $db.consulta_procedimento.procedimento_id == $db.procedimento_vinculado.id
         }
       }
       where = ($paciente_escopo == null || $db.consulta.paciente_id == $paciente_escopo) && ($profissional_escopo == null || $db.consulta.profissional_id == $profissional_escopo) && ($input.profissional_id == null || $db.consulta.profissional_id == $input.profissional_id) && ($input.situacao == null || $db.consulta.situacao == $situacao_armazenada) && ($input.inicio == null || ($db.consulta.inicio_em >= $input.inicio && $db.consulta.fim_em <= $input.fim))
-      eval = {disponibilidade_id: $db.consulta_disponibilidade.disponibilidade_id, situacao: $db.consulta.situacao|replace:"Concluída":"Realizada"}
+      eval = {inicio_em: $db.consulta.inicio_em|format_timestamp:"c":"UTC", fim_em: $db.consulta.fim_em|format_timestamp:"c":"UTC", disponibilidade_id: $db.consulta_disponibilidade.disponibilidade_id, situacao: $db.consulta.situacao|replace:"Concluída":"Realizada", paciente_nome: $db.paciente.nome, profissional_nome: $db.profissional.nome, procedimento_nome: $db.procedimento.nome, procedimento_vinculado_nome: $db.procedimento_vinculado.nome}
       sort = {consulta.inicio_em: "desc", consulta.id: "desc"}
       return = {type: "list"}
-      output = ["id", "paciente_id", "profissional_id", "inicio_em", "fim_em", "situacao", "disponibilidade_id"]
+      output = ["id", "paciente_id", "profissional_id", "inicio_em", "fim_em", "situacao", "disponibilidade_id", "paciente_nome", "profissional_nome", "procedimento_nome", "procedimento_vinculado_nome"]
     } as $consultas
   }
   response = {consultas: $consultas}
   history = false
+  guid = "p107TSKMEOjzrvK2A7U3vHSa5Q8"
 }

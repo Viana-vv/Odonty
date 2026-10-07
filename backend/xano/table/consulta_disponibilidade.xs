@@ -17,4 +17,5 @@ table consulta_disponibilidade {
     {type: "btree|unique", field: [{name: "consulta_id", op: "asc"}]}
     {type: "btree", field: [{name: "disponibilidade_id", op: "asc"}]}
   ]
+  guid = "PbK6rOgj_JvoXOQ-3nXTaxVxsIY"
 }

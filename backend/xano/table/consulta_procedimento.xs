@@ -18,4 +18,5 @@ table consulta_procedimento {
     {type: "primary", field: [{name: "id"}]}
     {type: "btree|unique", field: [{name: "consulta_id", op: "asc"}, {name: "procedimento_id", op: "asc"}]}
   ]
+  guid = "-cnTW6TMgS-QZ98eQwKI508wFIU"
 }
