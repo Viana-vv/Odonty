@@ -37,7 +37,7 @@ query "disponibilidades/{id}" verb=PATCH {
     foreach ($bruto|keys) {
       each as $chave {
         conditional {
-          if ($chave not in ["inicio", "fim", "situacao"]) {
+          if ($chave != "inicio" && $chave != "fim" && $chave != "situacao") {
             var.update $campo_invalido { value = true }
           }
         }
@@ -66,7 +66,7 @@ query "disponibilidades/{id}" verb=PATCH {
       output = ["id", "conta_acesso_id", "situacao", "agenda_lock_version"]
     } as $profissional
     conditional {
-      if (($solicitante.perfis|includes:"profissional") && $profissional.conta_acesso_id != $auth.id) {
+      if (($solicitante.perfis|intersect:["profissional"]|count) > 0 && $profissional.conta_acesso_id != $auth.id) {
         util.set_header { value = "HTTP/1.1 404 Not Found" }
         return { value = {codigo: "RECURSO_NAO_ENCONTRADO", mensagem: "Disponibilidade não encontrada."} }
       }

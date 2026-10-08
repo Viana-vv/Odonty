@@ -76,6 +76,24 @@ if os.getenv("ODONTY_AGENDA_FICTICIA") == "1":
                     and (not inicio_dt or datetime.fromisoformat(d["inicio"].replace("Z", "+00:00")) >= inicio_dt)
                     and (not fim_dt or datetime.fromisoformat(d["fim"].replace("Z", "+00:00")) <= fim_dt)]
             return _RespostaFicticia({"disponibilidades": [dict(row) for row in rows]})
+        if route == "/disponibilidades" and method == "POST":
+            dados = json or {}
+            inicio, fim = dados.get("inicio"), dados.get("fim")
+            profissional_id = dados.get("profissional_id")
+            if (type(profissional_id) is not int or not inicio or not fim
+                    or inicio >= fim):
+                return _RespostaFicticia({"codigo": "DADOS_INVALIDOS"}, 400)
+            sobreposicao = any(
+                row["profissional_id"] == profissional_id
+                and row["inicio"] < fim and row["fim"] > inicio
+                for row in _FIXTURE["disponibilidades"]
+            )
+            if sobreposicao:
+                return _RespostaFicticia({"codigo": "CONFLITO_AGENDA"}, 409)
+            criada = {"id": 904, "profissional_id": profissional_id, "inicio": inicio,
+                      "fim": fim, "situacao": "disponivel"}
+            _FIXTURE["disponibilidades"].append(criada)
+            return _RespostaFicticia({"disponibilidade": criada}, 201)
         if route == "/consultas" and method == "POST":
             dados = json or {}
             slot = next((d for d in _FIXTURE["disponibilidades"] if d["id"] == dados.get("disponibilidade_id")), None)

@@ -37,14 +37,14 @@ query "consultas/{id}/situacao" verb=PATCH {
     foreach ($bruto|keys) {
       each as $chave {
         conditional {
-          if ($chave not in ["situacao", "motivo_cancelamento"]) {
+          if ($chave != "situacao" && $chave != "motivo_cancelamento") {
             var.update $campo_invalido { value = true }
           }
         }
       }
     }
     conditional {
-      if (($bruto|is_object) == false || $campo_invalido || ($bruto|keys|count) < 1 || ($bruto|keys|count) > 2 || ($bruto|get:"situacao"|is_text) == false || (($bruto|get:"motivo_cancelamento") != null && ($bruto|get:"motivo_cancelamento"|is_text) == false) || ($bruto.situacao not in ["Agendada", "Confirmada", "Em atendimento", "Realizada", "Cancelada", "Falta"]) || ($bruto.situacao == "Cancelada" && (($bruto|get:"motivo_cancelamento") == null || (($bruto.motivo_cancelamento|trim)|strlen) == 0 || (($bruto.motivo_cancelamento|trim)|strlen) > 1000))) {
+      if (($bruto|is_object) == false || $campo_invalido || ($bruto|keys|count) < 1 || ($bruto|keys|count) > 2 || ($bruto|get:"situacao"|is_text) == false || (($bruto|get:"motivo_cancelamento") != null && ($bruto|get:"motivo_cancelamento"|is_text) == false) || ($bruto.situacao != "Agendada" && $bruto.situacao != "Confirmada" && $bruto.situacao != "Em atendimento" && $bruto.situacao != "Realizada" && $bruto.situacao != "Cancelada" && $bruto.situacao != "Falta") || ($bruto.situacao == "Cancelada" && (($bruto|get:"motivo_cancelamento") == null || (($bruto.motivo_cancelamento|trim)|strlen) == 0 || (($bruto.motivo_cancelamento|trim)|strlen) > 1000))) {
         util.set_header { value = "HTTP/1.1 400 Bad Request" }
         return { value = {codigo: "DADOS_INVALIDOS", mensagem: "Informe situação válida e motivo para cancelamento."} }
       }
@@ -62,7 +62,7 @@ query "consultas/{id}/situacao" verb=PATCH {
     }
     var $profissional_escopo { value = null }
     conditional {
-      if (($solicitante.perfis|includes:"profissional")) {
+      if (($solicitante.perfis|intersect:["profissional"]|count) > 0) {
         db.get profissional {
           field_name = "conta_acesso_id"
           field_value = $auth.id
@@ -79,7 +79,12 @@ query "consultas/{id}/situacao" verb=PATCH {
     }
     var $situacao_atual { value = $consulta.situacao }
     var $situacao_nova { value = $bruto.situacao }
-    var $motivo { value = ($bruto|get:"motivo_cancelamento"|default:"")|trim }
+    var $motivo { value = "" }
+    conditional {
+      if (($bruto|get:"motivo_cancelamento") != null) {
+        var.update $motivo { value = $bruto.motivo_cancelamento|trim }
+      }
+    }
     conditional {
       if ($situacao_atual == "Concluída") {
         var.update $situacao_atual { value = "Realizada" }
@@ -91,7 +96,7 @@ query "consultas/{id}/situacao" verb=PATCH {
       }
     }
     conditional {
-      if (($situacao_atual == "Agendada" && $bruto.situacao not in ["Confirmada", "Cancelada"]) || ($situacao_atual == "Confirmada" && $bruto.situacao not in ["Em atendimento", "Cancelada", "Falta"]) || ($situacao_atual == "Em atendimento" && $bruto.situacao != "Realizada") || ($situacao_atual not in ["Agendada", "Confirmada", "Em atendimento"]) || (($bruto.situacao in ["Em atendimento", "Realizada", "Falta"]) && ($solicitante.perfis|includes:"profissional") == false)) {
+      if (($situacao_atual == "Agendada" && $bruto.situacao != "Confirmada" && $bruto.situacao != "Cancelada") || ($situacao_atual == "Confirmada" && $bruto.situacao != "Em atendimento" && $bruto.situacao != "Cancelada" && $bruto.situacao != "Falta") || ($situacao_atual == "Em atendimento" && $bruto.situacao != "Realizada") || ($situacao_atual != "Agendada" && $situacao_atual != "Confirmada" && $situacao_atual != "Em atendimento") || (($bruto.situacao == "Em atendimento" || $bruto.situacao == "Realizada" || $bruto.situacao == "Falta") && ($solicitante.perfis|intersect:["profissional"]|count) == 0)) {
         util.set_header { value = "HTTP/1.1 409 Conflict" }
         return { value = {codigo: "TRANSICAO_INVALIDA", mensagem: "A transição da Consulta não é permitida para esta Conta de Acesso."} }
       }
@@ -128,7 +133,7 @@ query "consultas/{id}/situacao" verb=PATCH {
                 db.edit agenda_controle {
                   field_name = "id"
                   field_value = $controle_profissional.id
-                  data = {versao: (($controle_profissional.versao|default:0) + 1), atualizado_em: now}
+                  data = {versao: ($controle_profissional.versao + 1), atualizado_em: now}
                 } as $controle_profissional_atualizado
               }
             }
@@ -147,7 +152,7 @@ query "consultas/{id}/situacao" verb=PATCH {
                 db.edit agenda_controle {
                   field_name = "id"
                   field_value = $controle_paciente.id
-                  data = {versao: (($controle_paciente.versao|default:0) + 1), atualizado_em: now}
+                  data = {versao: ($controle_paciente.versao + 1), atualizado_em: now}
                 } as $controle_paciente_atualizado
               }
             }

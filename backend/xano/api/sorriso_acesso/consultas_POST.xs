@@ -35,7 +35,7 @@ query consultas verb=POST {
     foreach ($bruto|keys) {
       each as $chave {
         conditional {
-          if ($chave not in ["paciente_id", "disponibilidade_id", "procedimento_ids", "motivo"]) {
+          if ($chave != "paciente_id" && $chave != "disponibilidade_id" && $chave != "procedimento_ids" && $chave != "motivo") {
             var.update $campo_invalido { value = true }
           }
         }
@@ -47,14 +47,32 @@ query consultas verb=POST {
         return { value = {codigo: "DADOS_INVALIDOS", mensagem: "Confira os dados da Consulta."} }
       }
     }
-    var $motivo { value = ($bruto|get:"motivo"|default:"")|trim }
+    var $motivo { value = "" }
+    conditional {
+      if (($bruto|get:"motivo") != null) {
+        var.update $motivo { value = $bruto.motivo|trim }
+      }
+    }
     var $procedimentos_invalidos { value = false }
+    var $procedimentos_vistos { value = [] }
     foreach ($bruto.procedimento_ids) {
       each as $procedimento_id_validacao {
         conditional {
           if (($procedimento_id_validacao|is_int) == false || $procedimento_id_validacao <= 0) {
             var.update $procedimentos_invalidos { value = true }
           }
+        }
+        foreach ($procedimentos_vistos) {
+          each as $procedimento_id_visto {
+            conditional {
+              if ($procedimento_id_visto == $procedimento_id_validacao) {
+                var.update $procedimentos_invalidos { value = true }
+              }
+            }
+          }
+        }
+        var.update $procedimentos_vistos {
+          value = $procedimentos_vistos|push:$procedimento_id_validacao
         }
       }
     }
@@ -95,13 +113,22 @@ query consultas verb=POST {
         return { value = {codigo: "CONFLITO_AGENDA", mensagem: "Profissional indisponível para novos agendamentos."} }
       }
     }
-    db.query procedimento {
-      where = $db.procedimento.id in $bruto.procedimento_ids && $db.procedimento.ativo == true
-      return = {type: "list"}
-      output = ["id"]
-    } as $procedimentos
+    foreach ($bruto.procedimento_ids) {
+      each as $procedimento_id {
+        db.get procedimento {
+          field_name = "id"
+          field_value = $procedimento_id
+          output = ["id", "ativo"]
+        } as $procedimento
+        conditional {
+          if ($procedimento == null || $procedimento.ativo != true) {
+            var.update $procedimentos_invalidos { value = true }
+          }
+        }
+      }
+    }
     conditional {
-      if (($procedimentos|count) != ($bruto.procedimento_ids|count)) {
+      if ($procedimentos_invalidos) {
         util.set_header { value = "HTTP/1.1 400 Bad Request" }
         return { value = {codigo: "DADOS_INVALIDOS", mensagem: "Há Procedimento inativo, inexistente ou duplicado."} }
       }
@@ -122,7 +149,7 @@ query consultas verb=POST {
             db.edit profissional {
               field_name = "id"
               field_value = $profissional.id
-              data = {agenda_lock_version: (($profissional.agenda_lock_version|default:0) + 1)}
+              data = {agenda_lock_version: ($profissional.agenda_lock_version + 1)}
             } as $trava_profissional
             // Incrementos dentro da transação serializam reservas para cada
             // Profissional e Paciente, inclusive solicitações concorrentes.
@@ -141,7 +168,7 @@ query consultas verb=POST {
                 db.edit agenda_controle {
                   field_name = "id"
                   field_value = $controle_profissional.id
-                  data = {versao: (($controle_profissional.versao|default:0) + 1), atualizado_em: now}
+                  data = {versao: ($controle_profissional.versao + 1), atualizado_em: now}
                 } as $controle_profissional_atualizado
               }
             }
@@ -160,7 +187,7 @@ query consultas verb=POST {
                 db.edit agenda_controle {
                   field_name = "id"
                   field_value = $controle_paciente.id
-                  data = {versao: (($controle_paciente.versao|default:0) + 1), atualizado_em: now}
+                  data = {versao: ($controle_paciente.versao + 1), atualizado_em: now}
                 } as $controle_paciente_atualizado
               }
             }
@@ -174,7 +201,7 @@ query consultas verb=POST {
               output = ["id", "situacao"]
             } as $profissional_bloqueado
             db.query consulta {
-              where = ($db.consulta.situacao in ["Agendada", "Confirmada", "Em atendimento"]) && $db.consulta.inicio_em < $disponibilidade.fim && $db.consulta.fim_em > $disponibilidade.inicio && ($db.consulta.profissional_id == $profissional.id || $db.consulta.paciente_id == $paciente.id)
+              where = ($db.consulta.situacao == "Agendada" || $db.consulta.situacao == "Confirmada" || $db.consulta.situacao == "Em atendimento") && $db.consulta.inicio_em < $disponibilidade.fim && $db.consulta.fim_em > $disponibilidade.inicio && ($db.consulta.profissional_id == $profissional.id || $db.consulta.paciente_id == $paciente.id)
               return = {type: "list"}
               output = ["id"]
             } as $consultas_conflitantes
@@ -221,7 +248,7 @@ query consultas verb=POST {
           output = ["id", "situacao"]
         } as $disponibilidade_apos_falha
         db.query consulta {
-          where = ($db.consulta.situacao in ["Agendada", "Confirmada", "Em atendimento"]) && $db.consulta.inicio_em < $disponibilidade.fim && $db.consulta.fim_em > $disponibilidade.inicio && ($db.consulta.profissional_id == $profissional.id || $db.consulta.paciente_id == $paciente.id)
+          where = ($db.consulta.situacao == "Agendada" || $db.consulta.situacao == "Confirmada" || $db.consulta.situacao == "Em atendimento") && $db.consulta.inicio_em < $disponibilidade.fim && $db.consulta.fim_em > $disponibilidade.inicio && ($db.consulta.profissional_id == $profissional.id || $db.consulta.paciente_id == $paciente.id)
           return = {type: "list"}
           output = ["id"]
         } as $consultas_apos_falha
