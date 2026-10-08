@@ -41,13 +41,25 @@ query disponibilidades verb=GET {
         }
       }
       where = $db.disponibilidade_agenda.situacao == "disponivel" && $db.disponibilidade_agenda.inicio > now && $db.profissional.situacao == "Ativo" && ($input.profissional_id == null || $db.disponibilidade_agenda.profissional_id == $input.profissional_id) && ($input.inicio == null || $db.disponibilidade_agenda.inicio >= $input.inicio) && ($input.fim == null || $db.disponibilidade_agenda.fim <= $input.fim)
-      eval = {inicio: $db.disponibilidade_agenda.inicio|format_timestamp:"c":"UTC", fim: $db.disponibilidade_agenda.fim|format_timestamp:"c":"UTC"}
       sort = {disponibilidade_agenda.inicio: "asc", disponibilidade_agenda.id: "asc"}
       return = {type: "list"}
       output = ["id", "profissional_id", "inicio", "fim", "situacao"]
     } as $disponibilidades
+    var $disponibilidades_formatadas { value = [] }
+    foreach ($disponibilidades) {
+      each as $disponibilidade {
+        var $inicio_iso { value = $disponibilidade.inicio|format_timestamp:"c":"UTC" }
+        var $fim_iso { value = $disponibilidade.fim|format_timestamp:"c":"UTC" }
+        var $disponibilidade_formatada {
+          value = {id: $disponibilidade.id, profissional_id: $disponibilidade.profissional_id, inicio: $inicio_iso, fim: $fim_iso, situacao: $disponibilidade.situacao}
+        }
+        var.update $disponibilidades_formatadas {
+          value = $disponibilidades_formatadas|push:$disponibilidade_formatada
+        }
+      }
+    }
   }
-  response = {disponibilidades: $disponibilidades}
+  response = {disponibilidades: $disponibilidades_formatadas}
   history = false
   guid = "pUtbBUXNHljnuXDvpE9dnmJsOXM"
 }

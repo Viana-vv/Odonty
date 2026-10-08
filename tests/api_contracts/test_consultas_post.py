@@ -1,8 +1,17 @@
 import pytest
+from pathlib import Path
 
 from sorrisomais.api import ErroAcesso
 from sorrisomais.contratos_clinicos import DadosContratoInvalidos
 from conftest import resposta
+
+
+def test_post_consultas_evitar_pipes_incompativeis_com_xano():
+    raiz = Path(__file__).resolve().parents[2]
+    fonte = (raiz / "backend/xano/api/sorriso_acesso/consultas_POST.xs").read_text(encoding="utf-8")
+    assert " in " not in fonte
+    assert "|default:" not in fonte
+    assert "db.get procedimento" in fonte
 
 
 def test_post_consultas_deriva_profissional_no_servidor(cliente, http):

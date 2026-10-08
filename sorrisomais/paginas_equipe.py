@@ -85,13 +85,48 @@ def _ir_para_hoje_na_agenda():
     st.session_state["agenda_data_input"] = hoje
 
 
+def _alternar_formulario_agenda(chave):
+    abrir = not st.session_state.get(chave, False)
+    st.session_state["agenda_nova"] = False
+    st.session_state["agenda_nova_disponibilidade"] = False
+    if abrir:
+        st.session_state[chave] = True
+        if chave == "agenda_nova":
+            st.session_state["agenda-consulta-data"] = st.session_state.get(
+                "agenda_data_input", st.session_state.get("agenda_data", date.today())
+            )
+
+
 def _data_api(dia, final=False):
     limite = datetime.combine(dia + (timedelta(days=1) if final else timedelta()), time.min,
                               tzinfo=ZoneInfo("America/Sao_Paulo"))
     return limite.isoformat(timespec="seconds")
 
 
+def _atualizar_situacao_agenda(cliente, token, consulta_id):
+    proxima = st.session_state[f"agenda-proxima-{consulta_id}"]
+    motivo = st.session_state.get(f"agenda-motivo-{consulta_id}", "").strip()
+    confirmar = st.session_state.get(f"agenda-confirmar-{consulta_id}", False)
+    if proxima == "Cancelada" and not motivo:
+        st.session_state["agenda_aviso"] = ("error", "Informe o motivo do cancelamento.")
+        return
+    if proxima == "Cancelada" and not confirmar:
+        st.session_state["agenda_aviso"] = ("error", "Confirme o cancelamento antes de continuar.")
+        return
+    try:
+        cliente.atualizar_situacao_consulta(token, consulta_id, proxima,
+            motivo_cancelamento=motivo if proxima == "Cancelada" else None)
+    except ErroAcesso as error:
+        st.session_state["agenda_aviso"] = ("error", str(error))
+    else:
+        st.session_state["agenda_aviso"] = ("success", "Situação da consulta atualizada.")
+
+
 def _renderizar_agenda(cliente, conta):
+    dia_pendente = st.session_state.pop("agenda_data_pendente", None)
+    if isinstance(dia_pendente, date):
+        st.session_state["agenda_data"] = dia_pendente
+        st.session_state["agenda_data_input"] = dia_pendente
     st.title("Agenda")
     aviso_agenda = st.session_state.pop("agenda_aviso", None)
     if aviso_agenda:
@@ -104,7 +139,7 @@ def _renderizar_agenda(cliente, conta):
     situacao = status_col.selectbox("Situação", ["Todas", "Agendada", "Confirmada",
         "Em atendimento", "Realizada", "Cancelada", "Falta"], key="agenda_situacao")
     busca = busca_col.text_input("Buscar Paciente ou Procedimento", key="agenda_busca").strip().casefold()
-    anterior, hoje, proximo, novo = st.columns([1, 1, 1, 1.5], vertical_alignment="center")
+    anterior, hoje, proximo = st.columns(3, vertical_alignment="center")
     anterior.button("‹ Dia anterior", key="agenda-anterior", width="stretch",
                     on_click=_navegar_data_agenda, args=(-1,))
     hoje.button("Hoje", key="agenda-hoje", width="stretch",
@@ -113,8 +148,11 @@ def _renderizar_agenda(cliente, conta):
                    on_click=_navegar_data_agenda, args=(1,))
     pode_agendar = bool(perfis.intersection({"administrador", "recepcionista"}))
     if pode_agendar:
-        novo.button("＋ Nova consulta", key="agenda-nova", type="primary", width="stretch",
-                    on_click=lambda: st.session_state.update(agenda_nova=not st.session_state.get("agenda_nova", False)))
+        nova_consulta, novo_horario = st.columns(2, gap="small")
+        nova_consulta.button("＋ Nova consulta", key="agenda-nova", type="primary", width="stretch",
+                    on_click=_alternar_formulario_agenda, args=("agenda_nova",))
+        novo_horario.button("＋ Novo horário", key="agenda-novo-horario", width="stretch",
+                    on_click=_alternar_formulario_agenda, args=("agenda_nova_disponibilidade",))
 
     try:
         consultas = cliente.listar_consultas(token, inicio=_data_api(dia), fim=_data_api(dia, True))
@@ -138,6 +176,8 @@ def _renderizar_agenda(cliente, conta):
 
     if st.session_state.get("agenda_nova") and pode_agendar:
         _renderizar_formulario_agenda(cliente, token, dia)
+    if st.session_state.get("agenda_nova_disponibilidade") and pode_agendar:
+        _renderizar_formulario_disponibilidade(cliente, token, dia)
     if not consultas:
         st.info("Nenhuma consulta encontrada para esta data e filtros.")
     transicoes = {
@@ -162,43 +202,32 @@ def _renderizar_agenda(cliente, conta):
                 acao_col, motivo_col, enviar_col = st.columns([1, 2, 1])
                 proxima = acao_col.selectbox("Alterar situação", permitidas,
                                              key=f"agenda-proxima-{consulta['id']}")
-                motivo = motivo_col.text_input("Motivo do cancelamento", max_chars=1000,
+                motivo_col.text_input("Motivo do cancelamento", max_chars=1000,
                     key=f"agenda-motivo-{consulta['id']}", disabled=proxima != "Cancelada")
-                confirmar = motivo_col.checkbox("Confirmo o cancelamento", key=f"agenda-confirmar-{consulta['id']}",
+                motivo_col.checkbox("Confirmo o cancelamento", key=f"agenda-confirmar-{consulta['id']}",
                     disabled=proxima != "Cancelada")
-                enviar = enviar_col.button("Atualizar", key=f"agenda-atualizar-{consulta['id']}", width="stretch")
-                if enviar:
-                    if proxima == "Cancelada" and not motivo.strip():
-                        st.error("Informe o motivo do cancelamento.")
-                    elif proxima == "Cancelada" and not confirmar:
-                        st.error("Confirme o cancelamento antes de continuar.")
-                    else:
-                        try:
-                            cliente.atualizar_situacao_consulta(token, consulta["id"], proxima,
-                                motivo_cancelamento=motivo.strip() if proxima == "Cancelada" else None)
-                            st.session_state["agenda_aviso"] = ("success", "Situação da consulta atualizada.")
-                            st.rerun()
-                        except ErroAcesso as error:
-                            st.error(str(error))
+                enviar_col.button("Atualizar", key=f"agenda-atualizar-{consulta['id']}", width="stretch",
+                    on_click=_atualizar_situacao_agenda, args=(cliente, token, consulta["id"]))
 
 
 def _renderizar_formulario_agenda(cliente, token, dia):
     try:
         opcoes = cliente.listar_opcoes_agenda(token)
     except ErroAcesso as error:
-        st.error(str(error) if error.status in (401, 403) else "Não foi possível carregar as opções de agendamento.")
+        st.error(str(error) if error.status in (401, 403, 429) else "Não foi possível carregar as opções de agendamento.")
         return
     if not opcoes["pacientes"] or not opcoes["profissionais"]:
         st.info("Cadastre Pacientes e Profissionais ativos antes de agendar.")
         return
-    with st.form("agenda-form-nova-consulta", border=True):
+    with st.container(border=True):
         st.subheader("Nova consulta")
         pacientes = {i["id"]: i["nome"] for i in opcoes["pacientes"]}
         profissionais = {i["id"]: i["nome"] for i in opcoes["profissionais"]}
         procedimentos = {i["id"]: i["nome"] for i in opcoes["procedimentos"]}
-        paciente_id = st.selectbox("Paciente", list(pacientes), format_func=pacientes.get, key="agenda-paciente")
         profissional_id = st.selectbox("Profissional", list(profissionais), format_func=profissionais.get, key="agenda-profissional")
-        inicio, fim = _data_api(dia), _data_api(dia, True)
+        data_consulta = st.date_input("Data da consulta", value=dia, format="DD/MM/YYYY",
+                                      key="agenda-consulta-data")
+        inicio, fim = _data_api(data_consulta), _data_api(data_consulta, True)
         try:
             disponibilidades = cliente.listar_disponibilidades(token, profissional_id, inicio, fim)
         except ErroAcesso as error:
@@ -207,14 +236,16 @@ def _renderizar_formulario_agenda(cliente, token, dia):
         horarios = {d["id"]: f"{datetime.fromisoformat(d['inicio'].replace('Z', '+00:00')).astimezone(ZoneInfo('America/Sao_Paulo')):%H:%M} – {datetime.fromisoformat(d['fim'].replace('Z', '+00:00')).astimezone(ZoneInfo('America/Sao_Paulo')):%H:%M}" for d in disponibilidades}
         if not horarios:
             st.info("Nenhum horário disponível para este profissional nesta data.")
-        disponibilidade_id = st.selectbox("Horário disponível", list(horarios), format_func=horarios.get,
-            index=None, placeholder="Selecione um horário", key="agenda-disponibilidade")
-        procedimento_ids = st.multiselect("Procedimentos (opcional)", list(procedimentos),
-            format_func=procedimentos.get, key="agenda-procedimentos")
-        motivo = st.text_area("Observação administrativa (opcional)", max_chars=1000, key="agenda-motivo-nova")
-        enviar, fechar = st.columns(2)
-        enviar_consulta = enviar.form_submit_button("Agendar consulta", type="primary", disabled=not horarios)
-        cancelar_form = fechar.form_submit_button("Fechar")
+        with st.form("agenda-form-nova-consulta"):
+            paciente_id = st.selectbox("Paciente", list(pacientes), format_func=pacientes.get, key="agenda-paciente")
+            disponibilidade_id = st.selectbox("Horário disponível", list(horarios), format_func=horarios.get,
+                index=None, placeholder="Selecione um horário", key="agenda-disponibilidade")
+            procedimento_ids = st.multiselect("Procedimentos (opcional)", list(procedimentos),
+                format_func=procedimentos.get, key="agenda-procedimentos")
+            motivo = st.text_area("Observação administrativa (opcional)", max_chars=1000, key="agenda-motivo-nova")
+            enviar, fechar = st.columns(2)
+            enviar_consulta = enviar.form_submit_button("Agendar consulta", type="primary", disabled=not horarios)
+            cancelar_form = fechar.form_submit_button("Fechar")
     if cancelar_form:
         st.session_state["agenda_nova"] = False
         st.rerun()
@@ -226,10 +257,99 @@ def _renderizar_formulario_agenda(cliente, token, dia):
             cliente.agendar_consulta(token, paciente_id, disponibilidade_id, procedimento_ids,
                                      motivo=motivo.strip() or None)
             st.session_state["agenda_nova"] = False
+            st.session_state["agenda_data_pendente"] = data_consulta
             st.session_state["agenda_aviso"] = ("success", "Consulta agendada.")
             st.rerun()
         except ErroAcesso as error:
             st.error(str(error))
+
+
+def _renderizar_formulario_disponibilidade(cliente, token, dia):
+    try:
+        opcoes = cliente.listar_opcoes_agenda(token)
+    except ErroAcesso as error:
+        st.error(str(error) if error.status in (401, 403, 429)
+                 else "Não foi possível carregar os Profissionais.")
+        return
+    profissionais = {item["id"]: item["nome"] for item in opcoes["profissionais"]}
+    if not profissionais:
+        st.info("Nenhum Profissional ativo disponível para cadastrar horário.")
+        return
+
+    fuso = ZoneInfo("America/Sao_Paulo")
+    agora = datetime.now(fuso)
+    data_padrao = max(dia, agora.date())
+    inicio_padrao = time(9, 0)
+    if data_padrao == agora.date():
+        proximo_horario = agora.replace(second=0, microsecond=0) + timedelta(minutes=15)
+        minuto_arredondado = ((proximo_horario.minute + 14) // 15) * 15
+        if minuto_arredondado == 60:
+            proximo_horario = proximo_horario.replace(minute=0) + timedelta(hours=1)
+        else:
+            proximo_horario = proximo_horario.replace(minute=minuto_arredondado)
+        if proximo_horario.date() != data_padrao:
+            data_padrao += timedelta(days=1)
+        else:
+            inicio_padrao = proximo_horario.time()
+    if not st.session_state.get("agenda_disponibilidade_padroes_iniciados"):
+        st.session_state["agenda-disponibilidade-data"] = data_padrao
+        st.session_state["agenda-disponibilidade-inicio"] = inicio_padrao
+        st.session_state["agenda-disponibilidade-fim"] = (
+            datetime.combine(data_padrao, inicio_padrao) + timedelta(hours=1)
+        ).time()
+        st.session_state["agenda_disponibilidade_padroes_iniciados"] = True
+
+    with st.form("agenda-form-nova-disponibilidade", border=True):
+        st.subheader("Novo horário disponível")
+        profissional_id = st.selectbox(
+            "Profissional", list(profissionais), format_func=profissionais.get,
+            key="agenda-disponibilidade-profissional",
+        )
+        data = st.date_input("Data do horário", value=st.session_state["agenda-disponibilidade-data"], format="DD/MM/YYYY",
+                             key="agenda-disponibilidade-data")
+        inicio_coluna, fim_coluna = st.columns(2, gap="small")
+        hora_inicio = inicio_coluna.time_input(
+            "Horário inicial", value=st.session_state["agenda-disponibilidade-inicio"], key="agenda-disponibilidade-inicio",
+        )
+        hora_fim = fim_coluna.time_input(
+            "Horário final", value=st.session_state["agenda-disponibilidade-fim"], key="agenda-disponibilidade-fim",
+        )
+        salvar, fechar = st.columns(2)
+        enviar = salvar.form_submit_button("Cadastrar horário", type="primary")
+        cancelar = fechar.form_submit_button("Fechar")
+
+    if cancelar:
+        st.session_state["agenda_nova_disponibilidade"] = False
+        st.session_state["agenda_disponibilidade_padroes_iniciados"] = False
+        st.rerun()
+    if not enviar:
+        return
+
+    inicio = datetime.combine(data, hora_inicio, tzinfo=fuso)
+    fim = datetime.combine(data, hora_fim, tzinfo=fuso)
+    agora = datetime.now(fuso)
+    if inicio <= agora:
+        st.error(
+            "O início precisa ser futuro. O formulário recebeu "
+            f"{inicio:%d/%m/%Y às %H:%M}; agora são {agora:%d/%m/%Y às %H:%M}."
+        )
+        return
+    if fim <= inicio:
+        st.error("O horário final deve ser posterior ao horário inicial.")
+        return
+    try:
+        cliente.criar_disponibilidade(
+            token, profissional_id, inicio.isoformat(timespec="seconds"),
+            fim.isoformat(timespec="seconds"),
+        )
+        st.session_state["agenda_nova_disponibilidade"] = False
+        st.session_state["agenda_disponibilidade_padroes_iniciados"] = False
+        st.session_state["agenda_aviso"] = (
+            "success", "Horário cadastrado. Ele já pode ser usado em uma nova consulta.",
+        )
+        st.rerun()
+    except ErroAcesso as error:
+        st.error(str(error))
 
 
 def solicitar_cadastro():

@@ -2,7 +2,11 @@
 query disponibilidades verb=POST {
   api_group = "Sorriso Acesso"
   auth = "conta_acesso"
-  input { }
+  input {
+    int profissional_id?
+    timestamp inicio?
+    timestamp fim?
+  }
   stack {
     util.set_header {
       value = "Cache-Control: no-store"
@@ -35,7 +39,7 @@ query disponibilidades verb=POST {
     foreach ($bruto|keys) {
       each as $chave {
         conditional {
-          if ($chave not in ["profissional_id", "inicio", "fim"]) {
+          if ($chave != "profissional_id" && $chave != "inicio" && $chave != "fim") {
             var.update $campo_invalido { value = true }
           }
         }
@@ -48,39 +52,54 @@ query disponibilidades verb=POST {
       }
     }
     conditional {
-      if ($bruto.profissional_id <= 0 || $bruto.inicio >= $bruto.fim || $bruto.inicio <= now) {
+      if ($input.profissional_id <= 0 || $input.inicio >= $input.fim || $input.inicio <= now) {
         util.set_header { value = "HTTP/1.1 400 Bad Request" }
         return { value = {codigo: "DADOS_INVALIDOS", mensagem: "Informe um intervalo futuro válido."} }
       }
     }
     db.get profissional {
       field_name = "id"
-      field_value = $bruto.profissional_id
-      output = ["id", "conta_acesso_id", "situacao", "agenda_lock_version"]
+      field_value = $input.profissional_id
+      output = ["id", "conta_acesso_id", "situacao"]
     } as $profissional
     conditional {
       if ($profissional == null || $profissional.situacao != "Ativo") {
         util.set_header { value = "HTTP/1.1 400 Bad Request" }
         return { value = {codigo: "DADOS_INVALIDOS", mensagem: "Profissional indisponível para novos horários."} }
       }
-      elseif (($solicitante.perfis|includes:"profissional") && $profissional.conta_acesso_id != $auth.id) {
+      elseif (($solicitante.perfis|intersect:["profissional"]|count) > 0 && $profissional.conta_acesso_id != $auth.id) {
         util.set_header { value = "HTTP/1.1 403 Forbidden" }
         return { value = {codigo: "ACESSO_NEGADO", mensagem: "Profissional só pode administrar a própria Agenda."} }
       }
     }
     var $conflito { value = false }
+    var $falha_servico { value = false }
     var $criada { value = null }
     try_catch {
       try {
         db.transaction {
           stack {
-            db.edit profissional {
-              field_name = "id"
-              field_value = $profissional.id
-              data = {agenda_lock_version: (($profissional.agenda_lock_version|default:0) + 1)}
-            } as $trava_agenda
+            db.query agenda_controle {
+              where = $db.agenda_controle.escopo == "profissional" && $db.agenda_controle.escopo_id == $profissional.id
+              return = {type: "single"}
+              output = ["id", "versao"]
+            } as $controle_profissional
+            conditional {
+              if ($controle_profissional == null) {
+                db.add agenda_controle {
+                  data = {escopo: "profissional", escopo_id: $profissional.id, versao: 1, atualizado_em: now}
+                } as $novo_controle_profissional
+              }
+              else {
+                db.edit agenda_controle {
+                  field_name = "id"
+                  field_value = $controle_profissional.id
+                  data = {versao: ($controle_profissional.versao + 1), atualizado_em: now}
+                } as $controle_profissional_atualizado
+              }
+            }
             db.query disponibilidade_agenda {
-              where = $db.disponibilidade_agenda.profissional_id == $profissional.id && $db.disponibilidade_agenda.inicio < $bruto.fim && $db.disponibilidade_agenda.fim > $bruto.inicio
+              where = $db.disponibilidade_agenda.profissional_id == $profissional.id && $db.disponibilidade_agenda.inicio < $input.fim && $db.disponibilidade_agenda.fim > $input.inicio
               return = {type: "list"}
               output = ["id"]
             } as $sobreposicoes
@@ -90,7 +109,7 @@ query disponibilidades verb=POST {
               }
               else {
                 db.add disponibilidade_agenda {
-                  data = {profissional_id: $profissional.id, inicio: $bruto.inicio, fim: $bruto.fim, situacao: "disponivel", criado_em: now, atualizado_em: now}
+                  data = {profissional_id: $profissional.id, inicio: $input.inicio, fim: $input.fim, situacao: "disponivel", criado_em: now, atualizado_em: now}
                 } as $criada
               }
             }
@@ -98,7 +117,7 @@ query disponibilidades verb=POST {
         }
       }
       catch {
-        var.update $conflito { value = true }
+        var.update $falha_servico { value = true }
       }
     }
     conditional {
@@ -108,7 +127,7 @@ query disponibilidades verb=POST {
       }
     }
     conditional {
-      if ($criada == null) {
+      if ($falha_servico || $criada == null) {
         util.set_header { value = "HTTP/1.1 503 Service Unavailable" }
         return { value = {codigo: "SERVICO_INDISPONIVEL", mensagem: "Não foi possível confirmar a Disponibilidade."} }
       }

@@ -16,11 +16,21 @@ A interface MUST apresentar a Agenda conectada em lista diária, com seletor de 
 - **THEN** a interface apresenta mensagem compreensível e não mostra dados desatualizados como atuais
 
 ### Requirement: Agendamento administrativo pela Agenda
-A interface MUST permitir que Administrador e Recepcionista abram formulário e selecionem Paciente ativo, Profissional ativo, Disponibilidade livre, zero ou mais Procedimentos ativos e motivo administrativo opcional. Paciente, Profissional e Disponibilidade são obrigatórios. A Agenda só é atualizada após confirmação do Xano.
+A interface MUST permitir que Administrador e Recepcionista abram formulário e selecionem Paciente ativo, Profissional ativo, data da Consulta, Disponibilidade livre, zero ou mais Procedimentos ativos e motivo administrativo opcional. Paciente, Profissional, data e Disponibilidade são obrigatórios. A data da Consulta MUST ser selecionada dentro do formulário e MUST ser independente do filtro diário da Agenda até a conclusão do agendamento. A lista de Disponibilidades MUST corresponder ao Profissional e à data selecionados no formulário. A Agenda só é atualizada após confirmação do Xano.
+
+A interface MUST manter no máximo um formulário de ação da Agenda aberto por vez. Abrir o formulário de Disponibilidade MUST fechar o formulário de Consulta, e abrir o formulário de Consulta MUST fechar o formulário de Disponibilidade.
 
 #### Scenario: Agendamento concluído
 - **WHEN** a equipe envia formulário válido e o Xano confirma a criação
 - **THEN** a interface confirma sucesso e atualiza a Agenda do dia da Disponibilidade
+
+#### Scenario: Data da Consulta independente do filtro diário
+- **WHEN** a equipe escolhe uma data no formulário diferente da data selecionada para filtrar a Agenda
+- **THEN** a lista de horários usa a data do formulário e o filtro diário permanece inalterado; após o agendamento confirmado, a Agenda passa a mostrar o dia da Consulta criada
+
+#### Scenario: Alternar formulários da Agenda
+- **WHEN** a equipe abre um formulário enquanto o outro está aberto
+- **THEN** somente o formulário recém-aberto permanece visível
 
 #### Scenario: Conflito de disponibilidade
 - **WHEN** outro agendamento ocupa o horário antes do envio
@@ -40,3 +50,7 @@ A interface MUST oferecer somente transições permitidas ao perfil autenticado 
 #### Scenario: Transição não permitida
 - **WHEN** o Xano nega mudança de situação
 - **THEN** a interface informa que a situação não foi alterada e recarrega o estado persistido
+
+#### Scenario: Atualização de situação sem cartões repetidos
+- **WHEN** o Profissional atualiza uma Consulta para Em atendimento e o Xano confirma
+- **THEN** a interface carrega a lista uma vez, mostra cada Consulta uma vez com a situação persistida e oferece Realizada como próxima transição da Consulta atualizada

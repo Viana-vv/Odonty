@@ -67,6 +67,18 @@ def main():
             largura = page.evaluate("({viewport: document.documentElement.clientWidth, pagina: document.documentElement.scrollWidth})")
             assert largura["pagina"] <= largura["viewport"], f"Rolagem horizontal no desktop: {largura}"
 
+            page.get_by_role("button", name="Novo horário").click()
+            page.get_by_label("Data do horário").wait_for()
+            assert page.get_by_label("Profissional").is_visible()
+            assert page.get_by_label("Horário inicial").is_visible()
+            assert page.get_by_label("Horário final").is_visible()
+            page.set_viewport_size({"width": 390, "height": 844})
+            largura = page.evaluate("({viewport: document.documentElement.clientWidth, pagina: document.documentElement.scrollWidth})")
+            assert largura["pagina"] <= largura["viewport"], f"Rolagem horizontal no formulário de horário: {largura}"
+            page.screenshot(path=destino / "novo-horario-celular.png", full_page=True)
+            page.set_viewport_size({"width": 1365, "height": 900})
+            page.get_by_role("button", name="Novo horário").click()
+
             # Exercita cancelamento e agendamento no app real; a camada HTTP é
             # interceptada em sitecustomize e não alcança o Xano.
             page.get_by_label("Alterar situação").first.click()

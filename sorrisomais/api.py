@@ -78,6 +78,12 @@ class ClienteXano:
             if route == "/auth/logout" and status in (204, 401):
                 return None
             if status != status_esperado:
+                if route == "/disponibilidades" and status == 400:
+                    raise ErroAcesso(
+                        "O Xano recusou o intervalo. Confira se o Profissional está ativo, "
+                        "o horário final é posterior ao inicial e o início está no futuro.",
+                        status,
+                    )
                 if route == "/pacientes" and status == 409:
                     try:
                         corpo = response.json()
@@ -103,6 +109,8 @@ class ClienteXano:
                 if status == 409:
                     if route == "/consultas":
                         message = "Este horário não está mais disponível. Escolha outro."
+                    elif route == "/disponibilidades":
+                        message = "Já existe um horário sobreposto para este Profissional. Escolha outro intervalo."
                     elif route.startswith("/disponibilidades/"):
                         message = "Não foi possível atualizar este horário. Confira a Agenda e tente novamente."
                     elif route.startswith("/consultas/"):
@@ -345,6 +353,16 @@ class ClienteXano:
                    "inicio": inicio, "fim": fim}
         data = self._request("POST", "/disponibilidades", token=token,
                              payload=payload, status_esperado=201)
+        item = data.get("disponibilidade")
+        # A versão publicada no Xano pode omitir fim e situacao na resposta,
+        # embora retorne 201 e os dados mínimos da Disponibilidade criada.
+        if (not isinstance(item, dict) or type(item.get("id")) is not int
+                or item["id"] <= 0 or type(item.get("profissional_id")) is not int
+                or item["profissional_id"] != payload["profissional_id"]
+                or not isinstance(item.get("inicio"), str) or not item["inicio"].strip()):
+            raise ErroAcesso()
+        item.setdefault("fim", fim)
+        item.setdefault("situacao", "disponivel")
         return self._item_resposta(data, "disponibilidade", {
             "profissional_id": int, "inicio": str, "fim": str, "situacao": str,
         })

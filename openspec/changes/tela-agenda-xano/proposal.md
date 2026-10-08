@@ -30,4 +30,8 @@ Nenhuma. As capacidades correspondentes ainda não existem em `openspec/specs/`.
 - Streamlit: `sorrisomais/paginas_equipe.py`, cliente REST em `sorrisomais/api.py`, validações em `sorrisomais/contratos_clinicos.py`, navegação e estilos.
 - Xano: consultas GET e POST existentes, consulta de Disponibilidades, possíveis rotas GET de opções administrativas e tabelas relacionais já descritas em `backend/xano`.
 - Verificação: contratos Python e JavaScript por rota, testes de interface com clientes HTTP simulados e inspeção da versão renderizada com dados fictícios.
-- A integração conectada depende de confirmar no workspace quais schemas/rotas já foram publicados; a documentação atual diz que a integração Xano de Agenda ainda não foi confirmada.
+- A integração conectada foi publicada. Em 07/10/2026, a conferência em execução encontrou erros nas rotas de Agenda; as validações e a serialização de datas foram corrigidas. GET `/disponibilidades` e GET `/consultas` respondem 200; uma Disponibilidade fictícia foi criada para 08/10/2026, às 09h. A conferência visual dos três perfis segue pendente.
+
+- O smoke test real de POST /consultas encontrou HTTP 500 por uma expressao incompatível com o Xano. A rota foi corrigida e publicada; o POST real retornou HTTP 201 usando dados fictícios. Para teste pela interface, há uma Consulta às 09h e uma Disponibilidade livre às 10h em 08/10/2026.
+
+- Uma nova falha ao repetir o agendamento levou a remover o pipe default dos contadores de concorrência existentes no POST. A versão atual foi publicada no Xano; o horário das 10h permanece livre para novo teste.
