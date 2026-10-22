@@ -13,6 +13,10 @@ O sistema SHALL exibir a lista fornecida pelo Xano usando o contrato existente `
 - **WHEN** o Xano retorna uma coleção de Profissionais vazia
 - **THEN** a interface informa que não há Profissionais ativos para exibir
 
+#### Cenário: Reexecução da tela
+- **WHEN** Streamlit reexecuta a tela dentro de 20 segundos sem troca de sessão
+- **THEN** a lista bem-sucedida é reutilizada sem nova chamada ao Xano, e a equipe pode solicitar atualização manual
+
 #### Cenário: Falha ao consultar
 - **WHEN** a API falha ou a sessão não pode acessar o recurso
 - **THEN** a interface apresenta mensagem compreensível sem exibir dados antigos como atuais

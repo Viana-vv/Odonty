@@ -25,6 +25,12 @@ class InterfaceFalsa:
         self.infos = []
         self.erros = []
         self.colunas_criadas = []
+        self.atualizacoes = []
+        self.cliques_atualizar = []
+
+    def button(self, texto, **_kwargs):
+        self.atualizacoes.append(texto)
+        return self.cliques_atualizar.pop(0) if self.cliques_atualizar else False
 
     def title(self, texto):
         self.textos.append(texto)
@@ -134,6 +140,91 @@ def test_perfil_profissional_nao_carrega_dados(tela):
     pagina.renderizar(cliente, conta)
     assert interface.infos == ["Seu perfil não tem permissão para consultar esta lista."]
     cliente.listar_opcoes_agenda.assert_not_called()
+
+
+def test_rerun_reutiliza_cache_da_sessao_por_20_segundos(tela, monkeypatch):
+    interface, cliente, conta = tela
+    monkeypatch.setattr(pagina.time, "monotonic", lambda: 100.0)
+
+    pagina.renderizar(cliente, conta)
+    pagina.renderizar(cliente, conta)
+
+    cliente.listar_opcoes_agenda.assert_called_once_with("token-ficticio")
+    assert "Atualizar lista" in interface.atualizacoes
+
+
+def test_cache_expira_apos_20_segundos(tela, monkeypatch):
+    _, cliente, conta = tela
+    agora = [100.0]
+    monkeypatch.setattr(pagina.time, "monotonic", lambda: agora[0])
+
+    pagina.renderizar(cliente, conta)
+    agora[0] = 120.0
+    pagina.renderizar(cliente, conta)
+
+    assert cliente.listar_opcoes_agenda.call_count == 2
+
+
+def test_botao_atualizar_forca_nova_consulta(tela, monkeypatch):
+    interface, cliente, conta = tela
+    interface.cliques_atualizar = [False, True]
+    monkeypatch.setattr(pagina.time, "monotonic", lambda: 100.0)
+
+    pagina.renderizar(cliente, conta)
+    pagina.renderizar(cliente, conta)
+
+    assert cliente.listar_opcoes_agenda.call_count == 2
+
+
+def test_falha_ao_atualizar_nao_mantem_cache_antigo(tela, monkeypatch):
+    interface, cliente, conta = tela
+    interface.cliques_atualizar = [False, True, False]
+    cliente.listar_opcoes_agenda.side_effect = [
+        {"pacientes": [], "profissionais": PROFISSIONAIS, "procedimentos": []},
+        ErroAcesso("Falha teste.", 503),
+        {"pacientes": [], "profissionais": [], "procedimentos": []},
+    ]
+    monkeypatch.setattr(pagina.time, "monotonic", lambda: 100.0)
+
+    pagina.renderizar(cliente, conta)
+    interface.textos.clear()
+    pagina.renderizar(cliente, conta)
+    assert pagina._CHAVE_CACHE_PROFISSIONAIS not in interface.session_state
+    assert "Dra. Exemplo Sorriso" not in interface.textos
+    pagina.renderizar(cliente, conta)
+
+    assert cliente.listar_opcoes_agenda.call_count == 3
+    assert len(interface.infos) == 1
+
+
+def test_alteracao_do_token_invalida_cache(tela, monkeypatch):
+    interface, cliente, conta = tela
+    monkeypatch.setattr(pagina.time, "monotonic", lambda: 100.0)
+
+    pagina.renderizar(cliente, conta)
+    interface.session_state["credencial"] = Credencial(
+        "outro-token-ficticio", datetime.now(timezone.utc) + timedelta(hours=1))
+    pagina.renderizar(cliente, conta)
+
+    assert cliente.listar_opcoes_agenda.call_args_list == [
+        (("token-ficticio",),), (("outro-token-ficticio",),),
+    ]
+
+
+def test_401_limpa_cache_e_credencial(tela, monkeypatch):
+    interface, cliente, conta = tela
+    interface.cliques_atualizar = [False, True]
+    cliente.listar_opcoes_agenda.side_effect = [
+        {"pacientes": [], "profissionais": PROFISSIONAIS, "procedimentos": []},
+        ErroAcesso("Sessao expirada.", 401),
+    ]
+    monkeypatch.setattr(pagina.time, "monotonic", lambda: 100.0)
+
+    pagina.renderizar(cliente, conta)
+    pagina.renderizar(cliente, conta)
+
+    assert pagina._CHAVE_CACHE_PROFISSIONAIS not in interface.session_state
+    assert "credencial" not in interface.session_state
 
 
 def test_sessao_ausente_nao_carrega_dados(tela):
