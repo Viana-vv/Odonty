@@ -7,7 +7,7 @@ from streamlit.testing.v1 import AppTest
 from sorrisomais.api import ClienteXano, ContaAcesso, Credencial
 
 
-def abrir_catalogo(monkeypatch, perfil="administrador", resposta=None, erro=None):
+def abrir_catalogo(monkeypatch, perfil="administrador", resposta=None, erro=None, sessao_presente=True):
     monkeypatch.setenv("XANO_API_BASE_URL", "https://exemplo.invalid/api:teste")
     monkeypatch.setenv("SORRISOMAIS_MODO_DEMONSTRACAO", "1")
     validade = datetime.now(timezone.utc) + timedelta(hours=1)
@@ -24,9 +24,11 @@ from sorrisomais import sessao
 from datetime import datetime, timezone
 import streamlit as st
 conta = ContaAcesso(1, 'Conta Fictícia', ('PERFIL_TESTE',), datetime.now(timezone.utc))
-st.session_state[sessao.CHAVE] = type('Sessao', (), {'token': 'token-ficticio'})()
+if SESSION_PRESENTE:
+    token = st.session_state.get('token_teste', 'token-ficticio')
+    st.session_state[sessao.CHAVE] = type('Sessao', (), {'token': token})()
 renderizar(ClienteXano(Configuracao.do_ambiente()), conta)
-""".replace("PERFIL_TESTE", perfil)
+""".replace("PERFIL_TESTE", perfil).replace("SESSION_PRESENTE", repr(sessao_presente))
     app = AppTest.from_string(codigo, default_timeout=20).run()
     return app, lista
 
@@ -73,3 +75,54 @@ def test_sessao_e_limpa_quando_xano_nega_acesso(monkeypatch, status):
     assert not app.exception
     assert app.session_state.get(sessao.CHAVE) is None
     assert any("Acesso negado" in item.value for item in app.error)
+
+
+def test_sessao_ausente_mostra_mensagem_segura_sem_chamar_xano(monkeypatch):
+    app, lista = abrir_catalogo(monkeypatch, sessao_presente=False)
+    assert not app.exception
+    assert any("Sua sessão expirou" in item.value for item in app.info)
+    lista.assert_not_called()
+
+
+def test_busca_nao_repete_get_enquanto_mesma_sessao_esta_ativa(monkeypatch):
+    app, lista = abrir_catalogo(monkeypatch, resposta={"procedimentos": [
+        {"id": 1, "nome": "Avaliação"}, {"id": 2, "nome": "Limpeza"},
+    ]})
+    assert not app.exception
+    assert lista.call_count == 1
+
+    app.text_input[0].set_value("limp").run()
+
+    assert not app.exception
+    lista.assert_called_once_with("token-ficticio")
+    assert any("Limpeza" in item.value for item in app.markdown)
+    assert not any("Avaliação" in item.value for item in app.markdown)
+
+
+def test_falha_nao_repete_get_ate_tentativa_manual(monkeypatch):
+    from sorrisomais.api import ErroAcesso
+
+    falha = ErroAcesso("Falha temporária", 503)
+    resposta = {"procedimentos": [{"id": 1, "nome": "Limpeza"}]}
+    app, lista = abrir_catalogo(monkeypatch, erro=[falha, resposta], resposta=resposta)
+    assert not app.exception
+    assert lista.call_count == 1
+
+    app.button[0].click().run()
+
+    assert not app.exception
+    assert lista.call_count == 2
+    assert any("Limpeza" in item.value for item in app.markdown)
+
+
+def test_cache_de_catalogo_e_invalido_ao_trocar_token(monkeypatch):
+    app, lista = abrir_catalogo(monkeypatch, resposta={"procedimentos": [
+        {"id": 1, "nome": "Limpeza"},
+    ]})
+    assert lista.call_count == 1
+    app.session_state["token_teste"] = "token-novo"
+    app.run()
+
+    assert not app.exception
+    assert lista.call_count == 2
+    assert lista.call_args.args == ("token-novo",)

@@ -1,9 +1,15 @@
 """Catálogo de Procedimentos conectado, somente para leitura."""
 
+from hashlib import sha256
+
 import streamlit as st
 
 from . import sessao
 from .api import ErroAcesso
+
+
+_CACHE_CHAVE = "procedimentos_xano_catalogo_cache"
+_FALHA_CHAVE = "procedimentos_xano_catalogo_falha"
 
 
 def _filtrar_procedimentos(procedimentos, busca):
@@ -23,26 +29,62 @@ def renderizar(cliente, conta):
         st.info("Seu perfil não tem acesso ao catálogo de Procedimentos.")
         return
 
+    credencial = st.session_state.get(sessao.CHAVE)
+    token = getattr(credencial, "token", None)
+    if not isinstance(token, str) or not token or any(caractere.isspace() for caractere in token):
+        st.info("Sua sessão expirou. Entre novamente para acessar o catálogo de Procedimentos.")
+        return
+
+    identificador_token = sha256(token.encode("utf-8")).hexdigest()
+    cache = st.session_state.get(_CACHE_CHAVE)
+    if cache is not None and (
+        not isinstance(cache, dict) or cache.get("token") != identificador_token
+    ):
+        st.session_state.pop(_CACHE_CHAVE, None)
+        cache = None
+    if st.session_state.get(_FALHA_CHAVE) != identificador_token:
+        st.session_state.pop(_FALHA_CHAVE, None)
+
     busca = st.text_input("Buscar Procedimento", key="procedimentos_xano_busca").strip()
-    token = st.session_state[sessao.CHAVE].token
-    try:
-        with st.spinner("Carregando Procedimentos…"):
-            opcoes = cliente.listar_opcoes_agenda(token)
-        procedimentos = opcoes["procedimentos"]
-    except ErroAcesso as error:
-        if error.status in (401, 403):
-            sessao.limpar(st.session_state)
-            st.error(str(error))
+    falha = st.session_state.get(_FALHA_CHAVE)
+    if falha == identificador_token:
+        st.error("Não foi possível carregar os Procedimentos. Tente novamente.")
+        if st.button("Tentar novamente", key="procedimentos_xano_recarregar"):
+            st.session_state.pop(_FALHA_CHAVE, None)
+            st.rerun()
+        return
+
+    if cache is None:
+        try:
+            with st.spinner("Carregando Procedimentos…"):
+                opcoes = cliente.listar_opcoes_agenda(token)
+            procedimentos = opcoes["procedimentos"]
+        except ErroAcesso as error:
+            if error.status in (401, 403):
+                st.session_state.pop(_CACHE_CHAVE, None)
+                st.session_state.pop(_FALHA_CHAVE, None)
+                sessao.limpar(st.session_state)
+                st.error(str(error))
+                return
+            st.session_state[_FALHA_CHAVE] = identificador_token
+            st.error("Não foi possível carregar os Procedimentos. Tente novamente.")
+            if st.button("Tentar novamente", key="procedimentos_xano_recarregar"):
+                st.session_state.pop(_FALHA_CHAVE, None)
+                st.rerun()
             return
-        st.error("Não foi possível carregar os Procedimentos. Tente novamente.")
-        if st.button("Tentar novamente", key="procedimentos_xano_recarregar"):
-            st.rerun()
-        return
-    except (KeyError, TypeError, ValueError):
-        st.error("Não foi possível carregar os Procedimentos. Tente novamente.")
-        if st.button("Tentar novamente", key="procedimentos_xano_recarregar"):
-            st.rerun()
-        return
+        except (KeyError, TypeError, ValueError):
+            st.session_state[_FALHA_CHAVE] = identificador_token
+            st.error("Não foi possível carregar os Procedimentos. Tente novamente.")
+            if st.button("Tentar novamente", key="procedimentos_xano_recarregar"):
+                st.session_state.pop(_FALHA_CHAVE, None)
+                st.rerun()
+            return
+        st.session_state[_CACHE_CHAVE] = {
+            "token": identificador_token,
+            "procedimentos": procedimentos,
+        }
+    else:
+        procedimentos = cache["procedimentos"]
 
     encontrados = _filtrar_procedimentos(procedimentos, busca)
     if not encontrados:
