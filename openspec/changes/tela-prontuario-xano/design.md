@@ -1,0 +1,17 @@
+# Design: histórico individual do Prontuário
+
+## Dados e autorização
+
+A tela obtém a credencial da sessão Streamlit e chama `listar_consultas` e `listar_registros_clinicos`. Não envia filtros de Paciente derivados de entrada livre. A descoberta e a seleção usam identificadores e nomes retornados pelas rotas. A lista de Registros Clínicos recebida já está restrita pelo Xano ao Profissional autenticado ou aos Registros liberados do Paciente autenticado. A interface aplica o filtro visual do Paciente selecionado, sem tratar isso como autorização.
+
+Contas administrativas não recebem conteúdo clínico, de acordo com o contrato de Registros Clínicos. A tela não registra conteúdo clínico em logs, não usa dados de demonstração e não cria autor, nome ou Consulta ausentes da resposta.
+
+## Apresentação
+
+Seguir a composição da referência `13-prontuario-individual.png`: título e descrição, seletor de Paciente, lista lateral de Pacientes recentes e histórico em linha do tempo. No Streamlit, usar colunas responsivas e cartões simples. Como o contrato de Registros Clínicos não inclui nome do Profissional, não apresentar autoria nominal. Exibir conteúdo, data e identificador do Registro Clínico apenas quando retornados.
+
+O carregamento acontece em uma operação com indicador visual. Falhas de API exibem mensagem segura sem mostrar exceções técnicas. Coleções vazias informam que não há histórico disponível.
+
+## Verificação
+
+Testes de interface usam cliente simulado sem rede para sucesso, acesso negado, erro, vazio e seleção. Os contratos GET permanecem inalterados e já têm cobertura Python e JavaScript.
