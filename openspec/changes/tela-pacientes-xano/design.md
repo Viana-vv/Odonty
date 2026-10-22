@@ -1,6 +1,6 @@
 ## Context
 
-A proposta e os requisitos estão em `proposal.md` e `specs/interface-pacientes/spec.md`. O modo conectado usa módulos Streamlit por área e o cliente existente valida a resposta de `listar_opcoes_agenda`; esta change não altera integração ou autorização no Xano.
+A proposta e os requisitos estão em `proposal.md` e `specs/interface-pacientes/spec.md`. O modo conectado usa módulos Streamlit por área e o cliente existente valida a resposta de `listar_opcoes_agenda`. Esta change habilita Contas de Acesso ativas com perfil Paciente nas rotas existentes de autenticação e identidade para acesso a Prontuários; as rotas clínicas do Xano continuam responsáveis por validar vínculo ativo e escopo dos dados.
 
 ## Goals / Non-Goals
 

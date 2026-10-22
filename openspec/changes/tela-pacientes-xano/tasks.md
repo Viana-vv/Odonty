@@ -16,4 +16,4 @@
 
 ## 4. Verificação final
 
-- [x] 4.1 Executar testes pertinentes, validar OpenSpec e revisar diff integral para confirmar escopo, privacidade, ausência de `.pyc`/`.venv` e compatibilidade visual; verificado com 42 testes Python, teste JavaScript do contrato, `openspec validate --strict` e diff staged seletivo.
+- [x] 4.1 Executar testes pertinentes, validar OpenSpec e revisar diff integral para confirmar escopo, privacidade, ausência de `.pyc`/`.venv` e compatibilidade visual; verificado com `python -B -m pytest -q` (358 aprovados, 115 ignorados), quatro testes JavaScript dos contratos afetados, `openspec validate ... --strict` e `git diff --check`.
