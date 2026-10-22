@@ -1,6 +1,7 @@
 """Catálogo de Procedimentos conectado, somente para leitura."""
 
 from hashlib import sha256
+from time import monotonic
 
 import streamlit as st
 
@@ -10,6 +11,7 @@ from .api import ErroAcesso
 
 _CACHE_CHAVE = "procedimentos_xano_catalogo_cache"
 _FALHA_CHAVE = "procedimentos_xano_catalogo_falha"
+_CACHE_TTL_SEGUNDOS = 20
 
 
 def _filtrar_procedimentos(procedimentos, busca):
@@ -40,6 +42,9 @@ def renderizar(cliente, conta):
     if cache is not None and (
         not isinstance(cache, dict) or cache.get("token") != identificador_token
     ):
+        st.session_state.pop(_CACHE_CHAVE, None)
+        cache = None
+    if cache is not None and monotonic() - cache.get("carregado_em", 0) >= _CACHE_TTL_SEGUNDOS:
         st.session_state.pop(_CACHE_CHAVE, None)
         cache = None
     if st.session_state.get(_FALHA_CHAVE) != identificador_token:
@@ -81,10 +86,17 @@ def renderizar(cliente, conta):
             return
         st.session_state[_CACHE_CHAVE] = {
             "token": identificador_token,
+            "carregado_em": monotonic(),
             "procedimentos": procedimentos,
         }
     else:
         procedimentos = cache["procedimentos"]
+
+    if st.session_state.get(_CACHE_CHAVE) is not None and st.button(
+        "Atualizar catálogo", key="procedimentos_xano_atualizar"
+    ):
+        st.session_state.pop(_CACHE_CHAVE, None)
+        st.rerun()
 
     encontrados = _filtrar_procedimentos(procedimentos, busca)
     if not encontrados:

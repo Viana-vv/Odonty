@@ -99,6 +99,39 @@ def test_busca_nao_repete_get_enquanto_mesma_sessao_esta_ativa(monkeypatch):
     assert not any("Avaliação" in item.value for item in app.markdown)
 
 
+def test_catalogo_atualiza_apos_ttl_de_vinte_segundos(monkeypatch):
+    from sorrisomais import pagina_procedimentos_xano
+
+    relogio = {"agora": 100.0}
+    monkeypatch.setattr(pagina_procedimentos_xano, "monotonic", lambda: relogio["agora"])
+    app, lista = abrir_catalogo(monkeypatch, resposta={"procedimentos": [
+        {"id": 1, "nome": "Limpeza"},
+    ]})
+    assert lista.call_count == 1
+
+    relogio["agora"] = 119.99
+    app.run()
+    assert lista.call_count == 1
+
+    relogio["agora"] = 120.0
+    app.run()
+    assert not app.exception
+    assert lista.call_count == 2
+
+
+def test_botao_atualizar_limpa_cache_e_carrega_novamente(monkeypatch):
+    app, lista = abrir_catalogo(monkeypatch, resposta={"procedimentos": [
+        {"id": 1, "nome": "Limpeza"},
+    ]})
+    assert lista.call_count == 1
+    assert any(botao.label == "Atualizar catálogo" for botao in app.button)
+
+    app.button[0].click().run()
+
+    assert not app.exception
+    assert lista.call_count == 2
+
+
 def test_falha_nao_repete_get_ate_tentativa_manual(monkeypatch):
     from sorrisomais.api import ErroAcesso
 
