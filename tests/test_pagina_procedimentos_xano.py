@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock
 
+import pytest
 from streamlit.testing.v1 import AppTest
 
 from sorrisomais.api import ClienteXano, ContaAcesso, Credencial
@@ -56,8 +57,19 @@ def test_catalogo_trata_falha_e_oferece_tentativa(monkeypatch):
     assert any(botao.label == "Tentar novamente" for botao in app.button)
 
 
-def test_perfil_profissional_nao_carrega_opcoes(monkeypatch):
-    app, lista = abrir_catalogo(monkeypatch, perfil="profissional")
+@pytest.mark.parametrize("perfil", ["profissional", "recepcionista"])
+def test_perfil_sem_acesso_nao_carrega_opcoes(monkeypatch, perfil):
+    app, lista = abrir_catalogo(monkeypatch, perfil=perfil)
     assert not app.exception
     assert any("não tem acesso" in item.value for item in app.info)
     lista.assert_not_called()
+
+
+@pytest.mark.parametrize("status", [401, 403])
+def test_sessao_e_limpa_quando_xano_nega_acesso(monkeypatch, status):
+    from sorrisomais import sessao
+    from sorrisomais.api import ErroAcesso
+    app, _ = abrir_catalogo(monkeypatch, erro=ErroAcesso("Acesso negado. Entre novamente.", status))
+    assert not app.exception
+    assert app.session_state.get(sessao.CHAVE) is None
+    assert any("Acesso negado" in item.value for item in app.error)

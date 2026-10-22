@@ -19,7 +19,7 @@ def renderizar(cliente, conta):
     st.caption("Catálogo da clínica")
     st.write("Consulte os Procedimentos disponíveis.")
 
-    if not set(getattr(conta, "perfis", ())).intersection({"administrador", "recepcionista"}):
+    if "administrador" not in set(getattr(conta, "perfis", ())):
         st.info("Seu perfil não tem acesso ao catálogo de Procedimentos.")
         return
 
@@ -29,7 +29,16 @@ def renderizar(cliente, conta):
         with st.spinner("Carregando Procedimentos…"):
             opcoes = cliente.listar_opcoes_agenda(token)
         procedimentos = opcoes["procedimentos"]
-    except (ErroAcesso, KeyError, TypeError, ValueError):
+    except ErroAcesso as error:
+        if error.status in (401, 403):
+            sessao.limpar(st.session_state)
+            st.error(str(error))
+            return
+        st.error("Não foi possível carregar os Procedimentos. Tente novamente.")
+        if st.button("Tentar novamente", key="procedimentos_xano_recarregar"):
+            st.rerun()
+        return
+    except (KeyError, TypeError, ValueError):
         st.error("Não foi possível carregar os Procedimentos. Tente novamente.")
         if st.button("Tentar novamente", key="procedimentos_xano_recarregar"):
             st.rerun()

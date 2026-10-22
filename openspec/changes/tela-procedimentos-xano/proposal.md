@@ -7,7 +7,7 @@ A tela de Procedimentos existente usa dados demonstrativos. A equipe administrat
 ## O que muda
 
 - Apresentar uma tela conectada, somente para leitura, seguindo a referência `07-procedimentos.png`.
-- Carregar opções pelo método existente `ClienteXano.listar_opcoes_agenda`, exibindo somente o identificador como chave interna e o nome como conteúdo visível.
+- Carregar opções pelo método existente `ClienteXano.listar_opcoes_agenda`, exibindo somente o identificador como chave interna e o nome como conteúdo visível. A entrada na área segue o menu existente, exclusivo para Administrador; a API permanece responsável pela autorização no Xano.
 - Tratar carregamento, erro, catálogo vazio e busca, com composição responsiva.
 
 ## Limites
