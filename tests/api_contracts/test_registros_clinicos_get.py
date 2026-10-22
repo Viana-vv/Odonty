@@ -16,15 +16,23 @@ def test_get_registros_clinicos_envia_filtros_e_conteudo_somente_no_endpoint_cli
     assert http.call_args.kwargs["params"] == {"paciente_id": 4, "consulta_id": 9}
 
 
+def test_get_registros_clinicos_limita_paciente_a_vinculo_proprio_e_itens_liberados():
+    caminho = (Path(__file__).resolve().parents[2] / "backend" / "xano" / "api"
+               / "sorriso_acesso" / "registros_clinicos_GET.xs")
+    codigo = caminho.read_text(encoding="utf-8-sig")
+
+    assert 'field_name = "conta_acesso_id"' in codigo
+    assert "field_value = $auth.id" in codigo
+    assert "var.update $paciente_escopo { value = $paciente_autenticado.id }" in codigo
+    assert '$db.registro_clinico.liberado_paciente == true' in codigo
+    assert 'auth = "conta_acesso"' in codigo
+
 def test_export_get_filtra_no_xano_por_escopo_obrigatorio():
     raiz = Path(__file__).resolve().parents[2]
     export = (raiz / "backend/xano/api/sorriso_acesso/registros_clinicos_GET.xs").read_text(encoding="utf-8")
 
     assert 'auth = "conta_acesso"' in export
     assert "function.run sorriso_validar_sessao" in export
-    assert 'field_name = "conta_acesso_id"' in export
-    assert "field_value = $auth.id" in export
-    assert "var.update $paciente_escopo { value = $paciente_autenticado.id }" in export
     assert '$db.registro_clinico.profissional_id == $profissional_escopo' in export
     assert '$db.registro_clinico.paciente_id == $paciente_escopo && $db.registro_clinico.liberado_paciente == true' in export
     assert '$registro.paciente_id != $input.paciente_id' in export

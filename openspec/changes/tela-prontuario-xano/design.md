@@ -10,7 +10,7 @@ Contas administrativas não recebem conteúdo clínico, de acordo com o contrato
 
 Seguir a composição da referência `13-prontuario-individual.png`: título e descrição, seletor de Paciente, lista lateral de Pacientes recentes e histórico em linha do tempo. No Streamlit, usar colunas responsivas e cartões simples. Como o contrato de Registros Clínicos não inclui nome do Profissional, não apresentar autoria nominal. Exibir conteúdo, data e identificador do Registro Clínico apenas quando retornados.
 
-O carregamento acontece em uma operação com indicador visual. Falhas de API exibem mensagem segura sem mostrar exceções técnicas. Coleções vazias informam que não há histórico disponível. Para evitar chamadas repetidas nos reruns do Streamlit, respostas bem-sucedidas ficam em cache por 20 segundos na sessão, vinculadas a um fingerprint da credencial; falhas não são armazenadas e a limpeza da sessão remove o cache.
+O carregamento acontece em uma operação com indicador visual. Falhas de API exibem mensagem segura sem mostrar exceções técnicas. Coleções vazias informam que não há histórico disponível. Para evitar chamadas repetidas nos reruns do Streamlit, respostas bem-sucedidas ficam em cache por 20 segundos na sessão, vinculadas a um fingerprint da credencial; falhas não são armazenadas. A remoção imediata desse cache ao sair ou receber 401 depende da limpeza global de sessão do PR de roteamento (agente 1); a validade curta e a comparação de credencial impedem reutilização da resposta em outra sessão autenticada.
 
 ## Verificação
 
