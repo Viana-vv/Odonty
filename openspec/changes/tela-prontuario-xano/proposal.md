@@ -6,13 +6,15 @@ Conectar a tela de histórico individual do Prontuário ao Xano, apresentando Re
 
 ## Escopo
 
-- Usar somente `GET /consultas` e `GET /registros-clinicos` existentes.
-- Permitir selecionar Paciente a partir dos dados recebidos por essas rotas.
+- Usar `GET /consultas` e `GET /registros-clinicos` para montar a seleção e o histórico individual do Prontuário.
+- Ajustar o export Xano existente de `GET /registros-clinicos` para que os filtros opcionais não alterem nem ampliem o escopo autenticado.
+- Garantir que o Profissional consulte somente Registros Clínicos associados ao seu próprio vínculo e que o Paciente consulte somente os próprios Registros liberados.
+- Preservar autenticação, validação de sessão, resposta sem cache e os metadados Xano do endpoint e da tabela `registro_clinico`.
 - Apresentar estados de carregamento, erro, lista vazia e histórico vazio.
 - Restringir a apresentação clínica na interface a Contas com perfil Paciente ou Profissional, mantendo o Xano como autoridade de autorização.
 
 ## Fora do escopo
 
-- Criar ou alterar endpoints, autenticação, dados ou regras do Xano.
-- Criar, retificar ou excluir Registros Clínicos.
-- Apresentar Consultas ou nomes de Profissionais não retornados pelos contratos.
+- Criar endpoint alternativo, novo mecanismo de autenticação ou nova entidade de dados.
+- Criar, retificar ou excluir Registros Clínicos na tela individual.
+- Apresentar nomes de Profissionais, Consultas ou datas que não estejam disponíveis nos contratos consumidos.

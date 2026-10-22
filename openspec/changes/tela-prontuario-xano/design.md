@@ -10,7 +10,7 @@ Contas administrativas não recebem conteúdo clínico, de acordo com o contrato
 
 Seguir a composição da referência `13-prontuario-individual.png`: título e descrição, seletor de Paciente, lista lateral de Pacientes recentes e histórico em linha do tempo. No Streamlit, usar colunas responsivas e cartões simples. Como o contrato de Registros Clínicos não inclui nome do Profissional, não apresentar autoria nominal. Exibir conteúdo, data e identificador do Registro Clínico apenas quando retornados.
 
-O carregamento acontece em uma operação com indicador visual. Falhas de API exibem mensagem segura sem mostrar exceções técnicas. Coleções vazias informam que não há histórico disponível.
+O carregamento acontece em uma operação com indicador visual. Falhas de API exibem mensagem segura sem mostrar exceções técnicas. Coleções vazias informam que não há histórico disponível. Para evitar chamadas repetidas nos reruns do Streamlit, respostas bem-sucedidas ficam em cache por 20 segundos na sessão, vinculadas a um fingerprint da credencial; falhas não são armazenadas e a limpeza da sessão remove o cache.
 
 ## Verificação
 
@@ -18,6 +18,8 @@ Testes de interface usam cliente simulado sem rede para sucesso, acesso negado, 
 
 ## Limitação de integração
 
-Na validação real mais recente, a rota `GET /registros-clinicos` já estava publicada junto da tabela `registro_clinico`. Login profissional de teste e `GET /consultas` responderam HTTP 200, mas o GET clínico respondeu HTTP 500. A inspeção encontrou filtros opcionais com `OR` e `null` dentro do `where` de `db.query`, padrão que o Xano já apresentou comportamento inesperado em `consultas_GET.xs`. O export local foi ajustado para consultar primeiro pelo escopo obrigatório do Profissional ou do Paciente (incluindo `liberado_paciente=true`) e aplicar os filtros opcionais no backend após essa consulta. Essa correção ainda precisa de validação real pelo responsável do ambiente Xano; até lá, a integração clínica continua bloqueada e não deve ser declarada funcional.
+O export da rota e da tabela `registro_clinico` inclui os GUIDs do ambiente Xano. O endpoint consulta primeiro pelo escopo obrigatório do Profissional ou do Paciente (incluindo `liberado_paciente=true`) e aplica os filtros opcionais no backend depois da consulta escopada. O principal validou no Xano: login Profissional HTTP 200; `GET /consultas` HTTP 200; `GET /registros-clinicos` autenticado HTTP 200 com coleção vazia e `Cache-Control: no-store`; perfil Administrativo HTTP 403; filtro `paciente_id=-1` HTTP 400; logout HTTP 204. As contas fictícias de teste e o Profissional associado foram inativados após a verificação. Não houve validação com um Paciente autenticado nem com Registros Clínicos existentes.
+
+Limitação observada: `paciente_id=0` retornou HTTP 200 com coleção vazia em vez de HTTP 400, embora o export contenha validação `<= 0`. A causa dessa diferença ainda precisa ser investigada e testada no Xano antes de considerar concluída a validação desse filtro. Nenhuma credencial ou dado clínico de teste é documentado aqui.
 
 O cliente `ClienteXano.listar_registros_clinicos` também normaliza a resposta sem preservar `registrado_em`, embora o export local contenha esse campo. A tela omite a data enquanto ela não estiver disponível no objeto retornado pelo cliente. Incluir a data requer uma alteração separada ao cliente da API, fora do escopo isolado desta tela.

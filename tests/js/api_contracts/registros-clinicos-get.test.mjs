@@ -12,6 +12,9 @@ test('GET /registros-clinicos restringe as consultas ao escopo autenticado no Xa
   const xano = readFileSync(resolve(root, 'backend/xano/api/sorriso_acesso/registros_clinicos_GET.xs'), 'utf8');
   assert.match(xano, /auth = "conta_acesso"/);
   assert.match(xano, /function\.run sorriso_validar_sessao/);
+  assert.match(xano, /field_name = "conta_acesso_id"/);
+  assert.match(xano, /field_value = \$auth\.id/);
+  assert.match(xano, /var\.update \$paciente_escopo \{ value = \$paciente_autenticado\.id \}/);
   assert.match(xano, /where = \$db\.registro_clinico\.profissional_id == \$profissional_escopo/);
   assert.match(xano, /where = \$db\.registro_clinico\.paciente_id == \$paciente_escopo && \$db\.registro_clinico\.liberado_paciente == true/);
   assert.match(xano, /\$registro\.paciente_id != \$input\.paciente_id/);

@@ -22,6 +22,9 @@ def test_export_get_filtra_no_xano_por_escopo_obrigatorio():
 
     assert 'auth = "conta_acesso"' in export
     assert "function.run sorriso_validar_sessao" in export
+    assert 'field_name = "conta_acesso_id"' in export
+    assert "field_value = $auth.id" in export
+    assert "var.update $paciente_escopo { value = $paciente_autenticado.id }" in export
     assert '$db.registro_clinico.profissional_id == $profissional_escopo' in export
     assert '$db.registro_clinico.paciente_id == $paciente_escopo && $db.registro_clinico.liberado_paciente == true' in export
     assert '$registro.paciente_id != $input.paciente_id' in export
