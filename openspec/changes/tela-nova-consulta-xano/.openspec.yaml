@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-10-22
+goal: Permitir que a equipe administrativa agende uma Consulta em tela própria
+  com validação de conflitos pelo Xano
