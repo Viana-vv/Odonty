@@ -12,7 +12,8 @@ INTERVALO_REVALIDACAO_SEGUNDOS = 20
 
 def limpar(estado):
     for chave in (CHAVE, CHAVE_CONTA, CHAVE_VERIFICADA, "cad_especialidades_cache",
-                  "cad_especialidades_cache_em", "cad_especialidades_erro_em"):
+                  "cad_especialidades_cache_em", "cad_especialidades_erro_em",
+                  "prontuario_historico_cache", "prontuario_paciente_id"):
         estado.pop(chave, None)
     estado.pop("pagina_equipe", None)
     for chave in list(estado):

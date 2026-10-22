@@ -21,8 +21,10 @@ from sorrisomais.pagina_prontuario_xano import renderizar
 st.session_state[sessao.CHAVE] = Credencial("token-ficticio", datetime.now(timezone.utc) + timedelta(hours=1))
 class ClienteFalso:
     def listar_consultas(self, token):
+        st.session_state["_chamadas_api_prontuario"] = st.session_state.get("_chamadas_api_prontuario", 0) + 1
         {f'raise ErroAcesso("Falha segura.", {erro})' if erro else f'return {consultas!r}'}
     def listar_registros_clinicos(self, token):
+        st.session_state["_chamadas_api_prontuario"] = st.session_state.get("_chamadas_api_prontuario", 0) + 1
         {f'raise ErroAcesso("Falha segura.", {erro})' if erro else f'return {registros!r}'}
 renderizar(ClienteFalso(), SimpleNamespace(perfis={perfis!r}))
 '''
@@ -72,3 +74,27 @@ def test_erro_401_limpa_sessao_e_pede_novo_login():
     assert not app.exception
     assert any("Sua sessão expirou. Entre novamente." in item.value for item in app.error)
     assert "credencial" not in app.session_state
+
+
+def test_rerun_ao_trocar_paciente_reutiliza_gets_da_sessao():
+    consultas = [
+        {"paciente_id": 12, "paciente_nome": "Paciente FictÃ­cia Aurora"},
+        {"paciente_id": 13, "paciente_nome": "Paciente FictÃ­cio Bruno"},
+    ]
+    app = abrir(consultas, [])
+    assert app.session_state["_chamadas_api_prontuario"] == 2
+
+    app.selectbox[0].set_value(13).run()
+
+    assert not app.exception
+    assert app.session_state["_chamadas_api_prontuario"] == 2
+
+
+def test_falha_na_api_nao_e_cacheada_e_pode_ser_tentada_novamente():
+    app = abrir([], [], erro=503)
+    assert app.session_state["_chamadas_api_prontuario"] == 1
+
+    app.run()
+
+    assert not app.exception
+    assert app.session_state["_chamadas_api_prontuario"] == 2
