@@ -8,7 +8,7 @@
 ## 2. Refletir a duração na aplicação
 
 - [ ] 2.1 Atualizar avisos de expiração e falha no logout para informar o novo limite; verificar os fluxos de sessão e expiração em `tests/test_acesso.py`.
-- [ ] 2.2 Confirmar que a sessão continua apenas no estado ativo do Streamlit e que perda de estado exige novo login, sem token em arquivo, URL, logs ou armazenamento do navegador; verificar os testes de acesso e inspeção de código.
+- [ ] 2.2 Confirmar que a sessão continua apenas no estado ativo do Streamlit e que perda de estado exige novo login, sem token em arquivo, URL, logs ou armazenamento do navegador; verificar os testes de acesso e inspeção de código.comi
 
 ## 3. Validar a change
 
