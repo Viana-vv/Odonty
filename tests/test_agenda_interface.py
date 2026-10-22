@@ -135,7 +135,37 @@ def test_profissional_consulta_agenda_sem_acao_de_criar(agenda_simulada):
 def test_administrador_pode_iniciar_nova_consulta(agenda_simulada):
     app = abrir_agenda(agenda_simulada, "administrador")
     assert any(button.key == "agenda-nova" for button in app.button)
+    assert app.button(key="agenda-abrir-nova-consulta").disabled
     assert any(button.key == "agenda-novo-horario" for button in app.button)
+
+
+def test_agenda_oferece_atalho_a_nova_consulta_somente_para_perfis_autorizados(
+        agenda_simulada, monkeypatch):
+    from types import SimpleNamespace
+    from sorrisomais import navegacao
+
+    def carregar(area):
+        assert area == "nova_consulta"
+        import streamlit as st
+
+        def renderizar(_cliente, _conta):
+            st.title("Nova Consulta simulada")
+
+        return SimpleNamespace(renderizar=renderizar)
+
+    monkeypatch.setattr(navegacao, "modulo_xano_disponivel",
+                        lambda area: area == "nova_consulta")
+    monkeypatch.setattr(navegacao, "carregar_modulo_xano", carregar)
+
+    recepcao = abrir_agenda(agenda_simulada, "recepcionista")
+    atalho = recepcao.button(key="agenda-abrir-nova-consulta")
+    assert not atalho.disabled
+    recepcao.button(key="agenda-abrir-nova-consulta").click().run()
+    assert any(item.value == "Nova Consulta simulada" for item in recepcao.title)
+
+    profissional = abrir_agenda(agenda_simulada, "profissional")
+    assert not any(button.key == "agenda-abrir-nova-consulta"
+                   for button in profissional.button)
 
 
 def test_formularios_agenda_sao_exclusivos_ao_alternar(agenda_simulada):
