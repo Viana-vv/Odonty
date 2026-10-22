@@ -7,7 +7,10 @@ query "registros-clinicos" verb=GET {
     int consulta_id?
   }
   stack {
-    util.set_header { value = "Cache-Control: no-store" duplicates = "replace" }
+    util.set_header {
+      value = "Cache-Control: no-store"
+      duplicates = "replace"
+    }
     function.run sorriso_validar_sessao {
       input = {conta_id: $auth.id, sessao_id: $auth.extras.sessao_id}
     } as $sessao
@@ -18,18 +21,24 @@ query "registros-clinicos" verb=GET {
     } as $solicitante
     conditional {
       if ($solicitante == null || $solicitante.situacao != "ativo" || ($solicitante.perfis|intersect:["profissional", "paciente"]|count) == 0) {
-        util.set_header { value = "HTTP/1.1 403 Forbidden" }
+        util.set_header {
+          value = "HTTP/1.1 403 Forbidden"
+          duplicates = "replace"
+        }
         return { value = {codigo: "ACESSO_NEGADO", mensagem: "Conta sem permissão para consultar conteúdo clínico."} }
       }
       elseif (($input.paciente_id != null && $input.paciente_id <= 0) || ($input.consulta_id != null && $input.consulta_id <= 0)) {
-        util.set_header { value = "HTTP/1.1 400 Bad Request" }
+        util.set_header {
+          value = "HTTP/1.1 400 Bad Request"
+          duplicates = "replace"
+        }
         return { value = {codigo: "DADOS_INVALIDOS", mensagem: "Confira os filtros informados."} }
       }
     }
     var $paciente_escopo { value = $input.paciente_id }
     var $profissional_escopo { value = null }
     conditional {
-      if (($solicitante.perfis|includes:"paciente")) {
+      if (($solicitante.perfis|intersect:["paciente"]|count) > 0) {
         db.get paciente {
           field_name = "conta_acesso_id"
           field_value = $auth.id
@@ -37,7 +46,10 @@ query "registros-clinicos" verb=GET {
         } as $paciente_autenticado
         conditional {
           if ($paciente_autenticado == null || $paciente_autenticado.situacao != "ativo") {
-            util.set_header { value = "HTTP/1.1 404 Not Found" }
+            util.set_header {
+              value = "HTTP/1.1 404 Not Found"
+              duplicates = "replace"
+            }
             return { value = {codigo: "RECURSO_NAO_ENCONTRADO", mensagem: "Conteúdo clínico não encontrado no escopo permitido."} }
           }
         }
@@ -51,7 +63,10 @@ query "registros-clinicos" verb=GET {
         } as $profissional_autenticado
         conditional {
           if ($profissional_autenticado == null || $profissional_autenticado.situacao != "Ativo") {
-            util.set_header { value = "HTTP/1.1 403 Forbidden" }
+            util.set_header {
+              value = "HTTP/1.1 403 Forbidden"
+              duplicates = "replace"
+            }
             return { value = {codigo: "ACESSO_NEGADO", mensagem: "Profissional sem permissão clínica ativa."} }
           }
         }
