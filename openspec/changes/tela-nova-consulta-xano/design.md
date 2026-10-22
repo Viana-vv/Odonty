@@ -15,7 +15,9 @@ Criar um módulo Streamlit independente com `renderizar(cliente, conta)`. O mód
 
 Seguir o modal da referência como formulário de página: título e instrução, seleção de Paciente, data e horário, Profissional e Procedimentos, observação administrativa e ações de cancelar/agendar. Usar estado da sessão para conservar valores durante falhas e limpar o formulário após criação confirmada.
 
-Os horários devem ser apresentados no fuso `America/Sao_Paulo`. A tela não presume elegibilidade por conta própria: a lista recebida e a resposta do Xano são autoritativas. Conflitos mantêm a tela preenchida para permitir outra escolha.
+Os horários devem ser apresentados no fuso `America/Sao_Paulo`. As leituras usam cache curto limitado à sessão autenticada para evitar GET repetido em cada rerun; o botão Atualizar limpa esse cache. Respostas de erro não são armazenadas, e erros 401, 403 ou conflito invalidam os dados em cache. A tela não presume elegibilidade por conta própria: a lista recebida e a resposta do Xano são autoritativas. Conflitos mantêm a tela preenchida para permitir outra escolha.
+
+As respostas bem-sucedidas das leituras são mantidas somente na sessão atual por até 20 segundos para evitar repetir chamadas em cada rerun do Streamlit. Erros não são cacheados; sessão expirada, conflito de agenda ou criação confirmada invalidam o cache.
 
 ## Testes
 
