@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from sorrisomais.api import ErroAcesso
@@ -27,3 +29,14 @@ def test_post_login_nao_exibe_corpo_de_erro(cliente, http):
     with pytest.raises(ErroAcesso) as erro:
         cliente.entrar("pessoa@example.com", "senha-ficticia")
     assert "SEGREDO" not in str(erro.value)
+
+
+def test_post_login_xano_autentica_conta_paciente_ativa():
+    caminho = (Path(__file__).resolve().parents[2] / "backend" / "xano" / "api"
+               / "sorriso_acesso" / "auth" / "login_POST.xs")
+    codigo = caminho.read_text(encoding="utf-8-sig")
+
+    assert '"paciente"' in codigo
+    assert "$conta.situacao != \"ativo\"" in codigo
+    assert "security.check_password" in codigo
+    assert "security.create_auth_token" in codigo

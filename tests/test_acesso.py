@@ -124,17 +124,25 @@ def test_resposta_nao_json(cliente, http):
         cliente.identificar("ficticio")
 
 
-@pytest.mark.parametrize("perfis", [["paciente"], ["inventado"], ["profissional", "profissional"], [1]])
+@pytest.mark.parametrize("perfis", [["inventado"], ["profissional", "profissional"], [1]])
 def test_perfis_invalidos(cliente, http, perfis):
     http.return_value = resposta(identidade(perfis))
     with pytest.raises(ErroAcesso):
         cliente.identificar("ficticio")
 
 
+def test_perfil_paciente_e_reconhecido(cliente, http):
+    http.return_value = resposta(identidade(["paciente"]))
+
+    conta = cliente.identificar("ficticio")
+
+    assert conta.perfis == ("paciente",)
+
+
 def test_multiplos_perfis(cliente, http):
     http.return_value = resposta(identidade(["profissional", "administrador", "paciente"]))
     conta = cliente.identificar("ficticio")
-    assert conta.perfis == ("administrador", "profissional")
+    assert conta.perfis == ("administrador", "profissional", "paciente")
     assert http.call_args.kwargs["headers"]["Authorization"] == "Bearer ficticio"
 
 

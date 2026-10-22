@@ -35,7 +35,7 @@ query "auth/login" verb=POST {
       }
     }
     conditional {
-      if (($conta.perfis|intersect:["administrador", "recepcionista", "profissional"]|count) == 0) {
+      if (($conta.perfis|intersect:["administrador", "recepcionista", "profissional", "paciente"]|count) == 0) {
         util.set_header { value = "HTTP/1.1 403 Forbidden" }
         return { value = {codigo: "ACESSO_NEGADO", mensagem: "Acesso não permitido."} }
       }

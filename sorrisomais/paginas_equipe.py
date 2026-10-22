@@ -70,6 +70,16 @@ def abrir_agenda():
     st.session_state["pagina_equipe"] = "agenda"
 
 
+def abrir_area_conectada(area):
+    limpar_formulario()
+    pagina_paciente.limpar()
+    st.session_state["pagina_equipe"] = area
+
+
+def abrir_nova_consulta():
+    abrir_area_conectada("nova_consulta")
+
+
 def _navegar_data_agenda(dias):
     dia_atual = st.session_state.get(
         "agenda_data_input", st.session_state.get("agenda_data", date.today())
@@ -148,9 +158,16 @@ def _renderizar_agenda(cliente, conta):
                    on_click=_navegar_data_agenda, args=(1,))
     pode_agendar = bool(perfis.intersection({"administrador", "recepcionista"}))
     if pode_agendar:
-        nova_consulta, novo_horario = st.columns(2, gap="small")
+        nova_consulta, nova_consulta_pagina, novo_horario = st.columns(3, gap="small")
         nova_consulta.button("＋ Nova consulta", key="agenda-nova", type="primary", width="stretch",
                     on_click=_alternar_formulario_agenda, args=("agenda_nova",))
+        consulta_integrada = navegacao.modulo_xano_disponivel("nova_consulta")
+        nova_consulta_pagina.button(
+            "Abrir Nova Consulta", key="agenda-abrir-nova-consulta",
+            on_click=abrir_nova_consulta if consulta_integrada else None,
+            disabled=not consulta_integrada, width="stretch",
+            help=None if consulta_integrada else "A tela Nova Consulta ainda não está integrada ao Xano.",
+        )
         novo_horario.button("＋ Novo horário", key="agenda-novo-horario", width="stretch",
                     on_click=_alternar_formulario_agenda, args=("agenda_nova_disponibilidade",))
 
@@ -458,7 +475,7 @@ def renderizar_cadastro_modal(cliente):
         renderizar_cadastro(cliente)
 
 
-def renderizar_inicio(conta, administrador, pode_cadastrar_paciente):
+def renderizar_inicio(conta, administrador, pode_cadastrar_paciente, pode_agendar):
     dia = date.today()
     dias = ("SEGUNDA-FEIRA", "TERÇA-FEIRA", "QUARTA-FEIRA", "QUINTA-FEIRA",
             "SEXTA-FEIRA", "SÁBADO", "DOMINGO")
@@ -469,8 +486,14 @@ def renderizar_inicio(conta, administrador, pode_cadastrar_paciente):
     primeiro_nome = conta.nome.split()[0] if conta.nome.strip() else "equipe"
     titulo.title(f"Olá, {primeiro_nome}! 👋")
     titulo.caption("Aqui está um resumo da clínica hoje.")
-    acao.button("＋ Nova consulta", key="inicio-nova-consulta", disabled=True,
-                width="stretch", help="A integração de Consultas com o Xano ainda não está disponível.")
+    consulta_integrada = navegacao.modulo_xano_disponivel("nova_consulta")
+    if pode_agendar:
+        acao.button(
+            "＋ Nova consulta", key="inicio-nova-consulta",
+            on_click=abrir_nova_consulta if consulta_integrada else None,
+            disabled=not consulta_integrada, width="stretch",
+            help=None if consulta_integrada else "A tela Nova Consulta ainda não está integrada ao Xano.",
+        )
 
     indicadores = (
         ("Consultas hoje", "▢"), ("Atendimentos", "✓"),
@@ -500,9 +523,12 @@ def renderizar_inicio(conta, administrador, pode_cadastrar_paciente):
             if pode_cadastrar_paciente:
                 st.button("＋  Novo paciente", on_click=pagina_paciente.abrir,
                           key="inicio-cadastrar-paciente", type="primary", width="stretch")
-            st.button("▤  Abrir prontuário", key="inicio-prontuario-indisponivel",
-                      disabled=True, width="stretch",
-                      help="A listagem de Prontuários ainda não está integrada ao Xano.")
+            if navegacao.pode_acessar(conta.perfis, "prontuarios"):
+                prontuario_integrado = navegacao.modulo_xano_disponivel("prontuarios")
+                st.button("▤  Abrir prontuário", key="inicio-prontuario-indisponivel",
+                          on_click=(lambda: abrir_area_conectada("prontuarios")) if prontuario_integrado else None,
+                          disabled=not prontuario_integrado, width="stretch",
+                          help=None if prontuario_integrado else "A listagem de Prontuários ainda não está integrada ao Xano.")
             st.button("▦  Visualizar agenda", key="inicio-agenda-indisponivel",
                       disabled=True, width="stretch",
                       help="A agenda ainda não está integrada ao Xano.")
@@ -519,7 +545,9 @@ def renderizar(conta, cliente):
         paginas_demo.renderizar(conta, cliente)
         return
 
-    administrador = "administrador" in conta.perfis
+    perfis = set(conta.perfis)
+    paciente_exclusivo = perfis == {"paciente"}
+    administrador = "administrador" in perfis
     pode_cadastrar_paciente = (cliente.configuracao.cadastro_paciente_habilitado
                               and bool(set(conta.perfis) & {"administrador", "recepcionista"}))
     if not administrador:
@@ -530,7 +558,16 @@ def renderizar(conta, cliente):
         pagina_paciente.limpar()
         if st.session_state.get("pagina_equipe") == "paciente":
             st.session_state.pop("pagina_equipe", None)
-    pagina = st.session_state.get("pagina_equipe", "inicio")
+    pagina_padrao = "prontuarios" if paciente_exclusivo else "inicio"
+    pagina = st.session_state.get("pagina_equipe", pagina_padrao)
+    if paciente_exclusivo and pagina != "prontuarios":
+        pagina = pagina_padrao
+        st.session_state["pagina_equipe"] = pagina
+    elif pagina not in {"inicio", "agenda", "cadastro", "paciente"} and (
+            not navegacao.pode_acessar(conta.perfis, pagina)
+            or not navegacao.modulo_xano_disponivel(pagina)):
+        pagina = pagina_padrao
+        st.session_state["pagina_equipe"] = pagina
     ocupado = (st.session_state.get("cad_processando", False)
                or st.session_state.get("pac_processando", False))
     with st.container(key="layout-equipe"):
@@ -538,8 +575,9 @@ def renderizar(conta, cliente):
         with menu:
             with st.container(key="menu-equipe", border=True):
                 renderizar_marca_menu()
-                st.button("Visão geral", on_click=abrir_inicio, key="menu-inicio",
-                          disabled=ocupado, width="stretch")
+                if not paciente_exclusivo:
+                    st.button("Visão geral", on_click=abrir_inicio, key="menu-inicio",
+                              disabled=ocupado, width="stretch")
                 for area in navegacao.areas_visiveis(
                     conta.perfis, modo_demonstracao=False,
                     cadastro_paciente_habilitado=cliente.configuracao.cadastro_paciente_habilitado,
@@ -548,9 +586,16 @@ def renderizar(conta, cliente):
                         st.button(area["rotulo"], key="menu-agenda", on_click=abrir_agenda,
                                   disabled=ocupado, width="stretch")
                     elif area["chave"] != "inicio":
-                        st.button(area["rotulo"], key=f"menu-indisponivel-{area['chave']}",
-                                  disabled=True, width="stretch",
-                                  help="A integração desta área com o Xano ainda não está disponível.")
+                        st.button(
+                            area["rotulo"],
+                            key=(f"menu-{area['chave']}" if area["disponivel"]
+                                 else f"menu-indisponivel-{area['chave']}"),
+                            on_click=(lambda chave=area["chave"]: abrir_area_conectada(chave))
+                            if area["disponivel"] else None,
+                            disabled=ocupado or not area["disponivel"], width="stretch",
+                            help=None if area["disponivel"]
+                            else "A integração desta área com o Xano ainda não está disponível.",
+                        )
                 st.caption("Cadastros integrados")
                 if pode_cadastrar_paciente:
                     st.button("Cadastrar paciente", on_click=pagina_paciente.abrir,
@@ -574,9 +619,17 @@ def renderizar(conta, cliente):
                 if pagina == "agenda":
                     renderizar_topbar(conta, "agenda")
                     _renderizar_agenda(cliente, conta)
-                else:
+                elif pagina == "inicio":
                     renderizar_topbar(conta, "inicio")
-                    renderizar_inicio(conta, administrador, pode_cadastrar_paciente)
+                    renderizar_inicio(conta, administrador, pode_cadastrar_paciente,
+                                      bool(set(conta.perfis) & navegacao.PERFIS_NOVA_CONSULTA))
+                else:
+                    renderizar_topbar(conta, pagina)
+                    modulo = navegacao.carregar_modulo_xano(pagina)
+                    if modulo and callable(getattr(modulo, "renderizar", None)):
+                        modulo.renderizar(cliente, conta)
+                    else:
+                        st.info("A integração desta área com o Xano ainda não está disponível.")
     if administrador and pagina == "cadastro":
         renderizar_cadastro_modal(cliente)
     elif pode_cadastrar_paciente and pagina == "paciente":
