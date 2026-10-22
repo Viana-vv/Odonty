@@ -29,6 +29,15 @@ def _perfis(conta):
     return {perfil.casefold() for perfil in getattr(conta, "perfis", ())}
 
 
+def _exibir_erro_api(error, mensagem_generica):
+    if error.status == 401:
+        sessao.limpar(st.session_state)
+    if error.status in (401, 403, 409, 429):
+        st.error(str(error))
+    else:
+        st.error(mensagem_generica)
+
+
 def renderizar(cliente, conta):
     """Renderiza Nova Consulta usando exclusivamente os contratos Xano existentes."""
     if not _perfis(conta).intersection({"administrador", "recepcionista"}):
@@ -41,6 +50,7 @@ def renderizar(cliente, conta):
             "nova-consulta-paciente", "nova-consulta-data",
             "nova-consulta-profissional", "nova-consulta-horario",
             "nova-consulta-procedimentos", "nova-consulta-observacao",
+            "nova-consulta-filtro-horarios",
         ):
             st.session_state.pop(chave, None)
         st.success("Consulta agendada.")
@@ -56,8 +66,9 @@ def renderizar(cliente, conta):
     try:
         opcoes = cliente.listar_opcoes_agenda(token)
     except ErroAcesso as error:
-        st.error(str(error) if error.status in (401, 403, 429)
-                 else "Não foi possível carregar as opções de agendamento. Tente novamente.")
+        _exibir_erro_api(
+            error, "Não foi possível carregar as opções de agendamento. Tente novamente."
+        )
         return
 
     pacientes = {item["id"]: item["nome"] for item in opcoes.get("pacientes", [])}
@@ -79,14 +90,18 @@ def renderizar(cliente, conta):
                                    format_func=profissionais.get,
                                    key="nova-consulta-profissional")
 
+    filtro_horarios = (profissional_id, data_consulta)
+    if st.session_state.get("nova-consulta-filtro-horarios") != filtro_horarios:
+        st.session_state.pop("nova-consulta-horario", None)
+        st.session_state["nova-consulta-filtro-horarios"] = filtro_horarios
+
     inicio, fim = _limites_data(data_consulta)
     try:
         disponibilidades = cliente.listar_disponibilidades(
             token, profissional_id, inicio, fim
         )
     except ErroAcesso as error:
-        st.error(str(error) if error.status in (401, 403, 429)
-                 else "Não foi possível carregar os horários disponíveis.")
+        _exibir_erro_api(error, "Não foi possível carregar os horários disponíveis.")
         return
 
     disponibilidades = [item for item in disponibilidades
@@ -134,7 +149,7 @@ def renderizar(cliente, conta):
             motivo=observacao.strip() or None,
         )
     except ErroAcesso as error:
-        st.error(str(error))
+        _exibir_erro_api(error, "Não foi possível agendar a Consulta. Tente novamente.")
         return
 
     st.session_state["nova_consulta_concluida"] = True
