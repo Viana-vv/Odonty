@@ -25,4 +25,5 @@ table registro_clinico {
     {type: "btree", field: [{name: "prontuario_id", op: "asc"}, {name: "registrado_em", op: "desc"}]}
     {type: "btree", field: [{name: "paciente_id", op: "asc"}, {name: "profissional_id", op: "asc"}]}
   ]
+  guid = "1dV3Wf0c8LKtWrRe6ZrHYaPoYdY"
 }
