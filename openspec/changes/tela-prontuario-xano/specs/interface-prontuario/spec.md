@@ -32,3 +32,8 @@ A interface MUST evitar registrar conteúdo clínico em logs e MUST tratar o Xan
 
 - **WHEN** a Conta de Acesso seleciona um Paciente disponível
 - **THEN** a interface apresenta apenas os Registros Clínicos retornados que correspondem ao identificador selecionado
+
+#### Scenario: Sessão expirada durante a consulta
+
+- **WHEN** uma das rotas retorna HTTP 401
+- **THEN** a interface limpa a sessão local e solicita novo acesso sem manter o conteúdo clínico na tela

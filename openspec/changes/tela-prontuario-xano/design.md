@@ -15,3 +15,7 @@ O carregamento acontece em uma operação com indicador visual. Falhas de API ex
 ## Verificação
 
 Testes de interface usam cliente simulado sem rede para sucesso, acesso negado, erro, vazio e seleção. Os contratos GET permanecem inalterados e já têm cobertura Python e JavaScript.
+
+## Limitação de integração
+
+Na validação conjunta, o Xano conectado respondeu HTTP 404 a `GET /registros-clinicos`, embora o export local da rota exista. Portanto, essa rota local não está publicada no Xano conectado e a tela ainda não pode ser considerada funcional em produção. Não criar endpoint alternativo nem inferir outro caminho; a publicação e a validação do contrato existente precisam ocorrer antes dessa conclusão.

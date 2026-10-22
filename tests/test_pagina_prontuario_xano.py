@@ -21,9 +21,9 @@ from sorrisomais.pagina_prontuario_xano import renderizar
 st.session_state[sessao.CHAVE] = Credencial("token-ficticio", datetime.now(timezone.utc) + timedelta(hours=1))
 class ClienteFalso:
     def listar_consultas(self, token):
-        {f'raise ErroAcesso("Falha segura.", 403)' if erro else f'return {consultas!r}'}
+        {f'raise ErroAcesso("Falha segura.", {erro})' if erro else f'return {consultas!r}'}
     def listar_registros_clinicos(self, token):
-        {f'raise ErroAcesso("Falha segura.", 403)' if erro else f'return {registros!r}'}
+        {f'raise ErroAcesso("Falha segura.", {erro})' if erro else f'return {registros!r}'}
 renderizar(ClienteFalso(), SimpleNamespace(perfis={perfis!r}))
 '''
     return AppTest.from_string(script, default_timeout=20).run()
@@ -58,7 +58,15 @@ def test_estados_vazios(consultas, registros, esperado):
     assert any(esperado in item.value for item in app.info)
 
 
-def test_falha_api_apresenta_mensagem_segura():
-    app = abrir([], [], erro=True)
+def test_erro_403_mantem_sessao_e_mensagem_de_permissao():
+    app = abrir([], [], erro=403)
     assert not app.exception
     assert any("Falha segura." in item.value for item in app.error)
+    assert "credencial" in app.session_state
+
+
+def test_erro_401_limpa_sessao_e_pede_novo_login():
+    app = abrir([], [], erro=401)
+    assert not app.exception
+    assert any("Sua sessão expirou. Entre novamente." in item.value for item in app.error)
+    assert "credencial" not in app.session_state

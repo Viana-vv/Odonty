@@ -70,7 +70,11 @@ def renderizar(cliente, conta):
             consultas = cliente.listar_consultas(credencial.token)
             registros = cliente.listar_registros_clinicos(credencial.token)
     except ErroAcesso as error:
-        st.error(str(error))
+        if error.status == 401:
+            sessao.limpar(st.session_state)
+            st.error("Sua sessão expirou. Entre novamente.")
+        else:
+            st.error(str(error))
         return
     except Exception:
         st.error("Não foi possível carregar o histórico clínico. Tente novamente em instantes.")
