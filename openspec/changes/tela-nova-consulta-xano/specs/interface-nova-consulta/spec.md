@@ -15,6 +15,10 @@ A interface MUST apresentar Nova Consulta em uma tela própria seguindo a hierar
 - **WHEN** a equipe seleciona Profissional e data da Consulta
 - **THEN** a interface consulta as Disponibilidades desse Profissional para o intervalo daquela data e apresenta seus horários
 
+#### Scenario: Atualizar opções e horários
+- **WHEN** a equipe solicita a atualização dos dados da tela
+- **THEN** a interface refaz as leituras de opções e Disponibilidades usando os contratos existentes
+
 #### Scenario: Envio válido
 - **WHEN** a equipe envia Paciente, Disponibilidade e campos opcionais válidos
 - **THEN** a interface envia uma Consulta pelo contrato POST existente e confirma sucesso somente após resposta positiva do Xano

@@ -6,7 +6,7 @@ O agendamento está disponível como formulário dentro da Agenda, enquanto a re
 
 - Criar uma tela própria de Nova Consulta seguindo a referência `08-nova-consulta.png`.
 - Usar os contratos existentes para opções de Agenda, Disponibilidades e criação de Consulta.
-- Tratar falhas de carregamento, campos obrigatórios e conflitos retornados pelo Xano.
+- Tratar falhas de carregamento, campos obrigatórios e conflitos retornados pelo Xano, com atualização explícita das opções e horários.
 
 Fora do escopo: criar ou alterar endpoints, regras de negócio, autorização no Xano, navegação global e outros formulários.
 

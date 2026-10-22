@@ -65,6 +65,18 @@ def test_recepcionista_agenda_com_contratos_existentes_sem_rede():
     assert app.session_state["contagem_disponibilidades"] == 1
 
 
+def test_atualizar_refaz_leitura_de_opcoes_e_disponibilidades():
+    app = _abrir_tela()
+    assert app.session_state["contagem_opcoes"] == 1
+    assert app.session_state["contagem_disponibilidades"] == 1
+
+    app.button(key="nova-consulta-atualizar").click().run()
+
+    assert not app.exception
+    assert app.session_state["contagem_opcoes"] == 2
+    assert app.session_state["contagem_disponibilidades"] == 2
+
+
 @pytest.mark.parametrize("perfil", ["profissional", "paciente"])
 def test_perfil_nao_administrativo_nao_recebe_formulario_de_agendamento(perfil):
     app = _abrir_tela(perfil=perfil)

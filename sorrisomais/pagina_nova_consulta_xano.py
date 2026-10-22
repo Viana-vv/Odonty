@@ -62,8 +62,8 @@ def _exibir_erro_api(error, mensagem_generica):
     if error.status == 401:
         sessao.limpar(st.session_state)
         _limpar_cache_leituras()
-    elif error.status == 409:
-        # O horário pode ter sido reservado por outra pessoa após a leitura.
+    elif error.status in (403, 409):
+        # Permissões ou horários podem mudar depois que a lista foi carregada.
         _limpar_cache_leituras()
     if error.status in (401, 403, 409, 429):
         st.error(str(error))
@@ -72,8 +72,14 @@ def _exibir_erro_api(error, mensagem_generica):
 
 
 def _renderizar_formulario(cliente, token, pacientes, profissionais, procedimentos):
-    st.subheader("Nova consulta")
-    st.caption("Escolha o Paciente, o Profissional e um horário.")
+    titulo, atualizar = st.columns([3, 1], vertical_alignment="center")
+    titulo.subheader("Nova consulta")
+    titulo.caption("Escolha o Paciente, o Profissional e um horário.")
+    atualizar.button(
+        "Atualizar", key="nova-consulta-atualizar",
+        help="Recarregar Pacientes, Profissionais, Procedimentos e horários.",
+        on_click=_limpar_cache_leituras,
+    )
     paciente_id = st.selectbox(
         "Paciente", list(pacientes), format_func=pacientes.get,
         index=None, placeholder="Selecione um Paciente",
