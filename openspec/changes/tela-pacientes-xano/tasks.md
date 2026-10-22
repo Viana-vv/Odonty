@@ -1,7 +1,7 @@
 ## 1. Tela conectada
 
 - [x] 1.1 Criar módulo isolado de listagem que obtenha opções pela rota autorizada existente e apresente somente ID e nome; verificado por teste sem rede que o cliente existente é chamado com a sessão e apenas `pacientes` é renderizado.
-- [x] 1.2 Implementar busca por nome e estados de carregamento, falha e lista vazia com a referência visual aprovada; verificado por testes da interface sem rede.
+- [x] 1.2 Implementar busca por nome e estados de carregamento, falha e lista vazia com a referência visual aprovada; reutilizar a resposta por sessão e permitir atualização manual sem cachear falhas; verificado por testes da interface sem rede.
 
 ## 2. Verificação e revisão
 
@@ -12,6 +12,7 @@
 
 - [x] 3.1 Implementar mapa de módulos e despacho de áreas conectadas disponíveis, protegendo acesso direto por perfil e preservando o modo de demonstração; verificado com módulos simulados e regressão do menu.
 - [x] 3.2 Oferecer atalhos condicionais para Nova Consulta na Visão geral e Agenda, preservando o formulário atual da Agenda; verificado para Administrador, Recepcionista, Profissional e módulo ausente.
+- [x] 3.3 Permitir identificação de Conta de Acesso ativa com perfil Paciente, habilitar somente Prontuários no roteador e preservar validação de vínculo/escopo nas rotas clínicas; verificado por contratos Python/JavaScript e testes do menu/dispatcher sem rede.
 
 ## 4. Verificação final
 

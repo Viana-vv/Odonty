@@ -21,6 +21,27 @@ def test_dentista_recebe_prontuario_mas_nao_areas_administrativas():
     assert not pode_acessar({"profissional"}, "procedimentos")
 
 
+def test_paciente_recebe_somente_prontuario_no_modo_xano(monkeypatch):
+    from importlib.machinery import ModuleSpec
+    from sorrisomais import navegacao
+
+    nome_modulo = f"sorrisomais.{MODULOS_XANO['prontuarios']}"
+    monkeypatch.setattr(
+        navegacao, "find_spec",
+        lambda nome: ModuleSpec(nome, loader=None) if nome == nome_modulo else None,
+    )
+
+    areas = areas_visiveis({"paciente"}, modo_demonstracao=False)
+
+    assert {area["chave"] for area in areas} == {"prontuarios"}
+    assert all(area["disponivel"] for area in areas)
+    assert pode_acessar({"paciente"}, "prontuarios")
+    assert not pode_acessar({"paciente"}, "pacientes")
+    assert not pode_acessar({"paciente"}, "agenda")
+    assert not pode_acessar({"paciente"}, "profissionais")
+    assert not pode_acessar({"paciente"}, "procedimentos")
+
+
 def test_modo_xano_habilita_areas_com_modulos_integrados(monkeypatch):
     from importlib.machinery import ModuleSpec
     from sorrisomais import navegacao
@@ -39,6 +60,22 @@ def test_modo_xano_habilita_areas_com_modulos_integrados(monkeypatch):
     assert modulo_xano_disponivel("nova_consulta")
     assert areas["agenda"]
     assert "prontuarios" not in areas
+
+
+def test_modo_xano_habilita_prontuario_para_profissional_com_modulo_integrado(monkeypatch):
+    from importlib.machinery import ModuleSpec
+    from sorrisomais import navegacao
+
+    nome_modulo = f"sorrisomais.{MODULOS_XANO['prontuarios']}"
+    monkeypatch.setattr(
+        navegacao, "find_spec",
+        lambda nome: ModuleSpec(nome, loader=None) if nome == nome_modulo else None,
+    )
+
+    areas = {item["chave"]: item["disponivel"]
+             for item in areas_visiveis({"profissional"}, modo_demonstracao=False)}
+
+    assert areas["prontuarios"]
 
 
 def test_modulos_ausentes_permanecem_indisponiveis_no_modo_xano(monkeypatch):

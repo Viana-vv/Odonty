@@ -33,3 +33,18 @@ A interface SHALL usar exclusivamente a rota GET `/agenda/opcoes` existente, que
 #### Scenario: Recursos de cadastro indisponíveis nesta tela
 - **WHEN** o usuário consulta a listagem
 - **THEN** não são oferecidas ações para cadastrar, editar, inativar ou consultar detalhes do Paciente
+
+### Requirement: Reutilização da resposta por sessão
+A interface SHALL reutilizar a resposta bem-sucedida de Pacientes durante a sessão por até 20 segundos para que a busca local e os reruns do Streamlit não repitam a chamada ao Xano. A interface SHALL oferecer atualização manual, SHALL NOT armazenar respostas de erro e SHALL limpar os dados ao encerrar ou invalidar a sessão.
+
+#### Scenario: Busca local após carregamento
+- **WHEN** o usuário altera o texto de busca após carregar a lista
+- **THEN** a interface filtra os dados da sessão sem enviar outro GET ao Xano
+
+#### Scenario: Atualização solicitada
+- **WHEN** o usuário aciona Atualizar
+- **THEN** a interface faz uma nova solicitação GET e exibe a resposta atual
+
+#### Scenario: Resposta de erro
+- **WHEN** a solicitação GET falha
+- **THEN** a falha não é cacheada e uma nova tentativa pode carregar dados atuais

@@ -8,7 +8,7 @@ AREAS = (
     ("agenda", "Agenda", {"administrador", "recepcionista", "profissional"}, False),
     ("pacientes", "Pacientes", {"administrador", "recepcionista"}, False),
     ("profissionais", "Profissionais", {"administrador", "recepcionista"}, False),
-    ("prontuarios", "Prontuários", {"profissional"}, False),
+    ("prontuarios", "Prontuários", {"profissional", "paciente"}, False),
     ("procedimentos", "Procedimentos", {"administrador"}, False),
 )
 

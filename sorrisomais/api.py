@@ -8,8 +8,9 @@ import requests
 
 from .config import Configuracao
 
-ROTULOS = {"administrador": "Administrador", "recepcionista": "Recepcionista", "profissional": "Dentista"}
-PERFIS_DOMINIO = set(ROTULOS) | {"paciente"}
+ROTULOS = {"administrador": "Administrador", "recepcionista": "Recepcionista",
+           "profissional": "Dentista", "paciente": "Paciente"}
+PERFIS_DOMINIO = set(ROTULOS)
 INDISPONIVEL = "Não foi possível conectar ao serviço. Tente novamente em instantes."
 
 

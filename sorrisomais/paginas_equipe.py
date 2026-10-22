@@ -545,7 +545,9 @@ def renderizar(conta, cliente):
         paginas_demo.renderizar(conta, cliente)
         return
 
-    administrador = "administrador" in conta.perfis
+    perfis = set(conta.perfis)
+    paciente_exclusivo = perfis == {"paciente"}
+    administrador = "administrador" in perfis
     pode_cadastrar_paciente = (cliente.configuracao.cadastro_paciente_habilitado
                               and bool(set(conta.perfis) & {"administrador", "recepcionista"}))
     if not administrador:
@@ -556,11 +558,15 @@ def renderizar(conta, cliente):
         pagina_paciente.limpar()
         if st.session_state.get("pagina_equipe") == "paciente":
             st.session_state.pop("pagina_equipe", None)
-    pagina = st.session_state.get("pagina_equipe", "inicio")
-    if pagina not in {"inicio", "agenda", "cadastro", "paciente"} and (
+    pagina_padrao = "prontuarios" if paciente_exclusivo else "inicio"
+    pagina = st.session_state.get("pagina_equipe", pagina_padrao)
+    if paciente_exclusivo and pagina != "prontuarios":
+        pagina = pagina_padrao
+        st.session_state["pagina_equipe"] = pagina
+    elif pagina not in {"inicio", "agenda", "cadastro", "paciente"} and (
             not navegacao.pode_acessar(conta.perfis, pagina)
             or not navegacao.modulo_xano_disponivel(pagina)):
-        pagina = "inicio"
+        pagina = pagina_padrao
         st.session_state["pagina_equipe"] = pagina
     ocupado = (st.session_state.get("cad_processando", False)
                or st.session_state.get("pac_processando", False))
@@ -569,8 +575,9 @@ def renderizar(conta, cliente):
         with menu:
             with st.container(key="menu-equipe", border=True):
                 renderizar_marca_menu()
-                st.button("Visão geral", on_click=abrir_inicio, key="menu-inicio",
-                          disabled=ocupado, width="stretch")
+                if not paciente_exclusivo:
+                    st.button("Visão geral", on_click=abrir_inicio, key="menu-inicio",
+                              disabled=ocupado, width="stretch")
                 for area in navegacao.areas_visiveis(
                     conta.perfis, modo_demonstracao=False,
                     cadastro_paciente_habilitado=cliente.configuracao.cadastro_paciente_habilitado,

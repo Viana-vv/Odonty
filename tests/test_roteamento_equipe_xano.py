@@ -117,6 +117,7 @@ def test_atalho_nova_consulta_fica_indisponivel_quando_modulo_esta_ausente(monke
     [
         ("profissionais", "administrador"),
         ("prontuarios", "profissional"),
+        ("prontuarios", "paciente"),
         ("procedimentos", "administrador"),
         ("nova_consulta", "recepcionista"),
     ],
@@ -128,6 +129,13 @@ def test_modulos_isolados_abrem_com_perfil_autorizado(area, perfil, monkeypatch)
     chave_atalho = ("inicio-nova-consulta" if area == "nova_consulta"
                     else f"menu-{area}")
     assert any(button.key == chave_atalho and not button.disabled for button in app.button)
+    if perfil == "paciente":
+        assert app.session_state["pagina_equipe"] == "prontuarios"
+        assert not any(button.key == "menu-inicio" for button in app.button)
+        assert not any(button.key in {
+            "menu-agenda", "menu-pacientes", "menu-profissionais",
+            "menu-procedimentos", "menu-nova_consulta",
+        } for button in app.button)
     app.button(key=chave_atalho).click().run()
 
     assert not app.exception
