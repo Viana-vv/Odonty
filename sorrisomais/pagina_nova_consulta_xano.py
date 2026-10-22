@@ -1,4 +1,7 @@
 """Tela isolada para agendamento conectado de Consulta."""
+import copy
+import hashlib
+import time as relogio
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
@@ -8,6 +11,32 @@ from .api import ErroAcesso
 from . import sessao
 
 FUSO_CLINICA = ZoneInfo("America/Sao_Paulo")
+TTL_CACHE_LEITURAS_SEGUNDOS = 20
+
+
+def _limpar_cache_leituras():
+    st.session_state.pop("nova-consulta-cache-leituras", None)
+
+
+def _leitura_com_cache(token, chave, carregar):
+    """Evita repetir GETs em cada rerun sem compartilhar dados entre sessões."""
+    cache = st.session_state.setdefault("nova-consulta-cache-leituras", {})
+    token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    chave_cache = (token_hash, *chave)
+    agora = relogio.monotonic()
+    entrada = cache.get(chave_cache)
+    if entrada and entrada[0] > agora:
+        return copy.deepcopy(entrada[1])
+    cache.pop(chave_cache, None)
+
+    # Só respostas bem-sucedidas são guardadas; ErroAcesso não deixa dados
+    # antigos serem apresentados como se fossem resultado da leitura atual.
+    resposta = carregar()
+    cache[chave_cache] = (
+        relogio.monotonic() + TTL_CACHE_LEITURAS_SEGUNDOS,
+        copy.deepcopy(resposta),
+    )
+    return resposta
 
 
 def _limites_data(dia):
@@ -32,6 +61,10 @@ def _perfis(conta):
 def _exibir_erro_api(error, mensagem_generica):
     if error.status == 401:
         sessao.limpar(st.session_state)
+        _limpar_cache_leituras()
+    elif error.status == 409:
+        # O horário pode ter sido reservado por outra pessoa após a leitura.
+        _limpar_cache_leituras()
     if error.status in (401, 403, 409, 429):
         st.error(str(error))
     else:
@@ -64,8 +97,12 @@ def _renderizar_formulario(cliente, token, pacientes, profissionais, procediment
 
     inicio, fim = _limites_data(data_consulta)
     try:
-        disponibilidades = cliente.listar_disponibilidades(
-            token, profissional_id, inicio, fim
+        disponibilidades = _leitura_com_cache(
+            token,
+            ("disponibilidades", profissional_id, inicio, fim),
+            lambda: cliente.listar_disponibilidades(
+                token, profissional_id, inicio, fim
+            ),
         )
     except ErroAcesso as error:
         _exibir_erro_api(error, "Não foi possível carregar os horários disponíveis.")
@@ -78,7 +115,7 @@ def _renderizar_formulario(cliente, token, pacientes, profissionais, procediment
         st.info("Nenhum horário disponível para este Profissional nesta data.")
 
     horario_coluna, procedimento_coluna = st.columns(2, gap="medium")
-    with st.form("nova-consulta-form"):
+    with st.form("nova-consulta-form", border=False):
         disponibilidade_id = horario_coluna.selectbox(
             "Horário", list(horarios), format_func=horarios.get,
             index=None, placeholder="Selecione um horário", disabled=not horarios,
@@ -86,7 +123,8 @@ def _renderizar_formulario(cliente, token, pacientes, profissionais, procediment
         )
         procedimento_ids = procedimento_coluna.multiselect(
             "Procedimentos (opcional)", list(procedimentos),
-            format_func=procedimentos.get, key="nova-consulta-procedimentos",
+            format_func=procedimentos.get, placeholder="Selecione",
+            key="nova-consulta-procedimentos",
         )
         observacao = st.text_area(
             "Observações (opcional)", max_chars=1000,
@@ -139,6 +177,7 @@ def renderizar(cliente, conta):
             "nova-consulta-filtro-horarios",
         ):
             st.session_state.pop(chave, None)
+        _limpar_cache_leituras()
         st.success("Consulta agendada.")
 
     credencial = st.session_state.get(sessao.CHAVE)
@@ -148,7 +187,11 @@ def renderizar(cliente, conta):
         return
 
     try:
-        opcoes = cliente.listar_opcoes_agenda(token)
+        opcoes = _leitura_com_cache(
+            token,
+            ("agenda/opcoes",),
+            lambda: cliente.listar_opcoes_agenda(token),
+        )
     except ErroAcesso as error:
         _exibir_erro_api(
             error, "Não foi possível carregar as opções de agendamento. Tente novamente."
@@ -162,5 +205,5 @@ def renderizar(cliente, conta):
         st.info("Cadastre Pacientes e Profissionais ativos antes de agendar.")
         return
 
-    with st.container(key="formulario-equipe"):
+    with st.container(key="formulario-nova-consulta"):
         _renderizar_formulario(cliente, token, pacientes, profissionais, procedimentos)

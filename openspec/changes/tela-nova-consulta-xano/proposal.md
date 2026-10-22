@@ -20,6 +20,6 @@ Nenhuma.
 
 ## Impact
 
-- Novo módulo Streamlit `sorrisomais/pagina_nova_consulta_xano.py`, testado isoladamente.
+- Novo módulo Streamlit `sorrisomais/pagina_nova_consulta_xano.py` e estilos escopados em `assets/estilos.css`, testados isoladamente.
 - Os contratos existentes de `GET /agenda/opcoes`, `GET /disponibilidades` e `POST /consultas` são consumidos pelo cliente REST existente.
 - Nenhuma mudança no backend Xano ou no roteamento global nesta etapa.

@@ -2,7 +2,7 @@
 
 ## Decisão
 
-Criar um módulo Streamlit independente com `renderizar(cliente, conta)`. O módulo recebe o cliente REST e a Conta de Acesso em vez de acoplar a tela ao roteador. A autorização visual usa os perfis da Conta de Acesso, enquanto o Xano continua sendo a autoridade final.
+Criar um módulo Streamlit independente com `renderizar(cliente, conta)`. O módulo recebe o cliente REST e a Conta de Acesso em vez de acoplar a tela ao roteador. A autorização visual usa os perfis da Conta de Acesso, enquanto o Xano continua sendo a autoridade final. Um seletor CSS escopado em `assets/estilos.css` aplica o cartão central e responsivo da referência sem alterar outros formulários.
 
 ## Integração
 

@@ -31,8 +31,10 @@ from sorrisomais.pagina_nova_consulta_xano import renderizar
 class ClienteFicticio:
     criadas = []
     def listar_opcoes_agenda(self, token):
+        st.session_state['contagem_opcoes'] = st.session_state.get('contagem_opcoes', 0) + 1
         {falha_codigo if falha in {"opcoes", "opcoes_401", "opcoes_403", "sem_opcoes"} else "return {'pacientes': [{'id': 1, 'nome': 'Paciente Fictício'}], 'profissionais': [{'id': 2, 'nome': 'Profissional Fictício'}], 'procedimentos': [{'id': 3, 'nome': 'Avaliação'}]}"}
     def listar_disponibilidades(self, token, profissional_id, inicio, fim):
+        st.session_state['contagem_disponibilidades'] = st.session_state.get('contagem_disponibilidades', 0) + 1
         {falha_codigo if falha in {"disponibilidades", "disponibilidades_401", "sem_horarios"} else "dia = date.fromisoformat(inicio[:10]); identificador = 4 if dia == date.today() + timedelta(days=1) else 5; hora = '13' if identificador == 4 else '15'; return [{'id': identificador, 'situacao': 'disponivel', 'inicio': dia.isoformat() + 'T' + hora + ':00:00-03:00', 'fim': dia.isoformat() + 'T' + hora + ':30:00-03:00'}]"}
     def agendar_consulta(self, token, paciente_id, disponibilidade_id, procedimento_ids, motivo=None):
         if {falha in {'conflito', 'agendamento_401'}}:
@@ -54,6 +56,13 @@ def test_recepcionista_agenda_com_contratos_existentes_sem_rede():
     assert any(item.value == "Nova consulta" for item in app.subheader)
     assert app.selectbox(key="nova-consulta-paciente").options == ["Paciente Fictício"]
     assert app.selectbox(key="nova-consulta-horario").options
+    assert app.session_state["contagem_opcoes"] == 1
+    assert app.session_state["contagem_disponibilidades"] == 1
+
+    # Seleções causam novo rerun do Streamlit, sem repetir os GETs.
+    app.selectbox(key="nova-consulta-paciente").select(1).run()
+    assert app.session_state["contagem_opcoes"] == 1
+    assert app.session_state["contagem_disponibilidades"] == 1
 
 
 @pytest.mark.parametrize("perfil", ["profissional", "paciente"])
