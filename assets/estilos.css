@@ -58,6 +58,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .st-key-conteudo-equipe h1 { margin-top: 0; font-size: clamp(28px, 3vw, 38px); }
 .st-key-formulario-equipe { max-width: 880px; margin: 18px auto; padding: clamp(22px, 4vw, 44px); border: 1px solid var(--linha); border-radius: 18px; background: #fff; box-shadow: 0 12px 35px #213e380b; }
 .st-key-formulario-equipe [data-testid="stForm"] { padding: 1.5rem; }
+.st-key-formulario-nova-consulta { max-width: 610px; margin: 18px auto; padding: 22px 24px 20px; border: 1px solid #e2e8e7; border-radius: 12px; background: #fff; box-shadow: 0 18px 65px #102c2b12; }
+.st-key-formulario-nova-consulta h3 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -.02em; }
+.st-key-formulario-nova-consulta [data-testid="stForm"] { padding: 5px 0 0; border: 0; background: transparent; }
 .st-key-cartao-acesso { min-height: 190px; padding: 22px; border: 1px solid var(--linha); border-radius: 16px; background: #fff; box-shadow: 0 8px 25px #1e48400a; }
 .st-key-cartao-acesso h3 { font-size: 18px; }
 .st-key-cartao-mascote { padding: 20px; border: 1px solid #d9e9e5; border-radius: 18px; background: #eaf4f1; text-align: center; }
@@ -119,6 +122,7 @@ footer { display: none !important; }
  .st-key-conteudo-equipe { min-height: 0; padding: 20px 14px; }
  .st-key-formulario-equipe { margin: 8px auto; padding: 16px 12px; }
  .st-key-formulario-equipe [data-testid="stForm"] { padding: .8rem; }
+ .st-key-formulario-nova-consulta { margin: 8px auto; padding: 16px 14px; }
  .st-key-cartao-acesso { min-height: 0; padding: 16px; }
  .st-key-modal-paciente, .st-key-modal-profissional { top: 12px; left: 12px; width: calc(100vw - 24px); max-height: calc(100dvh - 24px); transform: none; padding: 16px 14px; }
  .st-key-modal-paciente [data-testid="stHorizontalBlock"], .st-key-modal-profissional [data-testid="stHorizontalBlock"] { flex-direction: column; }
