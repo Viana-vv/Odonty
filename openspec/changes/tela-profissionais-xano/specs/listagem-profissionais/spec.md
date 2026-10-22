@@ -17,6 +17,14 @@ O sistema SHALL exibir a lista fornecida pelo Xano usando o contrato existente `
 - **WHEN** a API falha ou a sessão não pode acessar o recurso
 - **THEN** a interface apresenta mensagem compreensível sem exibir dados antigos como atuais
 
+#### Cenário: Sessão expirada
+- **WHEN** o Xano responde com HTTP 401 ao consultar a lista
+- **THEN** a interface limpa a sessão local e informa que é necessário entrar novamente
+
+#### Cenário: Acesso negado pelo Xano
+- **WHEN** o Xano responde com HTTP 403 ao consultar a lista
+- **THEN** a interface informa a falta de permissão e preserva a sessão local
+
 #### Cenário: Acesso por perfil não autorizado
 - **WHEN** uma Conta de Acesso sem perfil Administrador ou Recepcionista abre diretamente a tela
 - **THEN** a tela não solicita nem apresenta a lista, mantendo a autorização definitiva no Xano

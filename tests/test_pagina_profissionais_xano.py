@@ -24,6 +24,7 @@ class InterfaceFalsa:
         self.textos = []
         self.infos = []
         self.erros = []
+        self.colunas_criadas = []
 
     def title(self, texto):
         self.textos.append(texto)
@@ -47,6 +48,7 @@ class InterfaceFalsa:
         return False
 
     def columns(self, quantidade, **_kwargs):
+        self.colunas_criadas.append(quantidade)
         return [self] * (quantidade if isinstance(quantidade, int) else len(quantidade))
 
     def container(self, **_kwargs):
@@ -81,6 +83,7 @@ def test_lista_exibe_nome_e_indicador_ativo(tela):
     assert "Dra. Exemplo Sorriso" in interface.textos
     assert "Dr. Nome Fictício" in interface.textos
     assert interface.textos.count("● Ativo") == 2
+    assert interface.colunas_criadas == [3, [1, 1], [1, 1]]
     cliente.listar_opcoes_agenda.assert_called_once_with("token-ficticio")
 
 
