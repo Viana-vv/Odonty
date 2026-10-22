@@ -1,6 +1,7 @@
 """Regressões do roteamento conectado com serviços totalmente simulados."""
 
 from datetime import datetime, timedelta, timezone
+from importlib.machinery import ModuleSpec
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -36,6 +37,22 @@ def conta_teste(perfil="recepcionista"):
     return SimpleNamespace(nome="Conta Fictícia", perfis=(perfil,))
 
 
+def simular_modulos_integrados(monkeypatch, areas):
+    import streamlit as st
+
+    nomes = {f"sorrisomais.{navegacao.MODULOS_XANO[area]}": area for area in areas}
+    modulos = {
+        nome: SimpleNamespace(renderizar=lambda _cliente, _conta, area=area:
+                              st.title(f"Tela {area}"))
+        for nome, area in nomes.items()
+    }
+    monkeypatch.setattr(
+        navegacao, "find_spec",
+        lambda nome: ModuleSpec(nome, loader=None) if nome in nomes else None,
+    )
+    monkeypatch.setattr(navegacao, "import_module", lambda nome: modulos.get(nome))
+
+
 def abrir_app(conta, cliente, pagina="inicio"):
     app = AppTest.from_function(renderizar_equipe, args=(conta, cliente))
     app.session_state["pagina_equipe"] = pagina
@@ -57,7 +74,8 @@ def test_menu_conectado_abre_listagem_de_pacientes_sem_rede():
     cliente.listar_opcoes_agenda.assert_called_once_with("token-ficticio")
 
 
-def test_modulos_ausentes_ficam_desabilitados_no_menu():
+def test_modulos_ausentes_ficam_desabilitados_no_menu(monkeypatch):
+    monkeypatch.setattr(navegacao, "find_spec", lambda _nome: None)
     app = abrir_app(conta_teste("administrador"), cliente_teste())
 
     for area in ("profissionais", "procedimentos"):
@@ -75,29 +93,23 @@ def test_rota_direta_para_area_sem_permissao_volta_a_visao_geral():
 
 def test_atalho_nova_consulta_na_visao_geral_depende_do_modulo_e_perfil(monkeypatch):
     cliente = cliente_teste()
+    simular_modulos_integrados(monkeypatch, {"nova_consulta"})
     administrador = abrir_app(conta_teste("administrador"), cliente)
-    atalho = administrador.button(key="inicio-nova-consulta")
-    assert atalho.disabled
+    assert not administrador.button(key="inicio-nova-consulta").disabled
 
     profissional = abrir_app(conta_teste("profissional"), cliente)
     assert not any(button.key == "inicio-nova-consulta" for button in profissional.button)
 
-    def abrir_modulo(area):
-        assert area == "nova_consulta"
-        import streamlit as st
-
-        def renderizar(_cliente, _conta):
-            st.title("Nova Consulta integrada")
-
-        return SimpleNamespace(renderizar=renderizar)
-
-    monkeypatch.setattr(navegacao, "modulo_xano_disponivel", lambda area: area == "nova_consulta")
-    monkeypatch.setattr(navegacao, "carregar_modulo_xano", abrir_modulo)
-    administrador = abrir_app(conta_teste("administrador"), cliente)
     administrador.button(key="inicio-nova-consulta").click().run()
 
     assert administrador.session_state["pagina_equipe"] == "nova_consulta"
-    assert any(item.value == "Nova Consulta integrada" for item in administrador.title)
+    assert any(item.value == "Tela nova_consulta" for item in administrador.title)
+
+
+def test_atalho_nova_consulta_fica_indisponivel_quando_modulo_esta_ausente(monkeypatch):
+    monkeypatch.setattr(navegacao, "find_spec", lambda _nome: None)
+    administrador = abrir_app(conta_teste("administrador"), cliente_teste())
+    assert administrador.button(key="inicio-nova-consulta").disabled
 
 
 @pytest.mark.parametrize(
@@ -110,20 +122,7 @@ def test_atalho_nova_consulta_na_visao_geral_depende_do_modulo_e_perfil(monkeypa
     ],
 )
 def test_modulos_isolados_abrem_com_perfil_autorizado(area, perfil, monkeypatch):
-    import streamlit as st
-
-    chamadas = []
-
-    def renderizar_modulo(_cliente, _conta):
-        chamadas.append(area)
-        st.title(f"Tela {area}")
-
-    monkeypatch.setattr(navegacao, "modulo_xano_disponivel", lambda chave: chave == area)
-    monkeypatch.setattr(
-        navegacao,
-        "carregar_modulo_xano",
-        lambda chave: SimpleNamespace(renderizar=renderizar_modulo) if chave == area else None,
-    )
+    simular_modulos_integrados(monkeypatch, {area})
 
     app = abrir_app(conta_teste(perfil), cliente_teste())
     chave_atalho = ("inicio-nova-consulta" if area == "nova_consulta"
@@ -132,16 +131,11 @@ def test_modulos_isolados_abrem_com_perfil_autorizado(area, perfil, monkeypatch)
     app.button(key=chave_atalho).click().run()
 
     assert not app.exception
-    assert chamadas == [area]
     assert any(item.value == f"Tela {area}" for item in app.title)
 
 
 def test_modulo_disponivel_nao_abre_para_perfil_nao_autorizado(monkeypatch):
-    monkeypatch.setattr(navegacao, "modulo_xano_disponivel", lambda area: area == "procedimentos")
-    monkeypatch.setattr(
-        navegacao, "carregar_modulo_xano",
-        lambda _area: pytest.fail("O roteador não deve carregar módulo sem permissão"),
-    )
+    simular_modulos_integrados(monkeypatch, {"procedimentos"})
 
     app = abrir_app(conta_teste("recepcionista"), cliente_teste(), pagina="procedimentos")
 

@@ -135,27 +135,28 @@ def test_profissional_consulta_agenda_sem_acao_de_criar(agenda_simulada):
 def test_administrador_pode_iniciar_nova_consulta(agenda_simulada):
     app = abrir_agenda(agenda_simulada, "administrador")
     assert any(button.key == "agenda-nova" for button in app.button)
-    assert app.button(key="agenda-abrir-nova-consulta").disabled
     assert any(button.key == "agenda-novo-horario" for button in app.button)
 
 
 def test_agenda_oferece_atalho_a_nova_consulta_somente_para_perfis_autorizados(
         agenda_simulada, monkeypatch):
-    from types import SimpleNamespace
+    from importlib.machinery import ModuleSpec
     from sorrisomais import navegacao
+    nome_modulo = f"sorrisomais.{navegacao.MODULOS_XANO['nova_consulta']}"
 
-    def carregar(area):
-        assert area == "nova_consulta"
+    def importar(nome):
+        assert nome == nome_modulo
         import streamlit as st
 
         def renderizar(_cliente, _conta):
             st.title("Nova Consulta simulada")
 
+        from types import SimpleNamespace
         return SimpleNamespace(renderizar=renderizar)
 
-    monkeypatch.setattr(navegacao, "modulo_xano_disponivel",
-                        lambda area: area == "nova_consulta")
-    monkeypatch.setattr(navegacao, "carregar_modulo_xano", carregar)
+    monkeypatch.setattr(navegacao, "find_spec", lambda nome: ModuleSpec(nome, loader=None)
+                        if nome == nome_modulo else None)
+    monkeypatch.setattr(navegacao, "import_module", importar)
 
     recepcao = abrir_agenda(agenda_simulada, "recepcionista")
     atalho = recepcao.button(key="agenda-abrir-nova-consulta")
@@ -166,6 +167,15 @@ def test_agenda_oferece_atalho_a_nova_consulta_somente_para_perfis_autorizados(
     profissional = abrir_agenda(agenda_simulada, "profissional")
     assert not any(button.key == "agenda-abrir-nova-consulta"
                    for button in profissional.button)
+
+
+def test_atalho_agenda_nova_consulta_desabilitado_quando_modulo_ausente(
+        agenda_simulada, monkeypatch):
+    from sorrisomais import navegacao
+
+    monkeypatch.setattr(navegacao, "find_spec", lambda _nome: None)
+    administrador = abrir_agenda(agenda_simulada, "administrador")
+    assert administrador.button(key="agenda-abrir-nova-consulta").disabled
 
 
 def test_formularios_agenda_sao_exclusivos_ao_alternar(agenda_simulada):
