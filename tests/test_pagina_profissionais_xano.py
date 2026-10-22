@@ -106,6 +106,25 @@ def test_falha_de_api_nao_exibe_resultados(tela):
     assert "Dra. Exemplo Sorriso" not in interface.textos
 
 
+def test_sessao_expirada_limpa_credencial(tela):
+    interface, cliente, conta = tela
+    cliente.listar_opcoes_agenda.side_effect = ErroAcesso(
+        "Sua sessão expirou ou não é válida. Entre novamente.", 401)
+    pagina.renderizar(cliente, conta)
+    assert interface.erros == ["Sua sessão expirou ou não é válida. Entre novamente."]
+    assert "credencial" not in interface.session_state
+
+
+def test_acesso_negado_preserva_sessao(tela):
+    interface, cliente, conta = tela
+    credencial = interface.session_state["credencial"]
+    cliente.listar_opcoes_agenda.side_effect = ErroAcesso(
+        "Sua conta não tem permissão para acessar esta área.", 403)
+    pagina.renderizar(cliente, conta)
+    assert interface.erros == ["Sua conta não tem permissão para acessar esta área."]
+    assert interface.session_state["credencial"] == credencial
+
+
 def test_perfil_profissional_nao_carrega_dados(tela):
     interface, cliente, _ = tela
     conta = SimpleNamespace(perfis=("profissional",))

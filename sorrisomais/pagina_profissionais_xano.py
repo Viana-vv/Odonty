@@ -30,6 +30,8 @@ def renderizar(cliente, conta):
         with st.spinner("Carregando Profissionais…"):
             opcoes = cliente.listar_opcoes_agenda(credencial.token)
     except ErroAcesso as error:
+        if error.status == 401:
+            sessao.limpar(st.session_state)
         st.error(str(error))
         return
 
