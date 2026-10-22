@@ -38,6 +38,8 @@ def test_historico_mostra_apenas_conteudo_retornado_para_paciente_selecionado():
     app = abrir(consultas, registros)
     assert not app.exception
     assert "Paciente Fictícia Aurora" in str(app.selectbox[0].options)
+    assert "ID 13" in str(app.selectbox[0].options)
+    assert "Paciente 13" not in str(app.selectbox[0].options)
     assert any("Evolução fictícia" in item.value for item in app.markdown)
     assert not any("Outro registro fictício" in item.value for item in app.markdown)
 

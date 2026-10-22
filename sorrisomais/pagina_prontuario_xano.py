@@ -15,11 +15,11 @@ def _pacientes_disponiveis(consultas, registros):
         paciente_id = consulta.get("paciente_id")
         if isinstance(paciente_id, int):
             nome = consulta.get("paciente_nome")
-            pacientes[paciente_id] = nome if isinstance(nome, str) and nome.strip() else f"Paciente {paciente_id}"
+            pacientes[paciente_id] = nome if isinstance(nome, str) and nome.strip() else f"ID {paciente_id}"
     for registro in registros:
         paciente_id = registro.get("paciente_id")
         if isinstance(paciente_id, int) and paciente_id not in pacientes:
-            pacientes[paciente_id] = f"Paciente {paciente_id}"
+            pacientes[paciente_id] = f"ID {paciente_id}"
     return pacientes
 
 
@@ -42,7 +42,11 @@ def _renderizar_historico(registros):
         return
     for registro in registros:
         with st.container(border=True):
-            st.markdown(f"**Registro Clínico · {_data_legivel(registro.get('registrado_em'))}**")
+            data = registro.get("registrado_em")
+            titulo = "Registro Clínico"
+            if data:
+                titulo = f"{titulo} · {_data_legivel(data)}"
+            st.markdown(f"**{titulo}**")
             conteudo = registro.get("conteudo")
             if isinstance(conteudo, str) and conteudo.strip():
                 st.write(conteudo)
