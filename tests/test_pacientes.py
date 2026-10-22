@@ -309,8 +309,10 @@ def test_interface_disponivel_sem_variavel(paciente_api, monkeypatch):
 
 def test_campos_de_telefone_limitam_tamanho_no_formulario(paciente_api):
     app = formulario(paciente_api)
-    assert app.text_input(key="pac_telefone").max_chars == 15
-    assert app.text_input(key="pac_celular").max_chars == 15
+    for campo in ("pac_telefone", "pac_celular"):
+        assert app.number_input(key=campo).proto.max == 99_999_999_999
+
+
 def test_campos_de_telefone_aceitam_somente_numeros_nacionais(paciente_api):
     app = formulario(paciente_api)
     for campo in ("pac_telefone", "pac_celular"):
