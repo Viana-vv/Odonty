@@ -105,4 +105,5 @@ query "registros-clinicos" verb=GET {
   }
   response = {registros_clinicos: $registros_clinicos}
   history = false
+  guid = "5stj2LA3oijBKySyLKUSpK8UGKo"
 }
