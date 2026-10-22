@@ -12,7 +12,9 @@ def _abrir_tela(*, perfil="recepcionista", falha=None):
         "opcoes": "raise ErroAcesso('Aguarde alguns segundos.', 429)",
         "opcoes_401": "raise ErroAcesso('Sua sessão expirou.', 401)",
         "opcoes_403": "raise ErroAcesso('Seu perfil não tem permissão.', 403)",
+        "sem_opcoes": "return {'pacientes': [], 'profissionais': [], 'procedimentos': []}",
         "disponibilidades": "raise ErroAcesso('Falha de conexão.', 503)",
+        "sem_horarios": "return []",
         "disponibilidades_401": "raise ErroAcesso('Sua sessão expirou.', 401)",
         "agendamento_401": "raise ErroAcesso('Sua sessão expirou.', 401)",
     }.get(falha, "return None")
@@ -29,9 +31,9 @@ from sorrisomais.pagina_nova_consulta_xano import renderizar
 class ClienteFicticio:
     criadas = []
     def listar_opcoes_agenda(self, token):
-        {falha_codigo if falha in {"opcoes", "opcoes_401", "opcoes_403"} else "return {'pacientes': [{'id': 1, 'nome': 'Paciente Fictício'}], 'profissionais': [{'id': 2, 'nome': 'Profissional Fictício'}], 'procedimentos': [{'id': 3, 'nome': 'Avaliação'}]}"}
+        {falha_codigo if falha in {"opcoes", "opcoes_401", "opcoes_403", "sem_opcoes"} else "return {'pacientes': [{'id': 1, 'nome': 'Paciente Fictício'}], 'profissionais': [{'id': 2, 'nome': 'Profissional Fictício'}], 'procedimentos': [{'id': 3, 'nome': 'Avaliação'}]}"}
     def listar_disponibilidades(self, token, profissional_id, inicio, fim):
-        {falha_codigo if falha in {"disponibilidades", "disponibilidades_401"} else "dia = date.fromisoformat(inicio[:10]); identificador = 4 if dia == date.today() + timedelta(days=1) else 5; hora = '13' if identificador == 4 else '15'; return [{'id': identificador, 'situacao': 'disponivel', 'inicio': dia.isoformat() + 'T' + hora + ':00:00-03:00', 'fim': dia.isoformat() + 'T' + hora + ':30:00-03:00'}]"}
+        {falha_codigo if falha in {"disponibilidades", "disponibilidades_401", "sem_horarios"} else "dia = date.fromisoformat(inicio[:10]); identificador = 4 if dia == date.today() + timedelta(days=1) else 5; hora = '13' if identificador == 4 else '15'; return [{'id': identificador, 'situacao': 'disponivel', 'inicio': dia.isoformat() + 'T' + hora + ':00:00-03:00', 'fim': dia.isoformat() + 'T' + hora + ':30:00-03:00'}]"}
     def agendar_consulta(self, token, paciente_id, disponibilidade_id, procedimento_ids, motivo=None):
         if {falha in {'conflito', 'agendamento_401'}}:
             {falha_codigo if falha in {"conflito", "agendamento_401"} else "pass"}
@@ -49,13 +51,14 @@ renderizar(ClienteFicticio(), SimpleNamespace(perfis=({perfil!r},)))
 def test_recepcionista_agenda_com_contratos_existentes_sem_rede():
     app = _abrir_tela()
     assert not app.exception
-    assert any(item.value == "Nova consulta" for item in app.title)
+    assert any(item.value == "Nova consulta" for item in app.subheader)
     assert app.selectbox(key="nova-consulta-paciente").options == ["Paciente Fictício"]
     assert app.selectbox(key="nova-consulta-horario").options
 
 
-def test_perfil_profissional_nao_recebe_formulario_de_agendamento():
-    app = _abrir_tela(perfil="profissional")
+@pytest.mark.parametrize("perfil", ["profissional", "paciente"])
+def test_perfil_nao_administrativo_nao_recebe_formulario_de_agendamento(perfil):
+    app = _abrir_tela(perfil=perfil)
     assert not app.exception
     assert any("não tem permissão" in item.value for item in app.error)
     assert not app.selectbox
@@ -119,6 +122,13 @@ def test_falha_ao_carregar_opcoes_interrompe_formulario():
     assert not app.selectbox
 
 
+def test_lista_vazia_de_cadastros_exibe_instrucao():
+    app = _abrir_tela(falha="sem_opcoes")
+    assert not app.exception
+    assert any("Cadastre Pacientes e Profissionais ativos" in item.value for item in app.info)
+    assert not app.selectbox
+
+
 @pytest.mark.parametrize(
     "falha",
     ["opcoes_401", "disponibilidades_401", "agendamento_401"],
@@ -146,3 +156,10 @@ def test_falha_ao_carregar_disponibilidades_nao_mostra_horario():
     assert not app.exception
     assert any("Não foi possível carregar os horários" in item.value for item in app.error)
     assert not any(widget.key == "nova-consulta-horario" for widget in app.selectbox)
+
+
+def test_lista_vazia_de_disponibilidades_desabilita_envio():
+    app = _abrir_tela(falha="sem_horarios")
+    assert not app.exception
+    assert any("Nenhum horário disponível" in item.value for item in app.info)
+    assert next(button for button in app.button if button.label == "Agendar consulta").disabled

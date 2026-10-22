@@ -38,57 +38,24 @@ def _exibir_erro_api(error, mensagem_generica):
         st.error(mensagem_generica)
 
 
-def renderizar(cliente, conta):
-    """Renderiza Nova Consulta usando exclusivamente os contratos Xano existentes."""
-    if not _perfis(conta).intersection({"administrador", "recepcionista"}):
-        st.title("Nova consulta")
-        st.error("Seu perfil não tem permissão para agendar consultas.")
-        return
-
-    if st.session_state.pop("nova_consulta_concluida", False):
-        for chave in (
-            "nova-consulta-paciente", "nova-consulta-data",
-            "nova-consulta-profissional", "nova-consulta-horario",
-            "nova-consulta-procedimentos", "nova-consulta-observacao",
-            "nova-consulta-filtro-horarios",
-        ):
-            st.session_state.pop(chave, None)
-        st.success("Consulta agendada.")
-
-    st.title("Nova consulta")
-    st.caption("Escolha o Paciente, o Profissional e um horário disponível.")
-    credencial = st.session_state.get(sessao.CHAVE)
-    token = getattr(credencial, "token", None)
-    if not token:
-        st.error("Sua sessão expirou. Entre novamente para continuar.")
-        return
-
-    try:
-        opcoes = cliente.listar_opcoes_agenda(token)
-    except ErroAcesso as error:
-        _exibir_erro_api(
-            error, "Não foi possível carregar as opções de agendamento. Tente novamente."
-        )
-        return
-
-    pacientes = {item["id"]: item["nome"] for item in opcoes.get("pacientes", [])}
-    profissionais = {item["id"]: item["nome"] for item in opcoes.get("profissionais", [])}
-    procedimentos = {item["id"]: item["nome"] for item in opcoes.get("procedimentos", [])}
-    if not pacientes or not profissionais:
-        st.info("Cadastre Pacientes e Profissionais ativos antes de agendar.")
-        return
-
-    st.subheader("Dados da consulta")
+def _renderizar_formulario(cliente, token, pacientes, profissionais, procedimentos):
+    st.subheader("Nova consulta")
+    st.caption("Escolha o Paciente, o Profissional e um horário.")
     paciente_id = st.selectbox(
         "Paciente", list(pacientes), format_func=pacientes.get,
         index=None, placeholder="Selecione um Paciente",
         key="nova-consulta-paciente",
     )
-    data_consulta = st.date_input("Data", value=date.today(), format="DD/MM/YYYY",
-                                  key="nova-consulta-data")
-    profissional_id = st.selectbox("Profissional", list(profissionais),
-                                   format_func=profissionais.get,
-                                   key="nova-consulta-profissional")
+
+    data_coluna, profissional_coluna = st.columns(2, gap="medium")
+    data_consulta = data_coluna.date_input(
+        "Data", value=date.today(), format="DD/MM/YYYY",
+        key="nova-consulta-data",
+    )
+    profissional_id = profissional_coluna.selectbox(
+        "Profissional", list(profissionais), format_func=profissionais.get,
+        key="nova-consulta-profissional",
+    )
 
     filtro_horarios = (profissional_id, data_consulta)
     if st.session_state.get("nova-consulta-filtro-horarios") != filtro_horarios:
@@ -110,22 +77,23 @@ def renderizar(cliente, conta):
     if not horarios:
         st.info("Nenhum horário disponível para este Profissional nesta data.")
 
+    horario_coluna, procedimento_coluna = st.columns(2, gap="medium")
     with st.form("nova-consulta-form"):
-        disponibilidade_id = st.selectbox(
+        disponibilidade_id = horario_coluna.selectbox(
             "Horário", list(horarios), format_func=horarios.get,
             index=None, placeholder="Selecione um horário", disabled=not horarios,
             key="nova-consulta-horario",
         )
-        procedimento_ids = st.multiselect(
+        procedimento_ids = procedimento_coluna.multiselect(
             "Procedimentos (opcional)", list(procedimentos),
             format_func=procedimentos.get, key="nova-consulta-procedimentos",
         )
         observacao = st.text_area(
-            "Observação administrativa (opcional)", max_chars=1000,
+            "Observações (opcional)", max_chars=1000,
             placeholder="Informações administrativas para a consulta",
             key="nova-consulta-observacao",
         )
-        cancelar, agendar = st.columns(2)
+        cancelar, agendar = st.columns(2, gap="small")
         cancelar_envio = cancelar.form_submit_button("Cancelar", width="stretch")
         enviar = agendar.form_submit_button(
             "Agendar consulta", type="primary", disabled=not horarios,
@@ -154,3 +122,45 @@ def renderizar(cliente, conta):
 
     st.session_state["nova_consulta_concluida"] = True
     st.rerun()
+
+
+def renderizar(cliente, conta):
+    """Renderiza Nova Consulta usando exclusivamente os contratos Xano existentes."""
+    if not _perfis(conta).intersection({"administrador", "recepcionista"}):
+        st.title("Nova consulta")
+        st.error("Seu perfil não tem permissão para agendar consultas.")
+        return
+
+    if st.session_state.pop("nova_consulta_concluida", False):
+        for chave in (
+            "nova-consulta-paciente", "nova-consulta-data",
+            "nova-consulta-profissional", "nova-consulta-horario",
+            "nova-consulta-procedimentos", "nova-consulta-observacao",
+            "nova-consulta-filtro-horarios",
+        ):
+            st.session_state.pop(chave, None)
+        st.success("Consulta agendada.")
+
+    credencial = st.session_state.get(sessao.CHAVE)
+    token = getattr(credencial, "token", None)
+    if not token:
+        st.error("Sua sessão expirou. Entre novamente para continuar.")
+        return
+
+    try:
+        opcoes = cliente.listar_opcoes_agenda(token)
+    except ErroAcesso as error:
+        _exibir_erro_api(
+            error, "Não foi possível carregar as opções de agendamento. Tente novamente."
+        )
+        return
+
+    pacientes = {item["id"]: item["nome"] for item in opcoes.get("pacientes", [])}
+    profissionais = {item["id"]: item["nome"] for item in opcoes.get("profissionais", [])}
+    procedimentos = {item["id"]: item["nome"] for item in opcoes.get("procedimentos", [])}
+    if not pacientes or not profissionais:
+        st.info("Cadastre Pacientes e Profissionais ativos antes de agendar.")
+        return
+
+    with st.container(key="formulario-equipe"):
+        _renderizar_formulario(cliente, token, pacientes, profissionais, procedimentos)
