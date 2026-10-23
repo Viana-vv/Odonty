@@ -58,6 +58,31 @@ def test_lista_mostra_somente_id_e_nome(cliente_pacientes):
     cliente_pacientes.listar_opcoes_agenda.assert_called_once_with("token-ficticio")
 
 
+def test_lista_apresenta_hierarquia_visual_e_acao_de_cadastro(cliente_pacientes):
+    app = abrir_tela(cliente_pacientes)
+
+    assert not app.exception
+    assert any(item.label == "Buscar Paciente" for item in app.text_input)
+    assert any(item.key == "pacientes-xano-novo" for item in app.button)
+    assert any(item.value == "ID" for item in app.caption)
+    assert any(item.value == "Paciente" for item in app.caption)
+    assert any(item.value == "Ações" for item in app.caption)
+    cliente_pacientes.cadastrar_paciente.assert_not_called()
+
+
+def test_acao_de_cadastro_nao_aparece_para_perfil_sem_permissao(cliente_pacientes):
+    conta = SimpleNamespace(nome="Profissional Fictício", perfis=("profissional",))
+    app = AppTest.from_function(renderizar_tela, args=(cliente_pacientes, conta)).run()
+    app.session_state[sessao.CHAVE] = Credencial(
+        "token-ficticio",
+        datetime.now(timezone.utc) + timedelta(minutes=5),
+    )
+    app.run()
+
+    assert not app.exception
+    assert not any(item.key == "pacientes-xano-novo" for item in app.button)
+
+
 def test_edicao_carrega_so_dados_cadastrais_e_nao_exibe_campo_clinico(cliente_pacientes):
     cliente_pacientes.obter_paciente.return_value = {
         "id": 11, "nome": "Paciente Fictícia Aurora", "data_nascimento": "2000-02-29",
