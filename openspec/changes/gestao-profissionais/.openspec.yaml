@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-10-23
+goal: Exibir os dados permitidos pelo modelo de Profissional e preservar seu
+  histórico ao inativar
