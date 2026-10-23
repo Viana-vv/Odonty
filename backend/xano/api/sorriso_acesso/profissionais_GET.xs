@@ -69,8 +69,6 @@ query profissionais verb=GET {
       }
     }
   }
-  response = {
-    profissionais: $resultado
-  }
+  response = {profissionais: $resultado}
   history = false
 }
