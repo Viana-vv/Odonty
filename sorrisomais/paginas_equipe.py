@@ -660,6 +660,155 @@ def renderizar_cadastro_modal(cliente):
         renderizar_cadastro(cliente)
 
 
+def _renderizar_painel_administrador(cliente, conta, pode_cadastrar_paciente, pode_agendar):
+    """Resumo diário da Administração baseado nos contratos existentes do Xano."""
+    fuso = ZoneInfo("America/Sao_Paulo")
+    agora = datetime.now(fuso)
+    dia = agora.date()
+    dias = ("SEGUNDA-FEIRA", "TERÇA-FEIRA", "QUARTA-FEIRA", "QUINTA-FEIRA",
+            "SEXTA-FEIRA", "SÁBADO", "DOMINGO")
+    meses = ("JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO",
+             "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO")
+    st.caption(f"{dias[dia.weekday()]}, {dia.day} DE {meses[dia.month - 1]}")
+    titulo, acao = st.columns([3, 1], vertical_alignment="center")
+    primeiro_nome = conta.nome.split()[0] if conta.nome.strip() else "equipe"
+    titulo.title(f"Olá, {primeiro_nome}! 👋")
+    titulo.caption("Aqui está um resumo da clínica hoje.")
+    consulta_integrada = navegacao.modulo_xano_disponivel("nova_consulta")
+    if pode_agendar:
+        acao.button(
+            "+ Nova consulta", key="inicio-nova-consulta",
+            on_click=abrir_nova_consulta if consulta_integrada else None,
+            disabled=not consulta_integrada, width="stretch",
+            help=None if consulta_integrada else "A tela Nova Consulta ainda não está integrada ao Xano.",
+        )
+
+    credencial = st.session_state.get(sessao.CHAVE)
+    consultas = pacientes_ativos = None
+    erro = None
+    if credencial is None:
+        erro = "Sua sessão expirou. Entre novamente para consultar o resumo."
+    else:
+        try:
+            with st.spinner("Carregando o resumo da clínica…"):
+                consultas = cliente.listar_consultas(
+                    credencial.token, inicio=_data_api(dia), fim=_data_api(dia, True)
+                )
+                opcoes = cliente.listar_opcoes_agenda(credencial.token)
+                pacientes_ativos = len(opcoes["pacientes"])
+        except ErroAcesso as error:
+            consultas = pacientes_ativos = None
+            if error.status == 401:
+                sessao.limpar(st.session_state)
+                erro = "Sua sessão expirou. Entre novamente para consultar o resumo."
+            elif error.status == 403:
+                erro = "Sua Conta de Acesso não tem permissão para consultar este resumo."
+            elif error.status == 429:
+                erro = "Muitas tentativas. Aguarde um pouco e tente novamente."
+            else:
+                erro = "Não foi possível carregar o resumo da clínica. Tente novamente."
+        except (KeyError, TypeError, ValueError):
+            consultas = pacientes_ativos = None
+            erro = "Não foi possível carregar o resumo da clínica. Tente novamente."
+
+    if erro:
+        st.error(erro)
+        if st.button("Tentar novamente", key="inicio-admin-retry"):
+            st.rerun()
+
+    ordenadas = []
+    realizadas = confirmadas = None
+    proxima = None
+    if consultas is not None:
+        try:
+            ordenadas = sorted(consultas, key=lambda consulta: (_horario_consulta(consulta), consulta["id"]))
+            realizadas = sum(consulta["situacao"] in {"Realizada", "Concluída"} for consulta in ordenadas)
+            confirmadas = sum(consulta["situacao"] == "Confirmada" and _horario_consulta(consulta) >= agora
+                              for consulta in ordenadas)
+            encerradas = {"Realizada", "Concluída", "Cancelada", "Falta"}
+            proxima = next((consulta for consulta in ordenadas
+                            if consulta["situacao"] not in encerradas
+                            and (_horario_consulta(consulta) >= agora
+                                 or consulta["situacao"] == "Em atendimento")), None)
+        except (KeyError, TypeError, ValueError):
+            consultas = pacientes_ativos = None
+            ordenadas, realizadas, confirmadas, proxima = [], None, None, None
+            st.error("Não foi possível carregar o resumo da clínica. Tente novamente.")
+            if st.button("Tentar novamente", key="inicio-admin-retry-dados"):
+                st.rerun()
+
+    indicadores = (
+        ("Consultas hoje", "□", len(ordenadas) if consultas is not None else "—"),
+        ("Atendimentos", "✓", realizadas if consultas is not None else "—"),
+        ("Pacientes ativos", "♙", pacientes_ativos if pacientes_ativos is not None else "—"),
+        ("Próxima consulta", "◷", _horario_consulta(proxima).strftime("%H:%M") if proxima else "—"),
+    )
+    metricas = st.columns(4, gap="small")
+    for indice, (rotulo, icone, valor) in enumerate(indicadores):
+        with metricas[indice]:
+            with st.container(key=f"metrica-admin-{indice}", border=True):
+                st.markdown(f"<span class='icone-metrica'>{icone}</span>", unsafe_allow_html=True)
+                st.caption(rotulo)
+                st.markdown(f"<strong class='valor-metrica'>{valor}</strong>", unsafe_allow_html=True)
+                detalhe = (
+                    "concluídos hoje" if indice == 1 and consultas is not None else
+                    "cadastros no sistema" if indice == 2 and pacientes_ativos is not None else
+                    proxima["paciente_nome"] if indice == 3 and proxima else
+                    "nenhuma marcada" if indice == 3 and consultas is not None else
+                    "agendadas para hoje" if indice == 0 and consultas is not None else
+                    "Dados indisponíveis"
+                )
+                st.caption(detalhe)
+
+    agenda, atalhos = st.columns([1.75, 1], gap="medium", vertical_alignment="top")
+    with agenda:
+        with st.container(key="agenda-admin-hoje", border=True):
+            topo, link = st.columns([2, 1], vertical_alignment="center")
+            topo.subheader("Agenda de hoje")
+            topo.caption(f"{len(ordenadas)} consultas" if consultas is not None else "Resumo indisponível")
+            link.button("Ver agenda completa →", key="inicio-abrir-agenda",
+                        on_click=abrir_agenda, width="stretch")
+            st.divider()
+            if consultas is None:
+                st.info("Atualize o resumo para consultar a agenda do dia.")
+            elif not ordenadas:
+                st.info("Nenhuma consulta para hoje.")
+            else:
+                for consulta in ordenadas[:5]:
+                    horario = _horario_consulta(consulta)
+                    hora, paciente, profissional, situacao = st.columns([0.75, 1.8, 1.5, 1])
+                    hora.markdown(f"**{horario:%H:%M}**")
+                    paciente.text(consulta["paciente_nome"])
+                    profissional.text(consulta["profissional_nome"])
+                    situacao.caption("Realizada" if consulta["situacao"] == "Concluída"
+                                     else consulta["situacao"])
+                    st.divider()
+    with atalhos:
+        with st.container(key="cartao-acesso-admin", border=True):
+            st.subheader("Acesso rápido")
+            st.caption("Acesse as áreas da clínica.")
+            if pode_cadastrar_paciente:
+                st.button("＋  Novo paciente", on_click=pagina_paciente.abrir,
+                          key="inicio-cadastrar-paciente", type="primary", width="stretch")
+            if navegacao.pode_acessar(conta.perfis, "prontuarios"):
+                prontuario_integrado = navegacao.modulo_xano_disponivel("prontuarios")
+                st.button("▤  Abrir prontuário", key="inicio-prontuario-indisponivel",
+                          on_click=(lambda: abrir_area_conectada("prontuarios")) if prontuario_integrado else None,
+                          disabled=not prontuario_integrado, width="stretch",
+                          help=None if prontuario_integrado else "A listagem de Prontuários ainda não está integrada ao Xano.")
+            st.button("▦  Visualizar agenda", on_click=abrir_agenda,
+                      key="inicio-agenda-indisponivel", width="stretch")
+            if "administrador" in conta.perfis:
+                st.button("＋  Novo profissional", on_click=abrir_cadastro,
+                          key="inicio-cadastrar-profissional", width="stretch")
+        total = len(ordenadas) if consultas is not None else 0
+        taxa = confirmadas / total if total else 0
+        with st.container(key="inicio-admin-confirmadas", border=True):
+            st.markdown(f"**{confirmadas if confirmadas is not None else '—'} confirmadas**")
+            st.caption("para o restante do dia")
+            st.progress(taxa)
+
+
 def renderizar_inicio(cliente, conta, administrador, pode_cadastrar_paciente, pode_agendar):
     if "recepcionista" in conta.perfis:
         _renderizar_painel_recepcao(cliente, conta, pode_cadastrar_paciente, pode_agendar)
@@ -667,6 +816,9 @@ def renderizar_inicio(cliente, conta, administrador, pode_cadastrar_paciente, po
     if "profissional" in conta.perfis:
         from . import painel_profissional
         painel_profissional.renderizar(cliente, conta)
+        return
+    if administrador:
+        _renderizar_painel_administrador(cliente, conta, pode_cadastrar_paciente, pode_agendar)
         return
     dia = date.today()
     dias = ("SEGUNDA-FEIRA", "TERÇA-FEIRA", "QUARTA-FEIRA", "QUINTA-FEIRA",

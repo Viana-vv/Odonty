@@ -195,14 +195,6 @@ def test_limite_de_requisicoes_aguarda_antes_de_tentar_novamente(cliente_painel,
     assert any("Nenhuma consulta para hoje" in item.value for item in app.info)
 
 
-def test_perfil_administrador_preserva_painel_atual_sem_leitura_adicional(cliente_painel):
-    app = abrir_painel(cliente_painel, perfil="administrador")
-
-    assert not app.exception
-    assert any("Dados indisponíveis" in item.value for item in app.caption)
-    cliente_painel.listar_consultas.assert_not_called()
-
-
 def test_expiracao_e_logout_limpa_cache_do_painel(cliente_painel):
     app = abrir_painel(cliente_painel)
     assert paginas_equipe.CACHE_PAINEL_RECEPCAO in app.session_state
