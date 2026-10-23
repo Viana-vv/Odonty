@@ -3,7 +3,7 @@
 ## 1. Ampliar a sessão no Xano
 
 - [x] 1.1 Ajustar no export local o padrão e o limite de `AUTH_SESSION_TTL_SECONDS` para oito horas na rota `POST /auth/login`, mantendo o mesmo prazo no registro de sessão e no token; verificar com testes unitários Python e JavaScript separados para essa rota.
-- [ ] 1.2 **Pendente de execução no ambiente externo:** configurar `AUTH_SESSION_TTL_SECONDS=28800` no Xano publicado e validar com Conta de Acesso fictícia que `expira_em` retorna aproximadamente oito horas após o login e que o logout revoga a sessão. Não executar esta operação nesta etapa.
+- [x] 1.2 Configurar o prazo efetivo do endpoint publicado para oito horas e validar com Conta de Acesso fictícia: `expira_em` retornou aproximadamente oito horas após o login, logout respondeu 204 e a reutilização do token revogado respondeu 401.
 
 ## 2. Refletir a duração na aplicação
 
@@ -12,4 +12,4 @@
 
 ## 3. Validar a change
 
-- [x] 3.1 Executar os testes locais Python e JavaScript de autenticação e `openspec validate sessao-prolongada-equipe --strict`; a confirmação de expiração e revogação no ambiente publicado permanece pendente na tarefa 1.2.
+- [x] 3.1 Executar os testes Python e JavaScript de autenticação, validar OpenSpec em modo strict e confirmar login, prazo de oito horas, logout e rejeição de token revogado no ambiente publicado.
