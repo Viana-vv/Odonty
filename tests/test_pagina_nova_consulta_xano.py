@@ -54,6 +54,9 @@ def test_recepcionista_agenda_com_contratos_existentes_sem_rede():
     app = _abrir_tela()
     assert not app.exception
     assert any(item.value == "Nova consulta" for item in app.subheader)
+    assert [item.value for item in app.caption if item.value.startswith(("1.", "2."))] == [
+        "1. Dados da consulta", "2. Horário e procedimento",
+    ]
     assert app.selectbox(key="nova-consulta-paciente").options == ["Paciente Fictício"]
     assert app.selectbox(key="nova-consulta-horario").options
     assert app.session_state["contagem_opcoes"] == 1
