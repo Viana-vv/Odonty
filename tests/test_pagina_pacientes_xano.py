@@ -58,6 +58,99 @@ def test_lista_mostra_somente_id_e_nome(cliente_pacientes):
     cliente_pacientes.listar_opcoes_agenda.assert_called_once_with("token-ficticio")
 
 
+def test_edicao_carrega_so_dados_cadastrais_e_nao_exibe_campo_clinico(cliente_pacientes):
+    cliente_pacientes.obter_paciente.return_value = {
+        "id": 11, "nome": "Paciente Fictícia Aurora", "data_nascimento": "2000-02-29",
+        "cpf": "52998224725", "telefone": "11900000000", "celular": "11911112222",
+        "email": "pessoa@example.com",
+    }
+    app = abrir_tela(cliente_pacientes)
+
+    app.button(key="pacientes-xano-editar-11").click().run()
+
+    assert not app.exception
+    cliente_pacientes.obter_paciente.assert_called_once_with("token-ficticio", 11)
+    assert app.text_input(key="pacientes_xano_edicao_nome").value == "Paciente Fictícia Aurora"
+    assert app.text_input(key="pacientes_xano_edicao_email").value == "pessoa@example.com"
+    rotulos = [item.label.casefold() for item in app.text_input]
+    assert not any("observação" in rotulo or "saúde" in rotulo for rotulo in rotulos)
+
+
+def test_falha_ao_carregar_edicao_nao_exibe_dados_pessoais(cliente_pacientes):
+    cliente_pacientes.obter_paciente.side_effect = ErroAcesso(
+        "Falha técnica com dado pessoal", 503,
+    )
+    app = abrir_tela(cliente_pacientes)
+
+    app.button(key="pacientes-xano-editar-11").click().run()
+
+    assert not app.exception
+    assert any("Não foi possível concluir a edição" in item.value for item in app.error)
+    assert not any("Falha técnica com dado pessoal" in item.value for item in app.error)
+    assert not any(item.key.startswith("pacientes_xano_edicao_") for item in app.text_input)
+
+
+def test_salvar_edicao_envia_campos_cadastrais_e_mostra_confirmacao(cliente_pacientes):
+    cliente_pacientes.obter_paciente.return_value = {
+        "id": 11, "nome": "Paciente Fictícia Aurora", "data_nascimento": "2000-02-29",
+        "cpf": "52998224725", "telefone": "11900000000", "celular": "11911112222",
+        "email": "pessoa@example.com",
+    }
+    cliente_pacientes.atualizar_paciente.return_value = None
+    cliente_pacientes.listar_opcoes_agenda.side_effect = [
+        {"pacientes": [item.copy() for item in PACIENTES], "profissionais": [], "procedimentos": []},
+        {"pacientes": [{"id": 11, "nome": "Paciente Aurora Atualizada"}], "profissionais": [], "procedimentos": []},
+    ]
+    app = abrir_tela(cliente_pacientes)
+    app.button(key="pacientes-xano-editar-11").click().run()
+    app.text_input(key="pacientes_xano_edicao_nome").set_value("Paciente Aurora Atualizada")
+    next(item for item in app.button if item.label.startswith("Salvar")).click().run()
+
+    assert not app.exception
+    cliente_pacientes.atualizar_paciente.assert_called_once_with(
+        "token-ficticio", 11, nome="Paciente Aurora Atualizada",
+        data_nascimento="2000-02-29", telefone="11900000000", cpf="52998224725",
+        email="pessoa@example.com", celular="11911112222",
+    )
+    assert any("foram atualizados" in item.value for item in app.success)
+    assert "pacientes_xano_edicao" not in app.session_state
+    assert any("Paciente Aurora Atualizada" in item.value for item in app.markdown)
+
+
+def test_falha_ao_salvar_preserva_formulario_com_mensagem_segura(cliente_pacientes):
+    cliente_pacientes.obter_paciente.return_value = {
+        "id": 11, "nome": "Paciente Fictícia Aurora", "data_nascimento": "2000-02-29",
+        "cpf": "52998224725", "telefone": "11900000000", "celular": "11911112222",
+        "email": "pessoa@example.com",
+    }
+    cliente_pacientes.atualizar_paciente.side_effect = ErroAcesso("DADO_PESSOAL", 409)
+    app = abrir_tela(cliente_pacientes)
+    app.button(key="pacientes-xano-editar-11").click().run()
+    app.text_input(key="pacientes_xano_edicao_nome").set_value("Nome corrigido")
+    next(item for item in app.button if item.label.startswith("Salvar")).click().run()
+
+    assert not app.exception
+    assert any("CPF informado já está cadastrado" in item.value for item in app.error)
+    assert not any("DADO_PESSOAL" in item.value for item in app.error)
+    assert app.text_input(key="pacientes_xano_edicao_nome").value == "Nome corrigido"
+    assert "pacientes_xano_edicao" in app.session_state
+
+
+def test_cancelar_edicao_descarta_dados_carregados(cliente_pacientes):
+    cliente_pacientes.obter_paciente.return_value = {
+        "id": 11, "nome": "Paciente Fictícia Aurora", "data_nascimento": "2000-02-29",
+        "cpf": "52998224725", "telefone": "11900000000", "celular": "11911112222",
+        "email": "pessoa@example.com",
+    }
+    app = abrir_tela(cliente_pacientes)
+    app.button(key="pacientes-xano-editar-11").click().run()
+    next(item for item in app.button if item.label == "Cancelar").click().run()
+
+    assert not app.exception
+    assert "pacientes_xano_edicao" not in app.session_state
+    assert not any(item.key.startswith("pacientes_xano_edicao_") for item in app.text_input)
+
+
 def test_busca_filtra_por_nome_sem_consultar_outros_campos(cliente_pacientes):
     app = abrir_tela(cliente_pacientes)
     app.text_input(key="pacientes-xano-busca").set_value("horizonte").run()

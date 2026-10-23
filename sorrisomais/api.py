@@ -85,7 +85,7 @@ class ClienteXano:
                         "o horário final é posterior ao inicial e o início está no futuro.",
                         status,
                     )
-                if route == "/pacientes" and status == 409:
+                if (route == "/pacientes" or route.startswith("/pacientes/")) and status == 409:
                     try:
                         corpo = response.json()
                     except ValueError:
@@ -118,6 +118,8 @@ class ClienteXano:
                         message = "Não foi possível atualizar a Consulta. Confira a situação e tente novamente."
                     elif route.startswith("/registros-clinicos"):
                         message = "Não foi possível concluir a operação clínica. Confira o Registro e tente novamente."
+                    elif route.startswith("/pacientes/"):
+                        message = "Nao foi possivel atualizar o Paciente. Confira os dados e tente novamente."
                     else:
                         message = messages[409]
                     raise ErroAcesso(message, status)
@@ -184,6 +186,54 @@ class ClienteXano:
                 "Não há repetição automática.", error.status,
             ) from None
 
+
+    def obter_paciente(self, token, paciente_id):
+        from .contratos_clinicos import validar_id
+        from .pacientes import validar_cadastro
+
+        self._token_obrigatorio(token)
+        paciente_id = validar_id(paciente_id, "Paciente")
+        data = self._request("GET", f"/pacientes/{paciente_id}", token=token)
+        paciente = self._item_resposta(data, "paciente", {
+            "nome": str, "data_nascimento": str, "cpf": str,
+            "telefone": str, "celular": str, "email": str,
+        })
+        if paciente["id"] != paciente_id:
+            raise ErroAcesso()
+        try:
+            dados = validar_cadastro(
+                paciente["nome"], paciente["data_nascimento"], paciente["telefone"],
+                paciente["cpf"], paciente["email"], paciente["celular"],
+            )
+        except ErroAcesso:
+            raise ErroAcesso() from None
+        return {"id": paciente_id, **dados}
+
+    def atualizar_paciente(self, token, paciente_id, *, nome, data_nascimento,
+                           telefone, cpf, email, celular):
+        from .contratos_clinicos import validar_id
+        from .pacientes import validar_cadastro
+
+        self._token_obrigatorio(token)
+        paciente_id = validar_id(paciente_id, "Paciente")
+        dados = validar_cadastro(nome, data_nascimento, telefone, cpf, email, celular)
+        data = self._request("PATCH", f"/pacientes/{paciente_id}", token=token, payload=dados)
+        paciente = self._item_resposta(data, "paciente", {
+            "nome": str, "data_nascimento": str, "cpf": str,
+            "telefone": str, "celular": str, "email": str,
+        })
+        if paciente["id"] != paciente_id:
+            raise ErroAcesso()
+        try:
+            confirmados = validar_cadastro(
+                paciente["nome"], paciente["data_nascimento"], paciente["telefone"],
+                paciente["cpf"], paciente["email"], paciente["celular"],
+            )
+        except ErroAcesso:
+            raise ErroAcesso() from None
+        if confirmados != dados:
+            raise ErroAcesso()
+        return {"id": paciente_id, **confirmados}
 
     def listar_especialidades(self, token):
         data = self._request("GET", "/especialidades", token=token)
