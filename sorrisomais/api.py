@@ -281,6 +281,63 @@ class ClienteXano:
                 error.status,
             ) from None
 
+    def listar_profissionais(self, token):
+        """Lista Profissionais ativos e inativos autorizados pelo Xano."""
+        self._token_obrigatorio(token)
+        data = self._request("GET", "/profissionais", token=token)
+        itens = data.get("profissionais")
+        if not isinstance(itens, list):
+            raise ErroAcesso()
+        vistos = set()
+        resultado = []
+        for item in itens:
+            if (not isinstance(item, dict) or type(item.get("id")) is not int
+                    or item["id"] <= 0 or item["id"] in vistos
+                    or not isinstance(item.get("nome"), str) or not item["nome"].strip()
+                    or not isinstance(item.get("cro"), str) or not item["cro"].strip()
+                    or item.get("situacao") not in ("ativo", "inativo")):
+                raise ErroAcesso()
+            especialidade = item.get("especialidade")
+            if (not isinstance(especialidade, dict)
+                    or type(especialidade.get("id")) is not int
+                    or especialidade["id"] <= 0
+                    or not isinstance(especialidade.get("nome"), str)
+                    or not especialidade["nome"].strip()):
+                raise ErroAcesso()
+            email = item.get("email")
+            telefone = item.get("telefone")
+            if ((email is not None and not isinstance(email, str))
+                    or (telefone is not None and not isinstance(telefone, str))):
+                raise ErroAcesso()
+            vistos.add(item["id"])
+            resultado.append({
+                "id": item["id"], "nome": item["nome"], "cro": item["cro"],
+                "especialidade": {"id": especialidade["id"], "nome": especialidade["nome"]},
+                "email": email, "telefone": telefone, "situacao": item["situacao"],
+            })
+        return resultado
+
+    def atualizar_situacao_profissional(self, token, profissional_id, situacao):
+        from .contratos_clinicos import DadosContratoInvalidos, validar_id
+
+        self._token_obrigatorio(token)
+        try:
+            profissional_id = validar_id(profissional_id, "Profissional")
+        except DadosContratoInvalidos as error:
+            raise ErroAcesso(str(error), 400) from None
+        if situacao not in ("ativo", "inativo"):
+            raise ErroAcesso("Informe uma situação válida para o Profissional.", 400)
+        data = self._request(
+            "PATCH", f"/profissionais/{profissional_id}/situacao", token=token,
+            payload={"situacao": situacao},
+        )
+        profissional = data.get("profissional")
+        if (not isinstance(profissional, dict)
+                or profissional.get("id") != profissional_id
+                or profissional.get("situacao") != situacao):
+            raise ErroAcesso()
+        return {"id": profissional_id, "situacao": situacao}
+
     @staticmethod
     def _token_obrigatorio(token):
         if not isinstance(token, str) or not token or any(c.isspace() for c in token):
