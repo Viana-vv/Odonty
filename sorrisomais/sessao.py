@@ -18,6 +18,8 @@ def limpar(estado):
                   "painel_recepcao_xano_erro_em", "pacientes_xano_edicao"):
         estado.pop(chave, None)
     estado.pop("pagina_equipe", None)
+    estado.pop("agenda_xano_cache", None)
+    estado.pop("agenda_xano_erro_em", None)
     for chave in list(estado):
         if chave.startswith(("cad_", "pac_", "pacientes_xano_edicao_")):
             estado.pop(chave, None)

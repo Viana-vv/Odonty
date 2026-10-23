@@ -15,6 +15,9 @@ ESPECIALIDADES_RETRY_SEGUNDOS = 20
 CACHE_PAINEL_RECEPCAO = "painel_recepcao_xano_cache"
 PAINEL_RECEPCAO_CACHE_TTL_SEGUNDOS = 20
 PAINEL_RECEPCAO_RETRY_SEGUNDOS = 20
+AGENDA_CACHE_TTL_SEGUNDOS = 20
+AGENDA_RETRY_SEGUNDOS = 20
+CACHE_AGENDA_XANO = "agenda_xano_cache"
 RAIZ = Path(__file__).resolve().parents[1]
 
 
@@ -314,7 +317,54 @@ def _atualizar_situacao_agenda(cliente, token, consulta_id):
     except ErroAcesso as error:
         st.session_state["agenda_aviso"] = ("error", str(error))
     else:
+        st.session_state.pop(CACHE_AGENDA_XANO, None)
+        st.session_state.pop("agenda_xano_erro_em", None)
         st.session_state["agenda_aviso"] = ("success", "Situação da consulta atualizada.")
+
+
+def _carregar_consultas_agenda(cliente, token, dia):
+    """Reutiliza a leitura da data atual por sessão durante vinte segundos."""
+    agora = monotonic()
+    identidade = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    cache = st.session_state.get(CACHE_AGENDA_XANO)
+    if not isinstance(cache, dict) or cache.get("sessao") != identidade:
+        st.session_state.pop(CACHE_AGENDA_XANO, None)
+        cache = {"sessao": identidade, "dias": {}}
+
+    chave_dia = dia.isoformat()
+    dias_cache = cache.get("dias")
+    if not isinstance(dias_cache, dict):
+        dias_cache = {}
+    entrada = dias_cache.get(chave_dia)
+    idade = agora - entrada.get("carregado_em", 0) if isinstance(entrada, dict) else AGENDA_CACHE_TTL_SEGUNDOS
+    if (isinstance(entrada, dict) and isinstance(entrada.get("consultas"), list)
+            and 0 <= idade < AGENDA_CACHE_TTL_SEGUNDOS):
+        return entrada["consultas"]
+
+    erro_em = st.session_state.get("agenda_xano_erro_em")
+    if erro_em is not None and 0 <= agora - erro_em < AGENDA_RETRY_SEGUNDOS:
+        raise ErroAcesso("Muitas tentativas. Aguarde alguns segundos antes de tentar novamente.", 429)
+
+    dias_cache.pop(chave_dia, None)
+    st.session_state[CACHE_AGENDA_XANO] = {"sessao": identidade, "dias": dias_cache}
+    try:
+        consultas = cliente.listar_consultas(
+            token, inicio=_data_api(dia), fim=_data_api(dia, True)
+        )
+    except ErroAcesso:
+        st.session_state["agenda_xano_erro_em"] = monotonic()
+        raise
+
+    carregado_em = monotonic()
+    dias_cache[chave_dia] = {"consultas": consultas, "carregado_em": carregado_em}
+    for chave, item in list(dias_cache.items()):
+        if carregado_em - item.get("carregado_em", 0) >= AGENDA_CACHE_TTL_SEGUNDOS:
+            dias_cache.pop(chave, None)
+    while len(dias_cache) > 7:
+        dias_cache.pop(next(iter(dias_cache)))
+    st.session_state[CACHE_AGENDA_XANO] = {"sessao": identidade, "dias": dias_cache}
+    st.session_state.pop("agenda_xano_erro_em", None)
+    return consultas
 
 
 def _renderizar_agenda(cliente, conta):
@@ -361,14 +411,15 @@ def _renderizar_agenda(cliente, conta):
                     on_click=_alternar_formulario_agenda, args=("agenda_nova_disponibilidade",))
 
     try:
-        consultas = cliente.listar_consultas(token, inicio=_data_api(dia), fim=_data_api(dia, True))
+        consultas = _carregar_consultas_agenda(cliente, token, dia)
     except ErroAcesso as error:
         if error.status in (401, 403):
             sessao.limpar(st.session_state)
             st.error(str(error))
             return
         with st.container(key="agenda-estado-erro", border=True):
-            st.error("Não foi possível carregar a Agenda. Tente novamente.")
+            st.error(str(error) if error.status == 429
+                     else "Não foi possível carregar a Agenda. Tente novamente.")
         if st.button("Tentar novamente", key="agenda-retry"):
             st.rerun()
         return
@@ -467,6 +518,7 @@ def _renderizar_formulario_agenda(cliente, token, dia):
         try:
             cliente.agendar_consulta(token, paciente_id, disponibilidade_id, procedimento_ids,
                                      motivo=motivo.strip() or None)
+            st.session_state.pop(CACHE_AGENDA_XANO, None)
             st.session_state["agenda_nova"] = False
             st.session_state["agenda_data_pendente"] = data_consulta
             st.session_state["agenda_aviso"] = ("success", "Consulta agendada.")
@@ -553,6 +605,7 @@ def _renderizar_formulario_disponibilidade(cliente, token, dia):
             token, profissional_id, inicio.isoformat(timespec="seconds"),
             fim.isoformat(timespec="seconds"),
         )
+        st.session_state.pop(CACHE_AGENDA_XANO, None)
         st.session_state["agenda_nova_disponibilidade"] = False
         st.session_state["agenda_disponibilidade_padroes_iniciados"] = False
         st.session_state["agenda_aviso"] = (
