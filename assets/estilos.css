@@ -139,6 +139,8 @@ footer { display: none !important; }
  .st-key-modal-paciente, .st-key-modal-profissional { top: 12px; left: 12px; width: calc(100vw - 24px); max-height: calc(100dvh - 24px); transform: none; padding: 16px 14px; }
  .st-key-modal-paciente [data-testid="stForm"] [data-testid="stHorizontalBlock"], .st-key-modal-profissional [data-testid="stForm"] [data-testid="stHorizontalBlock"] { flex-direction: column; }
  .st-key-modal-paciente [data-testid="stForm"] [data-testid="stColumn"], .st-key-modal-profissional [data-testid="stForm"] [data-testid="stColumn"] { width: 100%; flex: 1 1 100%; min-width: 0; }
+  .st-key-pacientes-xano-tabela { padding: 10px; }
+  .st-key-pacientes-xano-tabela [data-testid="stHorizontalBlock"] { gap: 8px; }
 }
 
 /* As telas ocupam a janela; o espaço visual fica dentro dos próprios blocos. */
@@ -180,7 +182,5 @@ footer { display: none !important; }
  .marca-rodape { left: 24px; bottom: 12px; }
  .st-key-menu-equipe { min-height: 0; border-right: 0; border-radius: 12px; }
  .st-key-conteudo-equipe { min-height: 0; padding: 20px 14px; }
- .st-key-pacientes-xano-tabela { padding: 10px; }
- .st-key-pacientes-xano-tabela [data-testid="stHorizontalBlock"] { gap: 8px; }
 }
 </style>
