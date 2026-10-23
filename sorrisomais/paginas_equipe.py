@@ -475,7 +475,11 @@ def renderizar_cadastro_modal(cliente):
         renderizar_cadastro(cliente)
 
 
-def renderizar_inicio(conta, administrador, pode_cadastrar_paciente, pode_agendar):
+def renderizar_inicio(conta, administrador, pode_cadastrar_paciente, pode_agendar, cliente=None):
+    if "profissional" in conta.perfis:
+        from . import painel_profissional
+        painel_profissional.renderizar(cliente, conta)
+        return
     dia = date.today()
     dias = ("SEGUNDA-FEIRA", "TERÇA-FEIRA", "QUARTA-FEIRA", "QUINTA-FEIRA",
             "SEXTA-FEIRA", "SÁBADO", "DOMINGO")
@@ -622,7 +626,7 @@ def renderizar(conta, cliente):
                 elif pagina == "inicio":
                     renderizar_topbar(conta, "inicio")
                     renderizar_inicio(conta, administrador, pode_cadastrar_paciente,
-                                      bool(set(conta.perfis) & navegacao.PERFIS_NOVA_CONSULTA))
+                                      bool(set(conta.perfis) & navegacao.PERFIS_NOVA_CONSULTA), cliente)
                 else:
                     renderizar_topbar(conta, pagina)
                     modulo = navegacao.carregar_modulo_xano(pagina)
