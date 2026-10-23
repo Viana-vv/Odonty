@@ -45,7 +45,7 @@ def renderizar(cliente, conta):
     """Exibe os Profissionais ativos fornecidos pelo Xano."""
     st.caption("EQUIPE DA CLÍNICA")
     st.title("Profissionais")
-    st.write("Consulte os Profissionais ativos da clínica.")
+    st.write("Gerencie dentistas, especialidades e disponibilidade.")
 
     if not set(conta.perfis).intersection({"administrador", "recepcionista"}):
         st.info("Seu perfil não tem permissão para consultar esta lista.")
@@ -79,6 +79,7 @@ def renderizar(cliente, conta):
         st.info("Não há Profissionais ativos para exibir.")
         return
 
+    st.caption(f"{len(profissionais)} profissional(is) ativo(s)")
     colunas = st.columns(3, gap="medium")
     for indice, profissional in enumerate(profissionais):
         coluna = colunas[indice % len(colunas)]
@@ -86,5 +87,5 @@ def renderizar(cliente, conta):
             with st.container(border=True, key=f"profissional-xano-{profissional['id']}"):
                 avatar, situacao = st.columns([1, 1], vertical_alignment="center")
                 avatar.markdown(f"### {_iniciais(profissional['nome'])}")
-                situacao.caption("● Ativo")
+                situacao.caption("Ativo")
                 st.subheader(profissional["nome"])

@@ -88,7 +88,8 @@ def test_lista_exibe_nome_e_indicador_ativo(tela):
     pagina.renderizar(cliente, conta)
     assert "Dra. Exemplo Sorriso" in interface.textos
     assert "Dr. Nome Fictício" in interface.textos
-    assert interface.textos.count("● Ativo") == 2
+    assert interface.textos.count("Ativo") == 2
+    assert "2 profissional(is) ativo(s)" in interface.textos
     assert interface.colunas_criadas == [3, [1, 1], [1, 1]]
     cliente.listar_opcoes_agenda.assert_called_once_with("token-ficticio")
 
