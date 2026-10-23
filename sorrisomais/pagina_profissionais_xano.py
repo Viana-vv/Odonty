@@ -79,6 +79,7 @@ def renderizar(cliente, conta):
         st.info("Não há Profissionais ativos para exibir.")
         return
 
+    st.caption(f"{len(profissionais)} profissional(is) ativo(s)")
     colunas = st.columns(3, gap="medium")
     for indice, profissional in enumerate(profissionais):
         coluna = colunas[indice % len(colunas)]
@@ -86,5 +87,5 @@ def renderizar(cliente, conta):
             with st.container(border=True, key=f"profissional-xano-{profissional['id']}"):
                 avatar, situacao = st.columns([1, 1], vertical_alignment="center")
                 avatar.markdown(f"### {_iniciais(profissional['nome'])}")
-                situacao.caption("● Ativo")
+                situacao.caption("Ativo")
                 st.subheader(profissional["nome"])
