@@ -26,3 +26,14 @@ A Visão geral do Administrador MUST mostrar o total de Consultas do dia, Consul
 #### Scenario: Conta de Acesso de outro perfil abre a Visão geral
 - **WHEN** uma Conta de Acesso sem perfil Administrador abre a Visão geral
 - **THEN** o painel administrativo não faz as leituras adicionais usadas por esse resumo e mantém o painel correspondente ao perfil existente
+
+### Requirement: Limite de chamadas do resumo
+O resumo administrativo MUST reutilizar as respostas completas e bem-sucedidas para a mesma Conta de Acesso e data local por até vinte segundos. MUST descartar o cache ao expirar a janela, trocar de Conta de Acesso, encerrar a sessão ou falhar uma leitura. MUST NOT exibir respostas parciais nem reutilizar dados de outra sessão.
+
+#### Scenario: O Administrador atualiza o painel dentro da janela de cache
+- **WHEN** a mesma Conta de Acesso provoca um novo render do painel dentro de vinte segundos
+- **THEN** a interface reutiliza o resumo em memória e não envia novamente as duas leituras ao Xano
+
+#### Scenario: O cache expira ou a sessão termina
+- **WHEN** passam vinte segundos ou a Conta de Acesso encerra a sessão
+- **THEN** a resposta antiga deixa de ser reutilizável e uma próxima leitura autorizada consulta o Xano novamente

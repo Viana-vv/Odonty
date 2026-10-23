@@ -15,6 +15,9 @@ ESPECIALIDADES_RETRY_SEGUNDOS = 20
 CACHE_PAINEL_RECEPCAO = "painel_recepcao_xano_cache"
 PAINEL_RECEPCAO_CACHE_TTL_SEGUNDOS = 20
 PAINEL_RECEPCAO_RETRY_SEGUNDOS = 20
+PAINEL_ADMIN_CACHE_TTL_SEGUNDOS = 20
+PAINEL_ADMIN_RETRY_SEGUNDOS = 20
+CACHE_PAINEL_ADMIN = "painel_administrativo_xano_cache"
 RAIZ = Path(__file__).resolve().parents[1]
 
 
@@ -660,6 +663,50 @@ def renderizar_cadastro_modal(cliente):
         renderizar_cadastro(cliente)
 
 
+def _carregar_resumo_painel_administrador(cliente, credencial, dia):
+    """Cacheia as duas leituras administrativas por sessao, dia e vinte segundos."""
+    agora = monotonic()
+    if credencial.expira_em <= datetime.now(ZoneInfo("UTC")):
+        st.session_state.pop(CACHE_PAINEL_ADMIN, None)
+        raise ErroAcesso("Sua sessão expirou. Entre novamente para consultar o resumo.", 401)
+
+    identidade = hashlib.sha256(credencial.token.encode("utf-8")).hexdigest()
+    erro_em = st.session_state.get("painel_administrativo_xano_erro_em")
+    if erro_em is not None and 0 <= agora - erro_em < PAINEL_ADMIN_RETRY_SEGUNDOS:
+        raise ErroAcesso("Muitas tentativas. Aguarde alguns segundos antes de tentar novamente.", 429)
+
+    cache = st.session_state.get(CACHE_PAINEL_ADMIN)
+    idade = agora - cache.get("carregado_em", 0) if isinstance(cache, dict) else PAINEL_ADMIN_CACHE_TTL_SEGUNDOS
+    if (isinstance(cache, dict) and cache.get("sessao") == identidade
+            and cache.get("dia") == dia
+            and 0 <= idade < PAINEL_ADMIN_CACHE_TTL_SEGUNDOS
+            and isinstance(cache.get("consultas"), list)
+            and type(cache.get("pacientes_ativos")) is int):
+        return cache["consultas"], cache["pacientes_ativos"]
+
+    st.session_state.pop(CACHE_PAINEL_ADMIN, None)
+    try:
+        consultas = cliente.listar_consultas(
+            credencial.token, inicio=_data_api(dia), fim=_data_api(dia, True)
+        )
+        opcoes = cliente.listar_opcoes_agenda(credencial.token)
+        pacientes_ativos = len(opcoes["pacientes"])
+    except (ErroAcesso, KeyError, TypeError, ValueError):
+        st.session_state["painel_administrativo_xano_erro_em"] = monotonic()
+        raise
+
+    carregado_em = monotonic()
+    st.session_state.pop("painel_administrativo_xano_erro_em", None)
+    st.session_state[CACHE_PAINEL_ADMIN] = {
+        "sessao": identidade,
+        "dia": dia,
+        "consultas": consultas,
+        "pacientes_ativos": pacientes_ativos,
+        "carregado_em": carregado_em,
+    }
+    return consultas, pacientes_ativos
+
+
 def _renderizar_painel_administrador(cliente, conta, pode_cadastrar_paciente, pode_agendar):
     """Resumo diário da Administração baseado nos contratos existentes do Xano."""
     fuso = ZoneInfo("America/Sao_Paulo")
@@ -691,11 +738,9 @@ def _renderizar_painel_administrador(cliente, conta, pode_cadastrar_paciente, po
     else:
         try:
             with st.spinner("Carregando o resumo da clínica…"):
-                consultas = cliente.listar_consultas(
-                    credencial.token, inicio=_data_api(dia), fim=_data_api(dia, True)
+                consultas, pacientes_ativos = _carregar_resumo_painel_administrador(
+                    cliente, credencial, dia
                 )
-                opcoes = cliente.listar_opcoes_agenda(credencial.token)
-                pacientes_ativos = len(opcoes["pacientes"])
         except ErroAcesso as error:
             consultas = pacientes_ativos = None
             if error.status == 401:

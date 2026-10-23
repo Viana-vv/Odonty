@@ -98,6 +98,38 @@ def test_painel_calcula_metricas_e_mostra_ate_cinco_consultas(cliente_painel):
     assert set(kwargs) == {"inicio", "fim"}
 
 
+def test_rerun_reutiliza_consultas_e_opcoes_por_vinte_segundos(cliente_painel):
+    app = abrir_painel(cliente_painel)
+
+    app.button(key="inicio-abrir-agenda").click().run()
+
+    cliente_painel.listar_consultas.assert_called_once()
+    cliente_painel.listar_opcoes_agenda.assert_called_once_with("token-ficticio")
+
+
+def test_cache_do_painel_expira_apos_vinte_segundos(cliente_painel, monkeypatch):
+    relogio = {"agora": 100.0}
+    monkeypatch.setattr(paginas_equipe, "monotonic", lambda: relogio["agora"])
+    app = abrir_painel(cliente_painel)
+
+    relogio["agora"] = 121.0
+    app.run()
+
+    assert cliente_painel.listar_consultas.call_count == 2
+    assert cliente_painel.listar_opcoes_agenda.call_count == 2
+
+
+def test_limpar_sessao_remove_caches_administrativo_e_da_agenda():
+    estado = {
+        "painel_administrativo_xano_cache": {"consultas": ["ficticia"]},
+        "painel_administrativo_xano_erro_em": 1.0,
+    }
+
+    sessao.limpar(estado)
+
+    assert not estado
+
+
 def test_estado_vazio_mantem_atalhos_disponiveis(cliente_painel):
     cliente_painel.listar_consultas.return_value = []
     app = abrir_painel(cliente_painel)

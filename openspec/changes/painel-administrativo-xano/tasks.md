@@ -3,6 +3,7 @@
 - [x] 1.1 Carregar, para Administrador, Consultas de hoje e cadastros ativos pelos métodos existentes; verificar chamadas com cliente simulado sem rede.
 - [x] 1.2 Renderizar métricas, próxima Consulta, lista limitada e atalhos da referência; verificar dados e estado vazio em testes de interface.
 - [x] 1.3 Tratar falhas, sessão expirada e acesso recusado sem exibir dados parciais ou técnicos; verificar mensagens e limpeza dos dados em testes.
+- [x] 1.4 Cachear apenas o resumo bem-sucedido por vinte segundos para a mesma Conta de Acesso e data; verificar reaproveitamento, expiração e limpeza no logout.
 
 ## 2. Regressão e revisão
 
