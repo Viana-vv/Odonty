@@ -33,28 +33,35 @@ query disponibilidades verb=GET {
       }
     }
     db.query disponibilidade_agenda {
-      join = {
-        profissional: {
-          table: "profissional"
-          type: "inner"
-          where: $db.disponibilidade_agenda.profissional_id == $db.profissional.id
-        }
-      }
-      where = (($solicitante.perfis|includes:"paciente") == false && ($db.disponibilidade_agenda.situacao == "disponivel" || $db.disponibilidade_agenda.situacao == "bloqueado") || ($solicitante.perfis|includes:"paciente") == true && $db.disponibilidade_agenda.situacao == "disponivel") && $db.disponibilidade_agenda.inicio > now && $db.profissional.situacao == "Ativo" && (($solicitante.perfis|includes:"profissional") == false || $db.profissional.conta_acesso_id == $auth.id) && ($input.profissional_id == null || $db.disponibilidade_agenda.profissional_id == $input.profissional_id) && ($input.inicio == null || $db.disponibilidade_agenda.inicio >= $input.inicio) && ($input.fim == null || $db.disponibilidade_agenda.fim <= $input.fim)
       sort = {disponibilidade_agenda.inicio: "asc", disponibilidade_agenda.id: "asc"}
       return = {type: "list"}
-      output = ["id", "profissional_id", "inicio", "fim", "situacao", "profissional.nome"]
+      output = ["id", "profissional_id", "inicio", "fim", "situacao"]
     } as $disponibilidades
     var $disponibilidades_formatadas { value = [] }
     foreach ($disponibilidades) {
       each as $disponibilidade {
+        db.get profissional {
+          field_name = "id"
+          field_value = $disponibilidade.profissional_id
+          output = ["id", "nome", "situacao", "conta_acesso_id"]
+        } as $profissional
+        var $incluir_disponibilidade { value = true }
+        conditional {
+          if ($profissional == null || $profissional.situacao != "Ativo" || $disponibilidade.inicio <= now || (($solicitante.perfis|includes:"paciente") == true && $disponibilidade.situacao != "disponivel") || (($solicitante.perfis|includes:"profissional") == true && $profissional.conta_acesso_id != $auth.id) || ($input.profissional_id != null && $disponibilidade.profissional_id != $input.profissional_id) || ($input.inicio != null && $disponibilidade.inicio < $input.inicio) || ($input.fim != null && $disponibilidade.fim > $input.fim)) {
+            var.update $incluir_disponibilidade { value = false }
+          }
+        }
+        conditional {
+          if ($incluir_disponibilidade) {
         var $inicio_iso { value = $disponibilidade.inicio|format_timestamp:"c":"UTC" }
         var $fim_iso { value = $disponibilidade.fim|format_timestamp:"c":"UTC" }
         var $disponibilidade_formatada {
-          value = {id: $disponibilidade.id, profissional_id: $disponibilidade.profissional_id, profissional_nome: $disponibilidade.profissional.nome, inicio: $inicio_iso, fim: $fim_iso, situacao: $disponibilidade.situacao}
+          value = {id: $disponibilidade.id, profissional_id: $disponibilidade.profissional_id, profissional_nome: $profissional.nome, inicio: $inicio_iso, fim: $fim_iso, situacao: $disponibilidade.situacao}
         }
         var.update $disponibilidades_formatadas {
           value = $disponibilidades_formatadas|push:$disponibilidade_formatada
+        }
+          }
         }
       }
     }
