@@ -59,7 +59,7 @@ query disponibilidades verb=GET {
         } as $profissional
         var $incluir_disponibilidade { value = true }
         conditional {
-          if ($profissional == null || $profissional.situacao != "Ativo" || $disponibilidade.inicio <= now || ($eh_paciente == true && $disponibilidade.situacao != "disponivel") || ($eh_profissional == true && $profissional.conta_acesso_id != $auth.id) || ($input.profissional_id != null && $disponibilidade.profissional_id != $input.profissional_id) || ($input.inicio != null && $disponibilidade.inicio < $input.inicio) || ($input.fim != null && $disponibilidade.fim > $input.fim)) {
+          if ($profissional == null || $profissional.situacao != "Ativo" || $disponibilidade.inicio <= now || ($disponibilidade.situacao != "disponivel" && $disponibilidade.situacao != "bloqueado") || ($eh_paciente == true && $disponibilidade.situacao != "disponivel") || ($eh_profissional == true && $profissional.conta_acesso_id != $auth.id) || ($input.profissional_id != null && $disponibilidade.profissional_id != $input.profissional_id) || ($input.inicio != null && $disponibilidade.inicio < $input.inicio) || ($input.fim != null && $disponibilidade.fim > $input.fim)) {
             var.update $incluir_disponibilidade { value = false }
           }
         }

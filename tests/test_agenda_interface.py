@@ -60,6 +60,7 @@ def agenda_simulada(monkeypatch):
         return [d.copy() | {"profissional_nome": "Dra. Exemplo Sorriso"}
                 for d in estado["disponibilidades"]
                 if (profissional_id is None or d["profissional_id"] == profissional_id)
+                and d["situacao"] in {"disponivel", "bloqueado"}
                 and d["inicio"] >= inicio and d["inicio"] < fim]
 
     def atualizar_disponibilidade(_self, _token, disponibilidade_id, **alteracoes):
@@ -484,6 +485,33 @@ def test_agenda_gerencia_horario_disponivel(agenda_simulada):
     assert not app.exception
     assert agenda_simulada["disponibilidades_alteradas"][-1][0] == 403
     assert f"{data_seguinte.isoformat()}T11:00:00-03:00" in agenda_simulada["disponibilidades_alteradas"][-1][1]["inicio"]
+
+
+def test_agenda_lista_horarios_bloqueados_e_omite_reservados_ou_indisponiveis(agenda_simulada):
+    data_futura = date.today() + timedelta(days=5)
+    inicio = f"{data_futura.isoformat()}T10:00:00-03:00"
+    fim = f"{data_futura.isoformat()}T10:45:00-03:00"
+    agenda_simulada["disponibilidades"] = [
+        {"id": 403, "profissional_id": 201, "inicio": inicio, "fim": fim,
+         "situacao": "bloqueado"},
+        {"id": 404, "profissional_id": 201, "inicio": f"{data_futura.isoformat()}T11:00:00-03:00",
+         "fim": f"{data_futura.isoformat()}T11:45:00-03:00", "situacao": "reservado"},
+        {"id": 405, "profissional_id": 201, "inicio": f"{data_futura.isoformat()}T12:00:00-03:00",
+         "fim": f"{data_futura.isoformat()}T12:45:00-03:00", "situacao": "indisponivel"},
+    ]
+    app = abrir_agenda(agenda_simulada)
+    app.date_input(key="agenda_data_input").set_value(data_futura).run()
+
+    assert any(button.key == "agenda-horario-situacao-403" and button.label == "Desbloquear"
+               for button in app.button)
+    assert not any(button.key in {
+        "agenda-horario-situacao-404", "agenda-horario-situacao-405",
+    } for button in app.button)
+    assert any("Bloqueado" in item.value for item in app.caption)
+
+    app.button(key="agenda-horario-situacao-403").click().run()
+
+    assert agenda_simulada["disponibilidades_alteradas"][-1] == (403, {"situacao": "disponivel"})
 
 
 def test_agenda_edicao_rejeitada_por_conflito_nao_confirma_sucesso(agenda_simulada):
