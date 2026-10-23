@@ -15,9 +15,6 @@ ESPECIALIDADES_RETRY_SEGUNDOS = 20
 CACHE_PAINEL_RECEPCAO = "painel_recepcao_xano_cache"
 PAINEL_RECEPCAO_CACHE_TTL_SEGUNDOS = 20
 PAINEL_RECEPCAO_RETRY_SEGUNDOS = 20
-AGENDA_CACHE_TTL_SEGUNDOS = 20
-AGENDA_RETRY_SEGUNDOS = 20
-CACHE_AGENDA_XANO = "agenda_xano_cache"
 RAIZ = Path(__file__).resolve().parents[1]
 
 
@@ -320,6 +317,11 @@ def _atualizar_situacao_agenda(cliente, token, consulta_id):
         st.session_state.pop(CACHE_AGENDA_XANO, None)
         st.session_state.pop("agenda_xano_erro_em", None)
         st.session_state["agenda_aviso"] = ("success", "Situação da consulta atualizada.")
+
+
+AGENDA_CACHE_TTL_SEGUNDOS = 20
+AGENDA_RETRY_SEGUNDOS = 20
+CACHE_AGENDA_XANO = "agenda_xano_cache"
 
 
 def _carregar_consultas_agenda(cliente, token, dia):
