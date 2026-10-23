@@ -35,6 +35,8 @@ def agenda_simulada(monkeypatch):
 
     def listar(_self, _token, **_filtros):
         estado["listagens"] += 1
+        if estado.get("erro_consultas"):
+            raise estado["erro_consultas"]
         # O adaptador real já elimina linhas repetidas de Consulta e agrega seus Procedimentos.
         consultas = {}
         for linha in estado["consultas"]:
@@ -130,6 +132,44 @@ def test_profissional_consulta_agenda_sem_acao_de_criar(agenda_simulada):
     assert not any(button.key == "agenda-nova" for button in app.button)
     assert app.selectbox(key="agenda-proxima-502").options == ["Em atendimento", "Cancelada", "Falta"]
     assert not any(button.key == "agenda-novo-horario" for button in app.button)
+
+
+def test_painel_profissional_resume_agenda_xano_sem_dados_clinicos(agenda_simulada):
+    app = abrir_agenda(agenda_simulada, "profissional")
+    consultas_antes = agenda_simulada["listagens"]
+    app.button(key="menu-inicio").click().run()
+
+    assert not app.exception
+    assert any("sua agenda de hoje" in item.value for item in app.caption)
+    assert any(item.value == "Agenda de hoje" for item in app.subheader)
+    assert any("Paciente Fictícia Aurora" in item.value for item in app.markdown)
+    assert any(button.key == "painel-profissional-prontuario" for button in app.button)
+    assert any(button.key == "painel-profissional-agenda-atalho" for button in app.button)
+    assert agenda_simulada["listagens"] == consultas_antes + 1
+    assert not any("CONTEUDO CLINICO" in item.value for item in app.markdown)
+
+
+def test_painel_profissional_apresenta_agenda_vazia(agenda_simulada):
+    agenda_simulada["consultas"] = []
+    app = abrir_agenda(agenda_simulada, "profissional")
+    app.button(key="menu-inicio").click().run()
+
+    assert not app.exception
+    assert any("Nenhuma consulta para hoje" in item.value for item in app.info)
+    assert any(button.key == "painel-profissional-agenda-atalho" for button in app.button)
+
+
+def test_painel_profissional_lida_com_sessao_expirada(agenda_simulada):
+    from sorrisomais import sessao
+
+    app = abrir_agenda(agenda_simulada, "profissional")
+    app.button(key="menu-inicio").click().run()
+    agenda_simulada["erro_consultas"] = ErroAcesso("mensagem interna", 401)
+    app.button(key="menu-inicio").click().run()
+
+    assert not app.exception
+    assert any("Sua sessão expirou" in item.value for item in app.error)
+    assert sessao.CHAVE not in dict(app.session_state)
 
 
 def test_administrador_pode_iniciar_nova_consulta(agenda_simulada):

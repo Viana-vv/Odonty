@@ -66,7 +66,6 @@ def renderizar(cliente):
             valor = int(valor)
         st.session_state["pac_" + campo] = valor
     st.session_state.setdefault("pac_operacao_id", str(uuid4()))
-    st.caption("Preencha os dados cadastrais para criar um Paciente com prontuário vazio.")
     ocupado = st.session_state.get("pac_processando", False)
     pendente = st.session_state.get("pac_pendente")
     aviso = st.session_state.pop("pac_aviso", None)
@@ -128,6 +127,7 @@ def renderizar_modal(cliente):
     with st.container(key="modal-paciente"):
         cabecalho, fechar = st.columns([8, 1], vertical_alignment="center")
         cabecalho.markdown("### Novo paciente")
+        cabecalho.caption("Preencha os dados cadastrais para criar um Paciente com prontuário vazio.")
         if fechar.button("×", key="pac-fechar-modal", help="Fechar cadastro"):
             voltar()
             st.rerun()
