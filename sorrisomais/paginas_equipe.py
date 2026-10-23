@@ -322,24 +322,28 @@ def _renderizar_agenda(cliente, conta):
     if isinstance(dia_pendente, date):
         st.session_state["agenda_data"] = dia_pendente
         st.session_state["agenda_data_input"] = dia_pendente
+    st.caption("ORGANIZAÇÃO DO DIA")
     st.title("Agenda")
+    st.caption("Acompanhe consultas, horários e situação dos atendimentos.")
     aviso_agenda = st.session_state.pop("agenda_aviso", None)
     if aviso_agenda:
         getattr(st, aviso_agenda[0])(aviso_agenda[1])
     perfis = set(conta.perfis)
     token = st.session_state[sessao.CHAVE].token
-    data_col, status_col, busca_col = st.columns([1, 1, 1.4], gap="small")
+    busca_col, data_col, status_col = st.columns([2.2, 1, 1], gap="medium")
     dia = data_col.date_input("Data", value=st.session_state.get("agenda_data", date.today()),
                               format="DD/MM/YYYY", key="agenda_data_input")
     situacao = status_col.selectbox("Situação", ["Todas", "Agendada", "Confirmada",
         "Em atendimento", "Realizada", "Cancelada", "Falta"], key="agenda_situacao")
     busca = busca_col.text_input("Buscar Paciente ou Procedimento", key="agenda_busca").strip().casefold()
     anterior, hoje, proximo = st.columns(3, vertical_alignment="center")
-    anterior.button("‹ Dia anterior", key="agenda-anterior", width="stretch",
+    anterior.button("‹", key="agenda-anterior", width="stretch",
+                    help="Dia anterior",
                     on_click=_navegar_data_agenda, args=(-1,))
     hoje.button("Hoje", key="agenda-hoje", width="stretch",
                 on_click=_ir_para_hoje_na_agenda)
-    proximo.button("Próximo dia ›", key="agenda-proximo", width="stretch",
+    proximo.button("›", key="agenda-proximo", width="stretch",
+                   help="Próximo dia",
                    on_click=_navegar_data_agenda, args=(1,))
     pode_agendar = bool(perfis.intersection({"administrador", "recepcionista"}))
     if pode_agendar:
@@ -363,7 +367,8 @@ def _renderizar_agenda(cliente, conta):
             sessao.limpar(st.session_state)
             st.error(str(error))
             return
-        st.error("Não foi possível carregar a Agenda. Tente novamente.")
+        with st.container(key="agenda-estado-erro", border=True):
+            st.error("Não foi possível carregar a Agenda. Tente novamente.")
         if st.button("Tentar novamente", key="agenda-retry"):
             st.rerun()
         return
@@ -374,14 +379,18 @@ def _renderizar_agenda(cliente, conta):
         consultas = [c for c in consultas if busca in c["paciente_nome"].casefold()
                      or any(busca in p.casefold() for p in c["procedimentos"])]
     consultas.sort(key=lambda c: (c["inicio_em"], c["id"]))
-    st.caption(f"{len(consultas)} consulta(s) · {dia.strftime('%d/%m/%Y')}")
+    st.markdown(f"**{dia.strftime('%d/%m/%Y')}** · {len(consultas)} consulta(s)")
 
     if st.session_state.get("agenda_nova") and pode_agendar:
         _renderizar_formulario_agenda(cliente, token, dia)
     if st.session_state.get("agenda_nova_disponibilidade") and pode_agendar:
         _renderizar_formulario_disponibilidade(cliente, token, dia)
     if not consultas:
-        st.info("Nenhuma consulta encontrada para esta data e filtros.")
+        with st.container(key="agenda-estado-vazio", border=True):
+            if busca or situacao != "Todas":
+                st.info("Nenhuma consulta corresponde à busca e aos filtros. Ajuste os critérios e tente novamente.")
+            else:
+                st.info("Nenhuma consulta agendada para este dia.")
     transicoes = {
         "Agendada": ["Confirmada", "Cancelada"],
         "Confirmada": ["Em atendimento", "Cancelada", "Falta"],

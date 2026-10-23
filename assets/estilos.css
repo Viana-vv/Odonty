@@ -91,6 +91,10 @@ body:has(.st-key-modal-paciente, .st-key-modal-profissional)::before { content: 
 .st-key-modal-paciente [data-testid="stCaptionContainer"], .st-key-modal-profissional [data-testid="stCaptionContainer"] { margin-top: 3px; color: #738481; font-size: 11px; line-height: 1.45; }
 .st-key-modal-paciente [data-testid="stButton"] button, .st-key-modal-profissional [data-testid="stButton"] button { min-width: 38px; min-height: 38px; padding: 0; border: 1px solid var(--linha); background: #fff; }
 .st-key-layout-equipe [data-testid="stCaptionContainer"] { color: #738481; }
+.st-key-agenda-estado-vazio, .st-key-agenda-estado-erro { margin: 14px 0; padding: 18px 20px; border: 1px solid var(--linha); border-radius: 14px; background: #fff; }
+.st-key-agenda-estado-vazio [data-testid="stAlert"], .st-key-agenda-estado-erro [data-testid="stAlert"] { margin: 0; border: 0; background: transparent; }
+[class*="st-key-agenda-consulta-"] { margin: 0 0 10px; padding: 15px 16px; border: 1px solid var(--linha); border-radius: 12px; background: #fff; }
+[class*="st-key-agenda-consulta-"] [data-testid="stHorizontalBlock"] { align-items: center; }
 footer { display: none !important; }
 
 @media (max-width: 1000px) {
@@ -175,5 +179,7 @@ footer { display: none !important; }
  .marca-rodape { left: 24px; bottom: 12px; }
  .st-key-menu-equipe { min-height: 0; border-right: 0; border-radius: 12px; }
  .st-key-conteudo-equipe { min-height: 0; padding: 20px 14px; }
+ [class*="st-key-agenda-consulta-"] { padding: 12px 10px; }
+ .st-key-agenda-estado-vazio, .st-key-agenda-estado-erro { padding: 14px; }
 }
 </style>
