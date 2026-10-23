@@ -80,6 +80,7 @@ def _renderizar_formulario(cliente, token, pacientes, profissionais, procediment
         help="Recarregar Pacientes, Profissionais, Procedimentos e horários.",
         on_click=_limpar_cache_leituras,
     )
+    st.caption("1. Dados da consulta")
     paciente_id = st.selectbox(
         "Paciente", list(pacientes), format_func=pacientes.get,
         index=None, placeholder="Selecione um Paciente",
@@ -95,6 +96,8 @@ def _renderizar_formulario(cliente, token, pacientes, profissionais, procediment
         "Profissional", list(profissionais), format_func=profissionais.get,
         key="nova-consulta-profissional",
     )
+
+    st.caption("2. Horário e procedimento")
 
     filtro_horarios = (profissional_id, data_consulta)
     if st.session_state.get("nova-consulta-filtro-horarios") != filtro_horarios:
@@ -211,5 +214,5 @@ def renderizar(cliente, conta):
         st.info("Cadastre Pacientes e Profissionais ativos antes de agendar.")
         return
 
-    with st.container(key="formulario-nova-consulta"):
+    with st.container(key="formulario-nova-consulta", border=True):
         _renderizar_formulario(cliente, token, pacientes, profissionais, procedimentos)
