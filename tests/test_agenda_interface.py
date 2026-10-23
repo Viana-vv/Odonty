@@ -22,7 +22,8 @@ def agenda_simulada(monkeypatch):
     estado = {"consultas": deepcopy(FIXTURE["consultas"]),
               "disponibilidades": deepcopy(FIXTURE["disponibilidades"]),
               "criados": [], "alterados": [], "listagens": 0, "disponibilidades_criadas": [],
-              "filtros_disponibilidade": []}
+              "disponibilidades_alteradas": [],
+              "filtros_disponibilidade": [], "disponibilidades_listagens": 0}
     validade = datetime.now(timezone.utc) + timedelta(hours=1)
 
     def identificar(_self, _token):
@@ -54,9 +55,22 @@ def agenda_simulada(monkeypatch):
         return deepcopy(FIXTURE["opcoes"])
 
     def disponibilidades(_self, _token, profissional_id=None, inicio=None, fim=None):
+        estado["disponibilidades_listagens"] += 1
         estado["filtros_disponibilidade"].append((profissional_id, inicio, fim))
-        return [d.copy() for d in estado["disponibilidades"]
-                if d["profissional_id"] == profissional_id and d["inicio"] >= inicio and d["inicio"] < fim]
+        return [d.copy() | {"profissional_nome": "Dra. Exemplo Sorriso"}
+                for d in estado["disponibilidades"]
+                if (profissional_id is None or d["profissional_id"] == profissional_id)
+                and d["inicio"] >= inicio and d["inicio"] < fim]
+
+    def atualizar_disponibilidade(_self, _token, disponibilidade_id, **alteracoes):
+        if estado.get("conflito_edicao_disponibilidade"):
+            raise ErroAcesso("Conflito de horario.", 409)
+        estado["disponibilidades_alteradas"].append((disponibilidade_id, alteracoes.copy()))
+        for disponibilidade in estado["disponibilidades"]:
+            if disponibilidade["id"] == disponibilidade_id:
+                disponibilidade.update(alteracoes)
+                return disponibilidade.copy()
+        raise ErroAcesso("Disponibilidade nao encontrada.", 404)
 
     def criar_disponibilidade(_self, _token, profissional_id, inicio, fim):
         if estado.get("erro_disponibilidade"):
@@ -96,6 +110,7 @@ def agenda_simulada(monkeypatch):
     monkeypatch.setattr(ClienteXano, "listar_consultas", listar)
     monkeypatch.setattr(ClienteXano, "listar_opcoes_agenda", opcoes)
     monkeypatch.setattr(ClienteXano, "listar_disponibilidades", disponibilidades)
+    monkeypatch.setattr(ClienteXano, "atualizar_disponibilidade", atualizar_disponibilidade)
     monkeypatch.setattr(ClienteXano, "criar_disponibilidade", criar_disponibilidade)
     monkeypatch.setattr(ClienteXano, "agendar_consulta", agendar)
     monkeypatch.setattr(ClienteXano, "atualizar_situacao_consulta", atualizar)
@@ -370,7 +385,10 @@ def test_recepcao_cria_consulta_ficticia_sem_requisicao_real(agenda_simulada):
     assert app.date_input(key="agenda-consulta-data").value == date(2026, 10, 5)
     app.date_input(key="agenda-consulta-data").set_value(date(2026, 10, 6)).run()
     assert app.date_input(key="agenda_data_input").value == date(2026, 10, 5)
-    profissional_id, inicio_disponibilidade, fim_disponibilidade = agenda_simulada["filtros_disponibilidade"][-1]
+    profissional_id, inicio_disponibilidade, fim_disponibilidade = next(
+        filtro for filtro in reversed(agenda_simulada["filtros_disponibilidade"])
+        if filtro[0] == 201
+    )
     assert profissional_id == 201
     assert inicio_disponibilidade.startswith("2026-10-06T00:00:00")
     assert fim_disponibilidade.startswith("2026-10-07T00:00:00")
@@ -432,6 +450,52 @@ def test_cancelamento_exige_motivo_e_confirmacao(agenda_simulada):
     submit.click().run()
     assert not app.exception
     assert agenda_simulada["alterados"] == [(501, "Cancelada", "Solicitação fictícia")]
+
+
+def test_agenda_gerencia_horario_disponivel(agenda_simulada):
+    data_futura = date.today() + timedelta(days=5)
+    agenda_simulada["disponibilidades"][0]["inicio"] = f"{data_futura.isoformat()}T10:00:00-03:00"
+    agenda_simulada["disponibilidades"][0]["fim"] = f"{data_futura.isoformat()}T10:45:00-03:00"
+    app = abrir_agenda(agenda_simulada)
+    app.date_input(key="agenda_data_input").set_value(data_futura).run()
+    assert any(button.key == "agenda-horario-situacao-403" for button in app.button)
+    consultas_disponibilidade = agenda_simulada["disponibilidades_listagens"]
+    app.run()
+    assert agenda_simulada["disponibilidades_listagens"] == consultas_disponibilidade
+
+    app.button(key="agenda-horario-situacao-403").click().run()
+    assert agenda_simulada["disponibilidades_alteradas"][-1] == (403, {"situacao": "bloqueado"})
+    assert agenda_simulada["disponibilidades_listagens"] == consultas_disponibilidade + 1
+    assert app.success
+    assert next(button for button in app.button if button.key == "agenda-horario-situacao-403").label == "Desbloquear"
+
+    app.button(key="agenda-horario-situacao-403").click().run()
+    assert agenda_simulada["disponibilidades_alteradas"][-1] == (403, {"situacao": "disponivel"})
+
+    app.button(key="agenda-horario-editar-toggle-403").click().run()
+    data_seguinte = data_futura + timedelta(days=1)
+    app.date_input(key="agenda-horario-data-403").set_value(data_seguinte)
+    app.time_input(key="agenda-horario-inicio-403").set_value(time(11, 0))
+    app.time_input(key="agenda-horario-fim-403").set_value(time(12, 0))
+    app.button(key="FormSubmitter:agenda-horario-form-403-Salvar intervalo").click().run()
+    assert not app.exception
+    assert agenda_simulada["disponibilidades_alteradas"][-1][0] == 403
+    assert f"{data_seguinte.isoformat()}T11:00:00-03:00" in agenda_simulada["disponibilidades_alteradas"][-1][1]["inicio"]
+
+
+def test_agenda_edicao_rejeitada_por_conflito_nao_confirma_sucesso(agenda_simulada):
+    data_futura = date.today() + timedelta(days=5)
+    agenda_simulada["disponibilidades"][0]["inicio"] = f"{data_futura.isoformat()}T10:00:00-03:00"
+    agenda_simulada["disponibilidades"][0]["fim"] = f"{data_futura.isoformat()}T10:45:00-03:00"
+    app = abrir_agenda(agenda_simulada)
+    app.date_input(key="agenda_data_input").set_value(data_futura).run()
+    app.button(key="agenda-horario-editar-toggle-403").click().run()
+    agenda_simulada["conflito_edicao_disponibilidade"] = True
+    app.button(key="FormSubmitter:agenda-horario-form-403-Salvar intervalo").click().run()
+
+    assert not app.exception
+    assert any("Conflito" in item.value for item in app.error)
+    assert not app.success
 
 
 def test_profissional_atualiza_consulta_sem_recarregar_lista_duas_vezes(agenda_simulada):

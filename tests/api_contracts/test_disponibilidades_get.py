@@ -10,6 +10,7 @@ def test_get_disponibilidades_envia_filtros_e_valida_resposta(cliente, http):
     http.return_value = resposta({"disponibilidades": [{
         "id": 3, "profissional_id": 8, "inicio": FUTURO.isoformat(),
         "fim": (FUTURO + timedelta(hours=1)).isoformat(), "situacao": "disponivel",
+        "profissional_nome": "Dra. Exemplo Sorriso",
     }]})
     resultado = cliente.listar_disponibilidades(
         "token-ficticio", 8, FUTURO.isoformat(), (FUTURO + timedelta(hours=1)).isoformat(),
