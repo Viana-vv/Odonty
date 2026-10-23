@@ -71,4 +71,5 @@ query profissionais verb=GET {
   }
   response = {profissionais: $resultado}
   history = false
+  guid = "wicpdSickbi3uescydlCa9dy_YU"
 }
