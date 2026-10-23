@@ -318,6 +318,7 @@ def _atualizar_situacao_agenda(cliente, token, consulta_id):
         st.session_state["agenda_aviso"] = ("error", str(error))
     else:
         st.session_state.pop(CACHE_AGENDA_XANO, None)
+        st.session_state.pop(CACHE_DISPONIBILIDADES_AGENDA, None)
         st.session_state.pop("agenda_xano_erro_em", None)
         st.session_state["agenda_aviso"] = ("success", "Situação da consulta atualizada.")
 
@@ -325,6 +326,7 @@ def _atualizar_situacao_agenda(cliente, token, consulta_id):
 AGENDA_CACHE_TTL_SEGUNDOS = 20
 AGENDA_RETRY_SEGUNDOS = 20
 CACHE_AGENDA_XANO = "agenda_xano_cache"
+CACHE_DISPONIBILIDADES_AGENDA = "agenda_disponibilidades_cache"
 
 
 def _carregar_consultas_agenda(cliente, token, dia):
@@ -334,6 +336,7 @@ def _carregar_consultas_agenda(cliente, token, dia):
     cache = st.session_state.get(CACHE_AGENDA_XANO)
     if not isinstance(cache, dict) or cache.get("sessao") != identidade:
         st.session_state.pop(CACHE_AGENDA_XANO, None)
+        st.session_state.pop(CACHE_DISPONIBILIDADES_AGENDA, None)
         cache = {"sessao": identidade, "dias": {}}
 
     chave_dia = dia.isoformat()
@@ -370,6 +373,39 @@ def _carregar_consultas_agenda(cliente, token, dia):
     st.session_state[CACHE_AGENDA_XANO] = {"sessao": identidade, "dias": dias_cache}
     st.session_state.pop("agenda_xano_erro_em", None)
     return consultas
+
+
+def _carregar_disponibilidades_agenda(cliente, token, dia):
+    agora = monotonic()
+    identidade = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    cache = st.session_state.get(CACHE_DISPONIBILIDADES_AGENDA)
+    if not isinstance(cache, dict) or cache.get("sessao") != identidade:
+        cache = {"sessao": identidade, "dias": {}}
+    dias_cache = cache.get("dias", {})
+    chave_dia = dia.isoformat()
+    entrada = dias_cache.get(chave_dia)
+    if (isinstance(entrada, dict) and isinstance(entrada.get("disponibilidades"), list)
+            and 0 <= agora - entrada.get("carregado_em", 0) < AGENDA_CACHE_TTL_SEGUNDOS):
+        return entrada["disponibilidades"]
+    erro_em = st.session_state.get("agenda_disponibilidades_erro_em")
+    if erro_em is not None and 0 <= agora - erro_em < AGENDA_RETRY_SEGUNDOS:
+        raise ErroAcesso("Muitas tentativas. Aguarde alguns segundos antes de tentar novamente.", 429)
+    try:
+        disponibilidades = cliente.listar_disponibilidades(
+            token, inicio=_data_api(dia), fim=_data_api(dia, True)
+        )
+    except ErroAcesso:
+        st.session_state["agenda_disponibilidades_erro_em"] = monotonic()
+        raise
+    dias_cache[chave_dia] = {"disponibilidades": disponibilidades, "carregado_em": monotonic()}
+    for chave, item in list(dias_cache.items()):
+        if monotonic() - item.get("carregado_em", 0) >= AGENDA_CACHE_TTL_SEGUNDOS:
+            dias_cache.pop(chave, None)
+    while len(dias_cache) > 7:
+        dias_cache.pop(next(iter(dias_cache)))
+    st.session_state[CACHE_DISPONIBILIDADES_AGENDA] = {"sessao": identidade, "dias": dias_cache}
+    st.session_state.pop("agenda_disponibilidades_erro_em", None)
+    return disponibilidades
 
 
 def _renderizar_agenda(cliente, conta):
@@ -476,6 +512,88 @@ def _renderizar_agenda(cliente, conta):
                 enviar_col.button("Atualizar", key=f"agenda-atualizar-{consulta['id']}", width="stretch",
                     on_click=_atualizar_situacao_agenda, args=(cliente, token, consulta["id"]))
 
+    _renderizar_disponibilidades_agenda(cliente, token, dia, perfis)
+
+
+def _renderizar_disponibilidades_agenda(cliente, token, dia, perfis):
+    pode_gerenciar = bool(perfis.intersection({"profissional", "administrador", "recepcionista"}))
+    st.subheader("Horários da agenda")
+    try:
+        disponibilidades = _carregar_disponibilidades_agenda(cliente, token, dia)
+    except ErroAcesso as error:
+        if error.status in (401, 403):
+            sessao.limpar(st.session_state)
+        st.error(str(error) if error.status in (401, 403, 429)
+                 else "Não foi possível carregar os horários da Agenda.")
+        return
+
+    if not disponibilidades:
+        st.info("Nenhum horário futuro disponível ou bloqueado nesta data.")
+        return
+
+    fuso = ZoneInfo("America/Sao_Paulo")
+    for disponibilidade in disponibilidades:
+        inicio = datetime.fromisoformat(disponibilidade["inicio"].replace("Z", "+00:00")).astimezone(fuso)
+        fim = datetime.fromisoformat(disponibilidade["fim"].replace("Z", "+00:00")).astimezone(fuso)
+        rotulo_situacao = "Bloqueado" if disponibilidade["situacao"] == "bloqueado" else "Disponível"
+        with st.container(key=f"agenda-horario-{disponibilidade['id']}", border=True):
+            st.markdown(f"**{inicio:%H:%M}–{fim:%H:%M}** · {disponibilidade['profissional_nome']}")
+            st.caption(rotulo_situacao)
+            if not pode_gerenciar:
+                continue
+            col_editar, col_situacao = st.columns([1, 1], gap="small")
+            expandir_edicao = st.session_state.get(f"agenda-editar-{disponibilidade['id']}", False)
+            if col_editar.button("Editar horário" if not expandir_edicao else "Fechar edição",
+                                 key=f"agenda-horario-editar-toggle-{disponibilidade['id']}", width="stretch"):
+                st.session_state[f"agenda-editar-{disponibilidade['id']}"] = not expandir_edicao
+                st.rerun()
+            novo_estado = "disponivel" if disponibilidade["situacao"] == "bloqueado" else "bloqueado"
+            acao_estado = "Desbloquear" if novo_estado == "disponivel" else "Bloquear"
+            if col_situacao.button(acao_estado, key=f"agenda-horario-situacao-{disponibilidade['id']}",
+                                   width="stretch"):
+                try:
+                    cliente.atualizar_disponibilidade(
+                        token, disponibilidade["id"], situacao=novo_estado
+                    )
+                    st.session_state.pop(CACHE_AGENDA_XANO, None)
+                    st.session_state.pop(CACHE_DISPONIBILIDADES_AGENDA, None)
+                    mensagem = "Horário desbloqueado." if novo_estado == "disponivel" else "Horário bloqueado."
+                    st.session_state["agenda_aviso"] = ("success", mensagem)
+                    st.rerun()
+                except ErroAcesso as error:
+                    st.error(str(error))
+            if expandir_edicao:
+                with st.form(f"agenda-horario-form-{disponibilidade['id']}", border=True):
+                    data = st.date_input("Data", value=inicio.date(), format="DD/MM/YYYY",
+                                         key=f"agenda-horario-data-{disponibilidade['id']}")
+                    col_inicio, col_fim = st.columns(2, gap="small")
+                    hora_inicio = col_inicio.time_input("Início", value=inicio.time().replace(tzinfo=None),
+                                                        key=f"agenda-horario-inicio-{disponibilidade['id']}")
+                    hora_fim = col_fim.time_input("Fim", value=fim.time().replace(tzinfo=None),
+                                                  key=f"agenda-horario-fim-{disponibilidade['id']}")
+                    salvar = st.form_submit_button("Salvar intervalo", type="primary")
+                if salvar:
+                    inicio_novo = datetime.combine(data, hora_inicio, tzinfo=fuso)
+                    fim_novo = datetime.combine(data, hora_fim, tzinfo=fuso)
+                    if inicio_novo <= datetime.now(fuso):
+                        st.error("O início do horário precisa ser futuro.")
+                    elif fim_novo <= inicio_novo:
+                        st.error("O horário final deve ser posterior ao horário inicial.")
+                    else:
+                        try:
+                            cliente.atualizar_disponibilidade(
+                                token, disponibilidade["id"],
+                                inicio=inicio_novo.isoformat(timespec="seconds"),
+                                fim=fim_novo.isoformat(timespec="seconds"),
+                            )
+                            st.session_state.pop(CACHE_AGENDA_XANO, None)
+                            st.session_state.pop(CACHE_DISPONIBILIDADES_AGENDA, None)
+                            st.session_state[f"agenda-editar-{disponibilidade['id']}"] = False
+                            st.session_state["agenda_aviso"] = ("success", "Horário atualizado.")
+                            st.rerun()
+                        except ErroAcesso as error:
+                            st.error(str(error))
+
 
 def _renderizar_formulario_agenda(cliente, token, dia):
     try:
@@ -524,6 +642,7 @@ def _renderizar_formulario_agenda(cliente, token, dia):
             cliente.agendar_consulta(token, paciente_id, disponibilidade_id, procedimento_ids,
                                      motivo=motivo.strip() or None)
             st.session_state.pop(CACHE_AGENDA_XANO, None)
+            st.session_state.pop(CACHE_DISPONIBILIDADES_AGENDA, None)
             st.session_state["agenda_nova"] = False
             st.session_state["agenda_data_pendente"] = data_consulta
             st.session_state["agenda_aviso"] = ("success", "Consulta agendada.")
@@ -611,6 +730,7 @@ def _renderizar_formulario_disponibilidade(cliente, token, dia):
             fim.isoformat(timespec="seconds"),
         )
         st.session_state.pop(CACHE_AGENDA_XANO, None)
+        st.session_state.pop(CACHE_DISPONIBILIDADES_AGENDA, None)
         st.session_state["agenda_nova_disponibilidade"] = False
         st.session_state["agenda_disponibilidade_padroes_iniciados"] = False
         st.session_state["agenda_aviso"] = (

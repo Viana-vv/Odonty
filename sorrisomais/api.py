@@ -392,7 +392,8 @@ class ClienteXano:
             params["inicio"], params["fim"] = validar_intervalo(inicio, fim)
         data = self._request("GET", "/disponibilidades", token=token, params=params or None)
         return self._lista_resposta(data, "disponibilidades", {
-            "profissional_id": int, "inicio": str, "fim": str, "situacao": str,
+            "profissional_id": int, "profissional_nome": str,
+            "inicio": str, "fim": str, "situacao": str,
         })
 
     def criar_disponibilidade(self, token, profissional_id, inicio, fim):

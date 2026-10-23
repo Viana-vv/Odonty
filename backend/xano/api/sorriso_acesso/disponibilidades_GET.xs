@@ -1,4 +1,4 @@
-// Lista somente disponibilidades futuras, livres e de Profissionais ativos.
+// Lista disponibilidades futuras livres ou bloqueadas de Profissionais ativos.
 query disponibilidades verb=GET {
   api_group = "Sorriso Acesso"
   auth = "conta_acesso"
@@ -40,10 +40,10 @@ query disponibilidades verb=GET {
           where: $db.disponibilidade_agenda.profissional_id == $db.profissional.id
         }
       }
-      where = $db.disponibilidade_agenda.situacao == "disponivel" && $db.disponibilidade_agenda.inicio > now && $db.profissional.situacao == "Ativo" && ($input.profissional_id == null || $db.disponibilidade_agenda.profissional_id == $input.profissional_id) && ($input.inicio == null || $db.disponibilidade_agenda.inicio >= $input.inicio) && ($input.fim == null || $db.disponibilidade_agenda.fim <= $input.fim)
+      where = (($solicitante.perfis|intersect:["paciente"]|count) == 0 && ($db.disponibilidade_agenda.situacao == "disponivel" || $db.disponibilidade_agenda.situacao == "bloqueado") || ($solicitante.perfis|intersect:["paciente"]|count) > 0 && $db.disponibilidade_agenda.situacao == "disponivel") && $db.disponibilidade_agenda.inicio > now && $db.profissional.situacao == "Ativo" && (($solicitante.perfis|intersect:["profissional"]|count) == 0 || $db.profissional.conta_acesso_id == $auth.id) && ($input.profissional_id == null || $db.disponibilidade_agenda.profissional_id == $input.profissional_id) && ($input.inicio == null || $db.disponibilidade_agenda.inicio >= $input.inicio) && ($input.fim == null || $db.disponibilidade_agenda.fim <= $input.fim)
       sort = {disponibilidade_agenda.inicio: "asc", disponibilidade_agenda.id: "asc"}
       return = {type: "list"}
-      output = ["id", "profissional_id", "inicio", "fim", "situacao"]
+      output = ["id", "profissional_id", "inicio", "fim", "situacao", "profissional.nome"]
     } as $disponibilidades
     var $disponibilidades_formatadas { value = [] }
     foreach ($disponibilidades) {
@@ -51,7 +51,7 @@ query disponibilidades verb=GET {
         var $inicio_iso { value = $disponibilidade.inicio|format_timestamp:"c":"UTC" }
         var $fim_iso { value = $disponibilidade.fim|format_timestamp:"c":"UTC" }
         var $disponibilidade_formatada {
-          value = {id: $disponibilidade.id, profissional_id: $disponibilidade.profissional_id, inicio: $inicio_iso, fim: $fim_iso, situacao: $disponibilidade.situacao}
+          value = {id: $disponibilidade.id, profissional_id: $disponibilidade.profissional_id, profissional_nome: $disponibilidade.profissional.nome, inicio: $inicio_iso, fim: $fim_iso, situacao: $disponibilidade.situacao}
         }
         var.update $disponibilidades_formatadas {
           value = $disponibilidades_formatadas|push:$disponibilidade_formatada
