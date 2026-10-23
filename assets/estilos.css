@@ -63,6 +63,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .st-key-formulario-nova-consulta [data-testid="stForm"] { padding: 5px 0 0; border: 0; background: transparent; }
 .st-key-cartao-acesso { min-height: 190px; padding: 22px; border: 1px solid var(--linha); border-radius: 16px; background: #fff; box-shadow: 0 8px 25px #1e48400a; }
 .st-key-cartao-acesso h3 { font-size: 18px; }
+.st-key-inicio-painel-confirmadas { margin-top: 14px; padding: 18px 20px; border: 1px solid var(--linha); border-radius: 16px; background: #fff; box-shadow: 0 6px 20px #1e48400a; }
 .st-key-cartao-mascote { padding: 20px; border: 1px solid #d9e9e5; border-radius: 18px; background: #eaf4f1; text-align: center; }
 .st-key-cartao-mascote img { width: min(100%, 190px); height: 175px; object-fit: cover; object-position: top; }
 .st-key-metrica-xano-0, .st-key-metrica-xano-1, .st-key-metrica-xano-2, .st-key-metrica-xano-3 { min-height: 150px; padding: 16px; border: 1px solid var(--linha); border-radius: 15px; background: #fff; box-shadow: 0 6px 20px #1e48400a; }

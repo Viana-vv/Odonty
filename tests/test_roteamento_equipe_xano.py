@@ -29,6 +29,7 @@ def cliente_teste():
             "profissionais": [],
             "procedimentos": [],
         }),
+        listar_consultas=Mock(return_value=[]),
     )
     return cliente
 
