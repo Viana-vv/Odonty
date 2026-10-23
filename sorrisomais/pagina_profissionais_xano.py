@@ -45,7 +45,7 @@ def renderizar(cliente, conta):
     """Exibe os Profissionais ativos fornecidos pelo Xano."""
     st.caption("EQUIPE DA CLÍNICA")
     st.title("Profissionais")
-    st.write("Gerencie dentistas, especialidades e disponibilidade.")
+    st.write("Consulte os Profissionais ativos da clínica.")
 
     if not set(conta.perfis).intersection({"administrador", "recepcionista"}):
         st.info("Seu perfil não tem permissão para consultar esta lista.")
