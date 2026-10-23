@@ -2,9 +2,13 @@
 query profissionais verb=GET {
   api_group = "Sorriso Acesso"
   auth = "conta_acesso"
-  input { }
+  input {
+  }
   stack {
-    util.set_header { value = "Cache-Control: no-store" duplicates = "replace" }
+    util.set_header {
+      value = "Cache-Control: no-store"
+      duplicates = "replace"
+    }
     function.run sorriso_validar_sessao {
       input = {conta_id: $auth.id, sessao_id: $auth.extras.sessao_id}
     } as $sessao
@@ -15,14 +19,30 @@ query profissionais verb=GET {
     } as $solicitante
     conditional {
       if ($solicitante == null || $solicitante.situacao != "ativo" || ($solicitante.perfis|intersect:["administrador", "recepcionista"]|count) == 0) {
-        util.set_header { value = "HTTP/1.1 403 Forbidden" }
-        return { value = {codigo: "ACESSO_NEGADO", mensagem: "Acesso permitido somente à equipe administrativa."} }
+        util.set_header {
+          value = "HTTP/1.1 403 Forbidden"
+          duplicates = "replace"
+        }
+        return {
+          value = {
+            codigo  : "ACESSO_NEGADO"
+            mensagem: "Acesso permitido somente à equipe administrativa."
+          }
+        }
       }
     }
     db.query profissional {
       sort = {profissional.nome: "asc", profissional.id: "asc"}
       return = {type: "list"}
-      output = ["id", "nome", "cro", "email", "telefone", "situacao", "especialidade_id"]
+      output = [
+        "id"
+        "nome"
+        "cro"
+        "email"
+        "telefone"
+        "situacao"
+        "especialidade_id"
+      ]
     } as $lista
     var $resultado { value = [] }
     foreach ($lista) {
@@ -34,13 +54,13 @@ query profissionais verb=GET {
         } as $especialidade
         var $profissional_formatado {
           value = {
-            id: $item.id,
-            nome: $item.nome,
-            cro: $item.cro,
-            especialidade: {id: $especialidade.id, nome: $especialidade.nome},
-            email: $item.email,
-            telefone: $item.telefone,
-            situacao: ($item.situacao|to_lower)
+            id           : $item.id
+            nome         : $item.nome
+            cro          : $item.cro
+            especialidade: {id: $especialidade.id, nome: $especialidade.nome}
+            email        : $item.email
+            telefone     : $item.telefone
+            situacao     : $item.situacao|to_lower
           }
         }
         var.update $resultado {
@@ -49,6 +69,8 @@ query profissionais verb=GET {
       }
     }
   }
-  response = {profissionais: $resultado}
+  response = {
+    profissionais: $resultado
+  }
   history = false
 }
