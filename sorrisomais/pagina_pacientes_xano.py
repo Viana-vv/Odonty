@@ -1,6 +1,7 @@
 """Listagem conectada de Pacientes com dados administrativos mínimos."""
 
 import hashlib
+from datetime import date
 from time import monotonic
 
 import streamlit as st
@@ -10,6 +11,9 @@ from .api import ErroAcesso
 
 CACHE_PACIENTES = "pacientes_xano_cache"
 CACHE_TTL_SEGUNDOS = 20
+CHAVE_EDICAO = "pacientes_xano_edicao"
+PREFIXO_FORMULARIO = "pacientes_xano_edicao_"
+CHAVE_MENSAGEM = "pacientes_xano_mensagem"
 
 
 def _carregar_pacientes(cliente, credencial, atualizar=False):
@@ -36,16 +40,101 @@ def _carregar_pacientes(cliente, credencial, atualizar=False):
     return pacientes
 
 
+def _limpar_edicao():
+    st.session_state.pop(CHAVE_EDICAO, None)
+    for chave in list(st.session_state):
+        if chave.startswith(PREFIXO_FORMULARIO):
+            st.session_state.pop(chave, None)
+
+
+def _mensagem_edicao(error):
+    if error.status == 400:
+        return "Confira os dados cadastrais informados e tente novamente."
+    if error.status == 404:
+        return "Este Paciente não foi encontrado. Atualize a listagem e tente novamente."
+    if error.status == 409:
+        return "O CPF informado já está cadastrado. Confira os dados e tente novamente."
+    if error.status == 429:
+        return "Muitas tentativas. Aguarde um pouco antes de tentar novamente."
+    return "Não foi possível concluir a edição. Tente novamente em instantes."
+
+
+@st.dialog("Editar Paciente", width="large")
+def _renderizar_edicao(cliente, credencial, edicao):
+    paciente = edicao["paciente"]
+    with st.container(key="pacientes-xano-edicao"):
+        st.caption("Altere os dados cadastrais. Informações clínicas não são exibidas nesta tela.")
+        with st.form("pacientes-xano-form-edicao", border=False):
+            nome = st.text_input("Nome completo *", value=paciente["nome"], max_chars=120,
+                                 key=f"{PREFIXO_FORMULARIO}nome")
+            col_cpf, col_nascimento = st.columns(2)
+            cpf = col_cpf.text_input("CPF *", value=paciente["cpf"], max_chars=14,
+                                     key=f"{PREFIXO_FORMULARIO}cpf")
+            nascimento = col_nascimento.date_input(
+                "Data de nascimento *", value=date.fromisoformat(paciente["data_nascimento"]),
+                min_value=date(1900, 1, 1), max_value=date.today(), format="DD/MM/YYYY",
+                key=f"{PREFIXO_FORMULARIO}nascimento",
+            )
+            col_telefone, col_celular = st.columns(2)
+            telefone = col_telefone.text_input("Telefone *", value=paciente["telefone"],
+                                                key=f"{PREFIXO_FORMULARIO}telefone")
+            celular = col_celular.text_input("Celular *", value=paciente["celular"],
+                                             key=f"{PREFIXO_FORMULARIO}celular")
+            email = st.text_input("E-mail *", value=paciente["email"], max_chars=254,
+                                  key=f"{PREFIXO_FORMULARIO}email")
+            col_cancelar, col_salvar = st.columns([1, 1])
+            cancelar = col_cancelar.form_submit_button("Cancelar", width="stretch")
+            salvar = col_salvar.form_submit_button("Salvar alterações", type="primary", width="stretch")
+
+    if cancelar:
+        _limpar_edicao()
+        st.rerun()
+    if salvar:
+        try:
+            cliente.atualizar_paciente(
+                credencial.token, paciente["id"], nome=nome,
+                data_nascimento=nascimento.isoformat(), telefone=telefone,
+                cpf=cpf, email=email, celular=celular,
+            )
+            _limpar_edicao()
+            st.session_state.pop(CACHE_PACIENTES, None)
+            st.session_state[CHAVE_MENSAGEM] = "Os dados cadastrais do Paciente foram atualizados."
+            st.rerun()
+        except ErroAcesso as error:
+            if error.status == 401:
+                sessao.limpar(st.session_state)
+                st.error("Sua sessão expirou. Entre novamente para editar o Paciente.")
+            elif error.status == 403:
+                st.error("Sua Conta de Acesso não tem permissão para editar Pacientes.")
+            else:
+                st.error(_mensagem_edicao(error))
+
+
 def renderizar(cliente, conta):
     """Renderiza a listagem usando exclusivamente as opções da Agenda no Xano."""
     st.caption("BASE DE PACIENTES")
     st.title("Pacientes")
     st.markdown("Consulte os cadastros disponíveis para a equipe.")
 
+    mensagem = st.session_state.pop(CHAVE_MENSAGEM, None)
+    if mensagem:
+        st.success(mensagem)
+
     credencial = st.session_state.get(sessao.CHAVE)
     if not credencial:
+        _limpar_edicao()
         st.info("Sua sessão expirou. Entre novamente para consultar os Pacientes.")
         return
+
+    identificador_sessao = hashlib.sha256(credencial.token.encode("utf-8")).hexdigest()
+    perfis = set(getattr(conta, "perfis", ()))
+    pode_editar = bool(perfis.intersection({"administrador", "recepcionista"}))
+    if not pode_editar:
+        _limpar_edicao()
+    edicao = st.session_state.get(CHAVE_EDICAO)
+    if isinstance(edicao, dict) and edicao.get("sessao") != identificador_sessao:
+        _limpar_edicao()
+        edicao = None
 
     coluna_busca, coluna_atualizar, coluna_total = st.columns([5, 1, 1], vertical_alignment="center")
     with coluna_busca:
@@ -67,6 +156,7 @@ def renderizar(cliente, conta):
                 st.error("Sua sessão expirou. Entre novamente para consultar os Pacientes.")
             else:
                 st.session_state.pop(CACHE_PACIENTES, None)
+                _limpar_edicao()
                 st.error("Sua Conta de Acesso não tem permissão para consultar os Pacientes.")
         else:
             st.error(str(error))
@@ -86,12 +176,34 @@ def renderizar(cliente, conta):
         return
 
     with st.container(key="pacientes-xano-tabela", border=True):
-        identificador, nome = st.columns([1, 5])
+        identificador, nome, acoes = st.columns([1, 4, 1])
         identificador.caption("ID")
         nome.caption("Paciente")
         for paciente in filtrados:
             with st.container(key=f"pacientes-xano-linha-{paciente['id']}"):
-                identificador, nome = st.columns([1, 5], vertical_alignment="center")
+                identificador, nome, acao = st.columns([1, 4, 1], vertical_alignment="center")
                 identificador.text(str(paciente["id"]))
                 nome.markdown(f"**{paciente['nome']}**")
+                if pode_editar and acao.button("Editar", key=f"pacientes-xano-editar-{paciente['id']}"):
+                    try:
+                        dados = cliente.obter_paciente(credencial.token, paciente["id"])
+                        _limpar_edicao()
+                        st.session_state[CHAVE_EDICAO] = {
+                            "sessao": identificador_sessao, "paciente": dados,
+                        }
+                        edicao = st.session_state[CHAVE_EDICAO]
+                    except ErroAcesso as error:
+                        if error.status == 401:
+                            sessao.limpar(st.session_state)
+                            st.error("Sua sessão expirou. Entre novamente para editar o Paciente.")
+                            return
+                        if error.status == 403:
+                            st.error("Sua Conta de Acesso não tem permissão para editar Pacientes.")
+                            return
+                        st.error(_mensagem_edicao(error))
+                        return
                 st.divider()
+
+    edicao = st.session_state.get(CHAVE_EDICAO)
+    if edicao:
+        _renderizar_edicao(cliente, credencial, edicao)

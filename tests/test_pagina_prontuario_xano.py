@@ -44,6 +44,16 @@ def test_historico_mostra_apenas_conteudo_retornado_para_paciente_selecionado():
     assert "Paciente 13" not in str(app.selectbox[0].options)
     assert any("Evolução fictícia" in item.value for item in app.markdown)
     assert not any("Outro registro fictício" in item.value for item in app.markdown)
+    assert any(botao.label == "Nova evolução" for botao in app.button)
+
+
+def test_paciente_nao_recebe_acao_para_criar_registro_clinico():
+    app = abrir(
+        [{"paciente_id": 12, "paciente_nome": "Paciente Fictícia Aurora"}],
+        [], perfis=("paciente",),
+    )
+    assert not app.exception
+    assert not any(botao.label == "Nova evolução" for botao in app.button)
 
 
 def test_perfil_administrativo_nao_carrega_dados_clinicos():

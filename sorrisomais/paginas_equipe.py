@@ -581,7 +581,6 @@ def renderizar_cadastro(cliente):
     if st.session_state.pop("cad_limpar", False):
         limpar_formulario()
         st.success("Profissional cadastrado. Ele já pode entrar pelo login da equipe.")
-    st.caption("Cadastre um dentista e associe uma especialidade ativa.")
     token = st.session_state[sessao.CHAVE].token
     try:
         especialidades = listar_especialidades_sessao(cliente, token)
@@ -611,13 +610,13 @@ def renderizar_cadastro(cliente):
                                  disabled=ocupado or not opcoes)
         cro.text_input("CRO", key="cad_cro", placeholder="CRO-SP 00000", max_chars=32,
                        disabled=ocupado)
-        email, senha = st.columns(2, gap="medium")
-        email.text_input("E-mail do profissional", key="cad_email", max_chars=254,
-                         placeholder="profissional@clinica.com", disabled=ocupado)
+        st.text_input("E-mail do profissional", key="cad_email", max_chars=254,
+                      placeholder="profissional@clinica.com", disabled=ocupado)
+        senha, confirmacao = st.columns(2, gap="medium")
         senha.text_input("Senha inicial", key="cad_senha", type="password", max_chars=128,
                          help="De 12 a 128 caracteres.", disabled=ocupado)
-        st.text_input("Confirmar senha", key="cad_confirmacao", type="password",
-                      max_chars=128, disabled=ocupado)
+        confirmacao.text_input("Confirmar senha", key="cad_confirmacao", type="password",
+                               max_chars=128, disabled=ocupado)
         cancelar, enviar = st.columns([1, 1.3], gap="small", vertical_alignment="center")
         cancelar.form_submit_button("Voltar", on_click=voltar, disabled=ocupado, width="stretch")
         enviar.form_submit_button("Cadastrando…" if ocupado else "Cadastrar profissional",
@@ -653,6 +652,7 @@ def renderizar_cadastro_modal(cliente):
     with st.container(key="modal-profissional"):
         cabecalho, fechar = st.columns([8, 1], vertical_alignment="center")
         cabecalho.markdown("### Novo profissional")
+        cabecalho.caption("Cadastre um dentista e associe uma especialidade ativa.")
         if fechar.button("×", key="cad-fechar-modal", help="Fechar cadastro"):
             voltar()
             st.rerun()
@@ -663,6 +663,10 @@ def renderizar_cadastro_modal(cliente):
 def renderizar_inicio(cliente, conta, administrador, pode_cadastrar_paciente, pode_agendar):
     if "recepcionista" in conta.perfis:
         _renderizar_painel_recepcao(cliente, conta, pode_cadastrar_paciente, pode_agendar)
+def renderizar_inicio(conta, administrador, pode_cadastrar_paciente, pode_agendar, cliente=None):
+    if "profissional" in conta.perfis:
+        from . import painel_profissional
+        painel_profissional.renderizar(cliente, conta)
         return
     dia = date.today()
     dias = ("SEGUNDA-FEIRA", "TERÇA-FEIRA", "QUARTA-FEIRA", "QUINTA-FEIRA",
@@ -811,6 +815,8 @@ def renderizar(conta, cliente):
                     renderizar_topbar(conta, "inicio")
                     renderizar_inicio(cliente, conta, administrador, pode_cadastrar_paciente,
                                       bool(set(conta.perfis) & navegacao.PERFIS_NOVA_CONSULTA))
+                    renderizar_inicio(conta, administrador, pode_cadastrar_paciente,
+                                      bool(set(conta.perfis) & navegacao.PERFIS_NOVA_CONSULTA), cliente)
                 else:
                     renderizar_topbar(conta, pagina)
                     modulo = navegacao.carregar_modulo_xano(pagina)

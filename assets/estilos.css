@@ -71,16 +71,24 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .valor-metrica { display: block; margin: -5px 0 1px; color: #263b3a; font: 700 25px 'Manrope', sans-serif; }
 .st-key-agenda-xano-vazia, .st-key-cartao-acesso { padding: 20px; border: 1px solid var(--linha); border-radius: 16px; background: #fff; box-shadow: 0 6px 20px #1e48400a; }
 .st-key-agenda-xano-vazia [data-testid="stAlert"] { margin-top: 20px; }
+body:has(.st-key-modal-paciente, .st-key-modal-profissional, .st-key-modal-nova-evolucao)::before { content: ""; position: fixed; inset: 0; z-index: 999; background: #23393785; backdrop-filter: blur(4px); }
+.st-key-modal-paciente, .st-key-modal-profissional, .st-key-modal-nova-evolucao { position: fixed !important; z-index: 1000; top: 50%; left: 50%; width: min(650px, calc(100vw - 36px)); max-height: calc(100dvh - 40px); overflow-y: auto; transform: translate(-50%, -50%); padding: 22px 24px 20px; border: 1px solid #e2e8e7; border-radius: 18px; background: #fff; box-shadow: 0 24px 100px #102c2b55; }
+.st-key-modal-paciente [data-testid="stForm"], .st-key-modal-profissional [data-testid="stForm"], .st-key-modal-nova-evolucao [data-testid="stForm"] { padding: 5px 0 0; border: 0; background: transparent; }
+.st-key-modal-nova-evolucao [data-testid="stSelectbox"] [data-baseweb="select"],
 body:has(.st-key-modal-paciente, .st-key-modal-profissional)::before { content: ""; position: fixed; inset: 0; z-index: 999; background: #23393785; backdrop-filter: blur(4px); }
-.st-key-modal-paciente, .st-key-modal-profissional { position: fixed !important; z-index: 1000; top: 50%; left: 50%; width: min(650px, calc(100vw - 36px)); max-height: calc(100dvh - 40px); overflow-y: auto; transform: translate(-50%, -50%); padding: 22px 24px 20px; border: 1px solid #e2e8e7; border-radius: 18px; background: #fff; box-shadow: 0 24px 100px #102c2b55; }
+.st-key-modal-paciente, .st-key-modal-profissional { position: fixed !important; z-index: 1000; top: 50%; left: 50%; width: min(610px, calc(100vw - 36px)); max-height: calc(100dvh - 40px); overflow-y: auto; transform: translate(-50%, -50%); padding: 22px 24px 20px; border: 1px solid #e2e8e7; border-radius: 12px; background: #fff; box-shadow: 0 18px 65px #102c2b33; }
 .st-key-modal-paciente [data-testid="stForm"], .st-key-modal-profissional [data-testid="stForm"] { padding: 5px 0 0; border: 0; background: transparent; }
 .st-key-modal-paciente [data-testid="stTextInput"] input,
 .st-key-modal-paciente [data-testid="stDateInput"] input,
 .st-key-modal-profissional [data-testid="stTextInput"] input,
 .st-key-modal-profissional [data-testid="stSelectbox"] [data-baseweb="select"] { min-height: 44px; }
+.st-key-modal-nova-evolucao [data-testid="stFormSubmitButton"] button:not([kind="primary"]):not([kind="primaryFormSubmit"]),
 .st-key-modal-paciente [data-testid="stFormSubmitButton"] button:not([kind="primary"]):not([kind="primaryFormSubmit"]),
 .st-key-modal-profissional [data-testid="stFormSubmitButton"] button:not([kind="primary"]):not([kind="primaryFormSubmit"]) { background: #fff; border: 1px solid var(--linha); }
+.st-key-modal-paciente h3, .st-key-modal-profissional h3, .st-key-modal-nova-evolucao h3 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -.02em; }
+.st-key-modal-paciente [data-testid="stButton"] button, .st-key-modal-profissional [data-testid="stButton"] button, .st-key-modal-nova-evolucao [data-testid="stButton"] button { min-width: 38px; min-height: 38px; padding: 0; border: 1px solid var(--linha); background: #fff; }
 .st-key-modal-paciente h3, .st-key-modal-profissional h3 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -.02em; }
+.st-key-modal-paciente [data-testid="stCaptionContainer"], .st-key-modal-profissional [data-testid="stCaptionContainer"] { margin-top: 3px; color: #738481; font-size: 11px; line-height: 1.45; }
 .st-key-modal-paciente [data-testid="stButton"] button, .st-key-modal-profissional [data-testid="stButton"] button { min-width: 38px; min-height: 38px; padding: 0; border: 1px solid var(--linha); background: #fff; }
 .st-key-layout-equipe [data-testid="stCaptionContainer"] { color: #738481; }
 footer { display: none !important; }
@@ -125,9 +133,12 @@ footer { display: none !important; }
  .st-key-formulario-equipe [data-testid="stForm"] { padding: .8rem; }
  .st-key-formulario-nova-consulta { margin: 8px auto; padding: 16px 14px; }
  .st-key-cartao-acesso { min-height: 0; padding: 16px; }
+ .st-key-modal-paciente, .st-key-modal-profissional, .st-key-modal-nova-evolucao { top: 12px; left: 12px; width: calc(100vw - 24px); max-height: calc(100dvh - 24px); transform: none; padding: 16px 14px; }
+ .st-key-modal-paciente [data-testid="stHorizontalBlock"], .st-key-modal-profissional [data-testid="stHorizontalBlock"], .st-key-modal-nova-evolucao [data-testid="stHorizontalBlock"] { flex-direction: column; }
+ .st-key-modal-paciente [data-testid="stColumn"], .st-key-modal-profissional [data-testid="stColumn"], .st-key-modal-nova-evolucao [data-testid="stColumn"] { width: 100%; flex: 1 1 100%; min-width: 0; }
  .st-key-modal-paciente, .st-key-modal-profissional { top: 12px; left: 12px; width: calc(100vw - 24px); max-height: calc(100dvh - 24px); transform: none; padding: 16px 14px; }
- .st-key-modal-paciente [data-testid="stHorizontalBlock"], .st-key-modal-profissional [data-testid="stHorizontalBlock"] { flex-direction: column; }
- .st-key-modal-paciente [data-testid="stColumn"], .st-key-modal-profissional [data-testid="stColumn"] { width: 100%; flex: 1 1 100%; min-width: 0; }
+ .st-key-modal-paciente [data-testid="stForm"] [data-testid="stHorizontalBlock"], .st-key-modal-profissional [data-testid="stForm"] [data-testid="stHorizontalBlock"] { flex-direction: column; }
+ .st-key-modal-paciente [data-testid="stForm"] [data-testid="stColumn"], .st-key-modal-profissional [data-testid="stForm"] [data-testid="stColumn"] { width: 100%; flex: 1 1 100%; min-width: 0; }
 }
 
 /* As telas ocupam a janela; o espaço visual fica dentro dos próprios blocos. */
@@ -145,7 +156,8 @@ footer { display: none !important; }
 .st-key-topbar-equipe [data-testid="stMarkdownContainer"] { text-align: right; }
 .st-key-metrica-xano-0, .st-key-metrica-xano-1, .st-key-metrica-xano-2, .st-key-metrica-xano-3 { min-height: 144px; padding: 18px; border-radius: 12px; box-shadow: 0 2px 8px #17303808; }
 .st-key-agenda-xano-vazia, .st-key-cartao-acesso { border-radius: 12px; box-shadow: 0 2px 8px #17303808; }
-.st-key-modal-paciente, .st-key-modal-profissional { width: min(610px, calc(100vw - 36px)); border-radius: 12px; box-shadow: 0 18px 65px #102c2b33; }
+.st-key-modal-paciente, .st-key-modal-profissional, .st-key-modal-nova-evolucao { width: min(610px, calc(100vw - 36px)); border-radius: 12px; box-shadow: 0 18px 65px #102c2b33; }
+.st-key-modal-paciente h3, .st-key-modal-profissional h3, .st-key-modal-nova-evolucao h3 { margin: 0; letter-spacing: -.02em; }
 .st-key-modal-paciente h3, .st-key-modal-profissional h3 { margin: 0; letter-spacing: -.02em; }
 .st-key-marca-menu { margin:0 0 30px; }
 .st-key-marca-menu [data-testid="stImage"] img { width:56px; height:56px; object-fit:cover; border:0; border-radius:10px; background:transparent; }
