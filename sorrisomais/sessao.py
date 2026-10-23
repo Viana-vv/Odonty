@@ -76,6 +76,6 @@ def sair(estado, cliente):
         return "Você saiu com segurança."
     except ErroAcesso:
         return ("Você saiu deste acesso, mas não foi possível confirmar o encerramento no servidor. "
-                "A sessão expira em até uma hora.")
+                "A sessão expira em até oito horas.")
     finally:
         limpar(estado)

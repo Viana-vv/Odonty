@@ -32,4 +32,4 @@ Consulte `proposal.md` para a motivação e `specs/acesso-autenticado/spec.md` p
 
 ## Plano de migração
 
-Publicar o endpoint `POST /auth/login` com o limite de oito horas e atualizar a variável Xano `AUTH_SESSION_TTL_SECONDS` para `28800`. As sessões já emitidas mantêm o prazo original; novos logins recebem o novo prazo. Para reverter, restaurar o limite anterior de `3600` e publicar a rota compatível. Não há migração de dados.
+Nesta aplicação local, atualizar o export versionado de `POST /auth/login`, as mensagens Streamlit e os testes. Esta execução não publica endpoints nem altera variáveis do ambiente Xano remoto. A configuração `AUTH_SESSION_TTL_SECONDS=28800` e a validação com uma Conta de Acesso fictícia permanecem como etapa operacional pendente; enquanto não for feita, o ambiente publicado pode continuar usando seu valor atual. As sessões já emitidas mantêm o prazo original. Para reverter a alteração local, restaurar o padrão e o limite de `3600`; não há migração de dados.

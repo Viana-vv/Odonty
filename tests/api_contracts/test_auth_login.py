@@ -40,3 +40,14 @@ def test_post_login_xano_autentica_conta_paciente_ativa():
     assert "$conta.situacao != \"ativo\"" in codigo
     assert "security.check_password" in codigo
     assert "security.create_auth_token" in codigo
+
+
+def test_post_login_xano_usa_limite_de_sessao_de_oito_horas():
+    caminho = (Path(__file__).resolve().parents[2] / "backend" / "xano" / "api"
+               / "sorriso_acesso" / "auth" / "login_POST.xs")
+    codigo = caminho.read_text(encoding="utf-8-sig")
+
+    assert '$env|get:"AUTH_SESSION_TTL_SECONDS":28800|to_int' in codigo
+    assert "precondition ($duracao > 0 && $duracao <= 28800)" in codigo
+    assert "expira_em: $prazo" in codigo
+    assert "expiration = $duracao" in codigo

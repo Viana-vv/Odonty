@@ -192,7 +192,9 @@ def test_logout_limpa_estado_mesmo_sem_rede():
     state = {sessao.CHAVE: Credencial("ficticio", FUTURO)}
     client = Mock()
     client.sair.side_effect = ErroAcesso()
-    assert "não foi possível confirmar" in sessao.sair(state, client)
+    mensagem = sessao.sair(state, client)
+    assert "não foi possível confirmar" in mensagem
+    assert "sessão expira em até oito horas" in mensagem
     assert not state
 
 
