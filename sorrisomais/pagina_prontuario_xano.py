@@ -69,23 +69,34 @@ def _renderizar_historico(registros):
         st.info("Este Paciente ainda não possui Registros Clínicos disponíveis.")
         return
     for registro in registros:
-        with st.container(border=True):
+        with st.container(key=f"cartao-registro-clinico-{registro.get('id', 'sem-id')}", border=True):
+            paciente = registro.get("paciente_nome")
+            profissional = registro.get("profissional_nome")
             data = registro.get("registrado_em")
-            titulo = "Registro Clínico"
-            if data:
-                titulo = f"{titulo} · {_data_legivel(data)}"
-            st.markdown(f"**{titulo}**")
+            col_identidade, col_profissional = st.columns([1, 1], vertical_alignment="center")
+            with col_identidade:
+                if isinstance(paciente, str) and paciente.strip():
+                    st.subheader(paciente)
+                else:
+                    st.subheader("Registro Clínico")
+                st.caption(_data_legivel(data))
+            if isinstance(profissional, str) and profissional.strip():
+                with col_profissional:
+                    st.caption(f"Profissional responsável · {profissional}")
             conteudo = registro.get("conteudo")
             if isinstance(conteudo, str) and conteudo.strip():
-                st.write(conteudo)
-            st.caption(f"Registro #{registro['id']}")
+                with st.container(key=f"conteudo-registro-clinico-{registro.get('id', 'sem-id')}"):
+                    st.write(conteudo)
+            st.caption(f"Registro #{registro.get('id', '—')}")
 
 
 def renderizar(cliente, conta):
     """Renderiza histórico somente para perfis clínicos reconhecidos."""
-    st.caption("HISTÓRICO CLÍNICO")
-    st.title("Prontuários")
-    st.markdown("Consulte os Registros Clínicos disponíveis no escopo do seu acesso.")
+    titulo, acao = st.columns([1, 0.34], vertical_alignment="center")
+    with titulo:
+        st.caption("HISTÓRICO CLÍNICO")
+        st.title("Prontuários")
+        st.markdown("Registre evoluções e consulte os atendimentos realizados.")
 
     aviso = st.session_state.pop("prontuario_aviso", None)
     if aviso:
@@ -121,30 +132,33 @@ def renderizar(cliente, conta):
         return
 
     ids = list(pacientes)
-    if st.session_state.get("prontuario_paciente_id") not in pacientes:
-        st.session_state["prontuario_paciente_id"] = ids[0]
+    opcoes = [None, *ids]
+    if st.session_state.get("prontuario_paciente_id") not in opcoes:
+        st.session_state["prontuario_paciente_id"] = None
     nomes = {paciente_id: pacientes[paciente_id] for paciente_id in ids}
+
+    with acao:
+        if "profissional" in perfis:
+            pagina_nova_evolucao_xano.renderizar(cliente, conta, consultas)
 
     seletor, aviso = st.columns([1, 1], vertical_alignment="bottom")
     with seletor:
         selecionado = st.selectbox(
-            "Paciente", ids, format_func=lambda paciente_id: nomes[paciente_id],
+            "Paciente", opcoes,
+            format_func=lambda paciente_id: "Todos" if paciente_id is None else nomes[paciente_id],
             key="prontuario_paciente_id",
         )
     with aviso:
         st.caption("◉ Acesso clínico restrito")
 
-    if "profissional" in perfis:
-        pagina_nova_evolucao_xano.renderizar(cliente, conta, consultas)
-
     recentes, linha_tempo = st.columns([0.85, 1.8], gap="medium")
     with recentes:
-        with st.container(border=True):
+        with st.container(key="lista-pacientes-recentes", border=True):
             st.subheader("Pacientes recentes")
             for paciente_id in ids:
                 quantidade = sum(reg.get("paciente_id") == paciente_id for reg in registros)
                 if st.button(
-                    f"{nomes[paciente_id]}  ·  {quantidade} registro(s)",
+                    f"{nomes[paciente_id]}  ·  {quantidade} registro(s)  ›",
                     key=f"prontuario-paciente-{paciente_id}",
                     type="primary" if paciente_id == selecionado else "secondary",
                     width="stretch",
@@ -153,6 +167,7 @@ def renderizar(cliente, conta):
                     st.rerun()
     with linha_tempo:
         registros_paciente = [
-            registro for registro in registros if registro.get("paciente_id") == selecionado
+            registro for registro in registros
+            if selecionado is None or registro.get("paciente_id") == selecionado
         ]
         _renderizar_historico(registros_paciente)

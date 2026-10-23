@@ -189,4 +189,20 @@ footer { display: none !important; }
  [class*="st-key-agenda-consulta-"] { padding: 12px 10px; }
  .st-key-agenda-estado-vazio, .st-key-agenda-estado-erro { padding: 14px; }
 }
+
+/* Prontu?rios: lista recente e linha do tempo cl?nica do kit Sorriso Mais. */
+.st-key-lista-pacientes-recentes, [class*="st-key-cartao-registro-clinico-"] { padding:18px; border:1px solid var(--linha); border-radius:14px; background:#fff; box-shadow:0 2px 8px #17303808; }
+.st-key-lista-pacientes-recentes h3 { margin:0 0 10px; font-size:18px; font-weight:600; }
+.st-key-lista-pacientes-recentes [data-testid="stButton"] button { justify-content:flex-start; min-height:56px; margin:3px 0; padding:8px 10px; border:0; border-radius:10px; background:#fff; color:var(--tinta); text-align:left; }
+.st-key-lista-pacientes-recentes [data-testid="stButton"] button:hover, .st-key-lista-pacientes-recentes [data-testid="stButton"] button[kind="primary"] { background:#eaf4f2; color:var(--verde-escuro); }
+[class*="st-key-cartao-registro-clinico-"] { position:relative; margin:0 0 12px; padding:20px 22px; border-radius:14px; }
+[class*="st-key-cartao-registro-clinico-"]::before { content:""; position:absolute; top:25px; left:-5px; width:10px; height:10px; border:3px solid #dff0ed; border-radius:50%; background:var(--verde); }
+[class*="st-key-cartao-registro-clinico-"] h3 { margin:0; font-size:18px; font-weight:600; }
+[class*="st-key-cartao-registro-clinico-"] [data-testid="stCaptionContainer"] { color:#738481; font-size:11px; }
+[class*="st-key-conteudo-registro-clinico-"] { margin:12px 0; padding:12px 14px; border-radius:8px; background:#f5f8f7; color:#526764; font-size:13px; }
+@media (max-width:700px) {
+ .st-key-lista-pacientes-recentes, [class*="st-key-cartao-registro-clinico-"] { padding:14px; }
+ [class*="st-key-cartao-registro-clinico-"] [data-testid="stHorizontalBlock"] { flex-direction:column; }
+ [class*="st-key-cartao-registro-clinico-"] [data-testid="stColumn"] { width:100%; flex:1 1 100%; min-width:0; }
+}
 </style>

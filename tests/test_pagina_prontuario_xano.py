@@ -38,6 +38,7 @@ def test_historico_mostra_apenas_conteudo_retornado_para_paciente_selecionado():
         {"id": 9, "paciente_id": 13, "conteudo": "Outro registro fictício", "registrado_em": "2026-10-09T12:00:00Z"},
     ]
     app = abrir(consultas, registros)
+    app.selectbox[0].set_value(12).run()
     assert not app.exception
     assert "Paciente Fictícia Aurora" in str(app.selectbox[0].options)
     assert "ID 13" in str(app.selectbox[0].options)
@@ -45,6 +46,28 @@ def test_historico_mostra_apenas_conteudo_retornado_para_paciente_selecionado():
     assert any("Evolução fictícia" in item.value for item in app.markdown)
     assert not any("Outro registro fictício" in item.value for item in app.markdown)
     assert any(botao.label == "Nova evolução" for botao in app.button)
+
+
+def test_visao_geral_mostra_todos_os_registros_e_permite_abrir_prontuario_individual():
+    consultas = [
+        {"paciente_id": 12, "paciente_nome": "Paciente Fictícia Aurora"},
+        {"paciente_id": 13, "paciente_nome": "Paciente Fictício Bruno"},
+    ]
+    registros = [
+        {"id": 8, "paciente_id": 12, "conteudo": "Evolução fictícia Aurora", "registrado_em": "2026-10-10T12:00:00Z"},
+        {"id": 9, "paciente_id": 13, "conteudo": "Evolução fictícia Bruno", "registrado_em": "2026-10-09T12:00:00Z"},
+    ]
+    app = abrir(consultas, registros)
+    assert not app.exception
+    assert app.selectbox[0].value is None
+    assert any("Evolução fictícia Aurora" in item.value for item in app.markdown)
+    assert any("Evolução fictícia Bruno" in item.value for item in app.markdown)
+
+    app.selectbox[0].set_value(13).run()
+
+    assert not app.exception
+    assert any("Evolução fictícia Bruno" in item.value for item in app.markdown)
+    assert not any("Evolução fictícia Aurora" in item.value for item in app.markdown)
 
 
 def test_paciente_nao_recebe_acao_para_criar_registro_clinico():
