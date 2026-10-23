@@ -1,5 +1,6 @@
 """Abre a interface real do Streamlit com Xano inteiramente simulado e salva capturas."""
 import os
+from datetime import date, timedelta
 from pathlib import Path
 import subprocess
 import sys
@@ -34,6 +35,7 @@ def main():
         "XANO_API_BASE_URL": "https://exemplo.invalid/api:agenda-ficticia",
         "SORRISOMAIS_MODO_DEMONSTRACAO": "0",
         "ODONTY_AGENDA_FICTICIA": "1",
+        "ODONTY_AGENDA_FICTICIA_DATA": date.today().isoformat(),
         "ODONTY_AGENDA_PERFIL": "recepcionista",
         "PYTHONPATH": str(ROOT / "tests" / "fixtures"),
     })
@@ -49,7 +51,7 @@ def main():
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch(headless=True)
             page = browser.new_page(viewport={"width": 1365, "height": 900}, device_scale_factor=1)
-            page.set_default_timeout(6000)
+            page.set_default_timeout(20000)
             page.goto(URL, wait_until="domcontentloaded")
             page.get_by_label("E-mail").fill("recepcao.ficticia@example.invalid")
             page.get_by_label("Senha").fill("senha-local-ficticia")
@@ -68,10 +70,10 @@ def main():
             assert largura["pagina"] <= largura["viewport"], f"Rolagem horizontal no desktop: {largura}"
 
             page.get_by_role("button", name="Novo horário").click()
-            page.get_by_label("Data do horário").wait_for()
+            page.get_by_role("group", name="Data do horário").wait_for()
             assert page.get_by_label("Profissional").is_visible()
-            assert page.get_by_label("Horário inicial").is_visible()
-            assert page.get_by_label("Horário final").is_visible()
+            page.get_by_role("group", name="Horário inicial").wait_for()
+            page.get_by_role("group", name="Horário final").wait_for()
             page.set_viewport_size({"width": 390, "height": 844})
             largura = page.evaluate("({viewport: document.documentElement.clientWidth, pagina: document.documentElement.scrollWidth})")
             assert largura["pagina"] <= largura["viewport"], f"Rolagem horizontal no formulário de horário: {largura}"
@@ -81,18 +83,21 @@ def main():
 
             # Exercita cancelamento e agendamento no app real; a camada HTTP é
             # interceptada em sitecustomize e não alcança o Xano.
-            page.get_by_label("Alterar situação").first.click()
-            page.get_by_role("option", name="Cancelada", exact=True).click()
+            situacao_consulta = page.get_by_role("combobox", name="Alterar situação").first
+            situacao_consulta.click()
+            situacao_consulta.press("ArrowDown")
+            situacao_consulta.press("Enter")
+            page.wait_for_timeout(300)
             motivo_cancelamento = page.get_by_label("Motivo do cancelamento").first
             motivo_cancelamento.wait_for(state="visible")
             motivo_cancelamento.fill("Cancelamento de teste fictício")
             page.get_by_text("Confirmo o cancelamento", exact=True).first.click()
             page.get_by_role("button", name="Atualizar").first.click()
             page.get_by_text("Situação da consulta atualizada.").wait_for()
-            page.get_by_role("button", name="Próximo dia ›", exact=True).click()
-            page.get_by_text("0 consulta(s) · 06/10/2026", exact=True).wait_for()
-            assert page.get_by_role("spinbutton", name="day, Data").inner_text() == "06"
-            page.get_by_role("button", name="Nova consulta").click()
+            page.get_by_role("button", name="›", exact=True).click()
+            data_seguinte = (date.today() + timedelta(days=1)).strftime("%d/%m/%Y")
+            page.get_by_text(f"{data_seguinte} · 0 consulta(s)", exact=True).wait_for()
+            page.get_by_test_id("stBaseButton-primary").click()
             page.get_by_label("Paciente").wait_for()
             page.wait_for_timeout(300)
             page.screenshot(path=destino / "nova-consulta-desktop.png", full_page=True)

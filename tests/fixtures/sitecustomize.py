@@ -4,7 +4,7 @@ Só intercepta chamadas quando ODONTY_AGENDA_FICTICIA=1 e nunca alcança o Xano.
 """
 import json
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -15,6 +15,18 @@ if os.getenv("ODONTY_AGENDA_FICTICIA") == "1":
     _BASE = "https://exemplo.invalid/api:agenda-ficticia"
     _FIXTURE_PATH = Path(__file__).with_name("agenda_ficticia.json")
     _FIXTURE = json.loads(_FIXTURE_PATH.read_text(encoding="utf-8"))
+    _DATA_FIXTURE = date.fromisoformat(_FIXTURE["data"])
+    _DATA_TESTE = date.fromisoformat(os.getenv("ODONTY_AGENDA_FICTICIA_DATA", _FIXTURE["data"]))
+    _DESLOCAMENTO_DIAS = (_DATA_TESTE - _DATA_FIXTURE).days
+    if _DESLOCAMENTO_DIAS:
+        for consulta in _FIXTURE["consultas"]:
+            for campo in ("inicio_em", "fim_em"):
+                consulta[campo] = (datetime.fromisoformat(consulta[campo])
+                                   + timedelta(days=_DESLOCAMENTO_DIAS)).isoformat()
+        for disponibilidade in _FIXTURE["disponibilidades"]:
+            for campo in ("inicio", "fim"):
+                disponibilidade[campo] = (datetime.fromisoformat(disponibilidade[campo])
+                                          + timedelta(days=_DESLOCAMENTO_DIAS)).isoformat()
     _CONSULTAS = list(_FIXTURE["consultas"])
     _PERFIL = os.getenv("ODONTY_AGENDA_PERFIL", "recepcionista")
     _EXPIRACAO = (datetime.now(timezone.utc) + timedelta(hours=2)).replace(microsecond=0)

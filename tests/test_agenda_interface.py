@@ -126,6 +126,29 @@ def test_recepcao_visualiza_agenda_e_filtra_por_situacao(agenda_simulada):
     assert not any("Paciente Fictícia Aurora" in item.value for item in app.markdown)
 
 
+def test_filtros_da_agenda_reutilizam_leitura_da_mesma_data(agenda_simulada):
+    app = abrir_agenda(agenda_simulada)
+    chamadas_antes = agenda_simulada["listagens"]
+
+    app.selectbox(key="agenda_situacao").select("Confirmada").run()
+
+    assert agenda_simulada["listagens"] == chamadas_antes
+
+
+def test_cache_da_agenda_expira_apos_vinte_segundos(agenda_simulada, monkeypatch):
+    from sorrisomais import paginas_equipe
+
+    relogio = {"agora": 100.0}
+    monkeypatch.setattr(paginas_equipe, "monotonic", lambda: relogio["agora"])
+    app = abrir_agenda(agenda_simulada)
+    chamadas_antes = agenda_simulada["listagens"]
+
+    relogio["agora"] = 121.0
+    app.run()
+
+    assert agenda_simulada["listagens"] == chamadas_antes + 1
+
+
 def test_profissional_consulta_agenda_sem_acao_de_criar(agenda_simulada):
     app = abrir_agenda(agenda_simulada, "profissional")
     assert app.button(key="menu-agenda")
