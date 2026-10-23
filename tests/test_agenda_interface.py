@@ -133,7 +133,8 @@ def test_recepcao_visualiza_agenda_e_filtra_por_situacao(agenda_simulada):
     app = abrir_agenda(agenda_simulada)
     assert any(item.value == "Agenda" for item in app.title)
     assert not any("Aqui está um resumo" in item.value for item in app.caption)
-    assert any("Paciente Fictícia Aurora" in item.value for item in app.markdown)
+    assert any("Paciente Fictícia Aurora" in item.value
+               for item in (*app.markdown, *app.text))
     assert any("Profilaxia fictícia" in item.value for item in app.caption)
 
     app.selectbox(key="agenda_situacao").select("Confirmada").run()
@@ -180,10 +181,11 @@ def test_painel_profissional_resume_agenda_xano_sem_dados_clinicos(agenda_simula
     assert not app.exception
     assert any("sua agenda de hoje" in item.value for item in app.caption)
     assert any(item.value == "Agenda de hoje" for item in app.subheader)
-    assert any("Paciente Fictícia Aurora" in item.value for item in app.markdown)
+    assert any("Paciente Fictícia Aurora" in item.value
+               for item in (*app.markdown, *app.text))
     assert any(button.key == "painel-profissional-prontuario" for button in app.button)
     assert any(button.key == "painel-profissional-agenda-atalho" for button in app.button)
-    assert agenda_simulada["listagens"] == consultas_antes + 1
+    assert agenda_simulada["listagens"] == consultas_antes
     assert not any("CONTEUDO CLINICO" in item.value for item in app.markdown)
 
 
@@ -202,6 +204,7 @@ def test_painel_profissional_lida_com_sessao_expirada(agenda_simulada):
 
     app = abrir_agenda(agenda_simulada, "profissional")
     app.button(key="menu-inicio").click().run()
+    del app.session_state["agenda_xano_cache"]
     agenda_simulada["erro_consultas"] = ErroAcesso("mensagem interna", 401)
     app.button(key="menu-inicio").click().run()
 

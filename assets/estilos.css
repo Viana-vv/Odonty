@@ -69,6 +69,15 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .st-key-metrica-xano-0, .st-key-metrica-xano-1, .st-key-metrica-xano-2, .st-key-metrica-xano-3 { min-height: 150px; padding: 16px; border: 1px solid var(--linha); border-radius: 15px; background: #fff; box-shadow: 0 6px 20px #1e48400a; }
 .icone-metrica { display: inline-grid; width: 38px; height: 38px; place-items: center; margin-bottom: 9px; border-radius: 10px; background: #edf5f3; color: var(--verde); font-size: 19px; font-weight: 700; }
 .valor-metrica { display: block; margin: -5px 0 1px; color: #263b3a; font: 700 25px 'Manrope', sans-serif; }
+.st-key-painel-profissional-metrica-0, .st-key-painel-profissional-metrica-1, .st-key-painel-profissional-metrica-2, .st-key-painel-profissional-metrica-3 { min-height: 144px; padding: 16px; border: 1px solid var(--linha); border-radius: 14px; background: #fff; box-shadow: 0 4px 16px #17303808; }
+.st-key-painel-profissional-agenda, .st-key-painel-profissional-atalhos { padding: 20px; border: 1px solid var(--linha); border-radius: 14px; background: #fff; box-shadow: 0 4px 16px #17303808; }
+.st-key-painel-profissional-agenda h3, .st-key-painel-profissional-atalhos h3 { margin-top: 0; font-size: 18px; font-weight: 600; }
+.st-key-painel-profissional-agenda [class*="st-key-painel-profissional-consulta-"] { padding: 12px 0; }
+.st-key-painel-profissional-agenda [class*="st-key-painel-profissional-consulta-"] [data-testid="stMarkdownContainer"] p { margin: 0; }
+.st-key-painel-profissional-agenda [class*="st-key-painel-profissional-consulta-"] [data-testid="stText"] { color: var(--tinta); font-size: 13px; font-weight: 600; }
+.painel-profissional-avatar { display: inline-grid; width: 36px; height: 36px; place-items: center; border-radius: 50%; background: #e7f3f1; color: #0f6562; font-size: 10px; font-weight: 700; }
+.st-key-painel-profissional-atalhos [data-testid="stButton"] button { min-height: 54px; justify-content: flex-start; margin: 6px 0; padding: 8px 12px; border: 1px solid var(--linha); border-radius: 10px; background: #fff; color: var(--tinta); text-align: left; }
+.st-key-painel-profissional-atalhos [data-testid="stButton"] button:hover { background: #eaf4f2; color: var(--verde-escuro); }
 .st-key-agenda-xano-vazia, .st-key-cartao-acesso { padding: 20px; border: 1px solid var(--linha); border-radius: 16px; background: #fff; box-shadow: 0 6px 20px #1e48400a; }
 .st-key-agenda-xano-vazia [data-testid="stAlert"] { margin-top: 20px; }
 body:has(.st-key-modal-paciente, .st-key-modal-profissional, .st-key-modal-nova-evolucao)::before { content: ""; position: fixed; inset: 0; z-index: 999; background: #23393785; backdrop-filter: blur(4px); }
@@ -204,5 +213,16 @@ footer { display: none !important; }
  .st-key-lista-pacientes-recentes, [class*="st-key-cartao-registro-clinico-"] { padding:14px; }
  [class*="st-key-cartao-registro-clinico-"] [data-testid="stHorizontalBlock"] { flex-direction:column; }
  [class*="st-key-cartao-registro-clinico-"] [data-testid="stColumn"] { width:100%; flex:1 1 100%; min-width:0; }
+}
+@media (max-width:900px) {
+ .st-key-painel-profissional-metricas > [data-testid="stHorizontalBlock"] { flex-wrap:wrap; }
+ .st-key-painel-profissional-metricas > [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] { width:calc(50% - .5rem) !important; flex:1 1 calc(50% - .5rem); min-width:0; }
+ .st-key-painel-profissional-conteudo > [data-testid="stHorizontalBlock"] { flex-direction:column; }
+ .st-key-painel-profissional-conteudo > [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] { width:100% !important; flex:1 1 100%; min-width:0; }
+}
+@media (max-width:560px) {
+ .st-key-painel-profissional-metrica-0, .st-key-painel-profissional-metrica-1, .st-key-painel-profissional-metrica-2, .st-key-painel-profissional-metrica-3,
+ .st-key-painel-profissional-agenda, .st-key-painel-profissional-atalhos { padding:14px; }
+ .st-key-painel-profissional-agenda [class*="st-key-painel-profissional-consulta-"] [data-testid="stHorizontalBlock"] { gap:.35rem; }
 }
 </style>
