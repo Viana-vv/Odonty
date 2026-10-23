@@ -26,6 +26,16 @@ query disponibilidades verb=GET {
         return { value = {codigo: "ACESSO_NEGADO", mensagem: "Conta sem permissão para consultar horários."} }
       }
     }
+    var $eh_paciente { value = false }
+    var $eh_profissional { value = false }
+    conditional {
+      if (($solicitante.perfis|intersect:["paciente"]|count) > 0) {
+        var.update $eh_paciente { value = true }
+      }
+      if (($solicitante.perfis|intersect:["profissional"]|count) > 0) {
+        var.update $eh_profissional { value = true }
+      }
+    }
     conditional {
       if (($input.inicio == null) != ($input.fim == null) || ($input.inicio != null && $input.fim <= $input.inicio) || ($input.profissional_id != null && $input.profissional_id <= 0)) {
         util.set_header { value = "HTTP/1.1 400 Bad Request" }
@@ -47,7 +57,7 @@ query disponibilidades verb=GET {
         } as $profissional
         var $incluir_disponibilidade { value = true }
         conditional {
-          if ($profissional == null || $profissional.situacao != "Ativo" || $disponibilidade.inicio <= now || (($solicitante.perfis|includes:"paciente") == true && $disponibilidade.situacao != "disponivel") || (($solicitante.perfis|includes:"profissional") == true && $profissional.conta_acesso_id != $auth.id) || ($input.profissional_id != null && $disponibilidade.profissional_id != $input.profissional_id) || ($input.inicio != null && $disponibilidade.inicio < $input.inicio) || ($input.fim != null && $disponibilidade.fim > $input.fim)) {
+          if ($profissional == null || $profissional.situacao != "Ativo" || $disponibilidade.inicio <= now || ($eh_paciente == true && $disponibilidade.situacao != "disponivel") || ($eh_profissional == true && $profissional.conta_acesso_id != $auth.id) || ($input.profissional_id != null && $disponibilidade.profissional_id != $input.profissional_id) || ($input.inicio != null && $disponibilidade.inicio < $input.inicio) || ($input.fim != null && $disponibilidade.fim > $input.fim)) {
             var.update $incluir_disponibilidade { value = false }
           }
         }
