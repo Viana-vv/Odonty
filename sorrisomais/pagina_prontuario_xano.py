@@ -9,6 +9,7 @@ import streamlit as st
 
 from . import sessao
 from .api import ErroAcesso
+from . import pagina_nova_evolucao_xano
 
 _CHAVE_CACHE_HISTORICO = "prontuario_historico_cache"
 _CACHE_HISTORICO_SEGUNDOS = 20
@@ -86,6 +87,10 @@ def renderizar(cliente, conta):
     st.title("Prontuários")
     st.markdown("Consulte os Registros Clínicos disponíveis no escopo do seu acesso.")
 
+    aviso = st.session_state.pop("prontuario_aviso", None)
+    if aviso:
+        st.success(aviso)
+
     perfis = set(getattr(conta, "perfis", ()))
     if not perfis.intersection({"profissional", "paciente"}):
         st.warning("O acesso a informações clínicas não está disponível para este perfil.")
@@ -128,6 +133,9 @@ def renderizar(cliente, conta):
         )
     with aviso:
         st.caption("◉ Acesso clínico restrito")
+
+    if "profissional" in perfis:
+        pagina_nova_evolucao_xano.renderizar(cliente, conta, consultas)
 
     recentes, linha_tempo = st.columns([0.85, 1.8], gap="medium")
     with recentes:

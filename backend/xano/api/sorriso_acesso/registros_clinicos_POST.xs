@@ -74,6 +74,7 @@ query "registros-clinicos" verb=POST {
       }
     }
     var $consulta { value = null }
+    var $consulta_escopo { value = null }
     conditional {
       if (($bruto|get:"consulta_id") != null) {
         db.get consulta {
@@ -85,6 +86,21 @@ query "registros-clinicos" verb=POST {
           if ($consulta == null || $consulta.paciente_id != $paciente.id || $consulta.profissional_id != $profissional.id) {
             util.set_header { value = "HTTP/1.1 404 Not Found" }
             return { value = {codigo: "RECURSO_NAO_ENCONTRADO", mensagem: "Consulta não encontrada no escopo permitido."} }
+          }
+        }
+      }
+      else {
+        // Sem vínculo explícito, ainda exige relação clínica prévia entre
+        // Profissional e Paciente para impedir acesso cruzado ao prontuário.
+        db.query consulta {
+          where = $db.consulta.paciente_id == $paciente.id && $db.consulta.profissional_id == $profissional.id
+          return = {type: "single"}
+          output = ["id"]
+        } as $consulta_escopo
+        conditional {
+          if ($consulta_escopo == null) {
+            util.set_header { value = "HTTP/1.1 404 Not Found" }
+            return { value = {codigo: "RECURSO_NAO_ENCONTRADO", mensagem: "Paciente não encontrado no escopo permitido."} }
           }
         }
       }

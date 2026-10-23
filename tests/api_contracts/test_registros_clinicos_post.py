@@ -1,4 +1,5 @@
 import pytest
+from pathlib import Path
 
 from conftest import resposta
 from sorrisomais.contratos_clinicos import DadosContratoInvalidos
@@ -26,3 +27,12 @@ def test_post_registros_clinicos_rejeita_conteudo_vazio_sem_rede(cliente, http):
     with pytest.raises(DadosContratoInvalidos):
         cliente.registrar_clinico("token-ficticio", 4, "   ")
     http.assert_not_called()
+
+
+def test_post_registros_clinicos_sem_consulta_explicita_exige_vinculo_profissional_paciente():
+    caminho = (Path(__file__).resolve().parents[2] / "backend" / "xano" / "api"
+               / "sorriso_acesso" / "registros_clinicos_POST.xs")
+    codigo = caminho.read_text(encoding="utf-8-sig")
+    assert "db.query consulta" in codigo
+    assert "$db.consulta.paciente_id == $paciente.id && $db.consulta.profissional_id == $profissional.id" in codigo
+    assert 'if ($consulta_escopo == null)' in codigo
