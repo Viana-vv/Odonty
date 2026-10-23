@@ -32,6 +32,8 @@ query disponibilidades verb=GET {
       if (($solicitante.perfis|intersect:["paciente"]|count) > 0) {
         var.update $eh_paciente { value = true }
       }
+    }
+    conditional {
       if (($solicitante.perfis|intersect:["profissional"]|count) > 0) {
         var.update $eh_profissional { value = true }
       }
