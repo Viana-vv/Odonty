@@ -1,4 +1,5 @@
 """Páginas da equipe. A identidade é revalidada por app.py antes de renderizar."""
+import hashlib
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from time import monotonic
@@ -11,6 +12,9 @@ from . import sessao, pagina_paciente, navegacao
 
 ESPECIALIDADES_CACHE_TTL_SEGUNDOS = 300
 ESPECIALIDADES_RETRY_SEGUNDOS = 20
+CACHE_PAINEL_RECEPCAO = "painel_recepcao_xano_cache"
+PAINEL_RECEPCAO_CACHE_TTL_SEGUNDOS = 20
+PAINEL_RECEPCAO_RETRY_SEGUNDOS = 20
 RAIZ = Path(__file__).resolve().parents[1]
 
 
@@ -48,6 +52,187 @@ def limpar_formulario():
     for chave in list(st.session_state):
         if chave.startswith("cad_") and chave not in cache_sessao:
             del st.session_state[chave]
+
+
+def _carregar_consultas_painel(cliente, credencial, dia, *, atualizar=False):
+    """Cacheia somente o resumo administrativo desta sessão e deste dia."""
+    if credencial.expira_em <= datetime.now(ZoneInfo("UTC")):
+        st.session_state.pop(CACHE_PAINEL_RECEPCAO, None)
+        raise ErroAcesso("Sua sessão expirou. Entre novamente para consultar o painel.", 401)
+    identidade = hashlib.sha256(credencial.token.encode("utf-8")).hexdigest()
+    erro_em = st.session_state.get("painel_recepcao_xano_erro_em", 0)
+    decorrido = monotonic() - erro_em if erro_em else PAINEL_RECEPCAO_RETRY_SEGUNDOS
+    if 0 <= decorrido < PAINEL_RECEPCAO_RETRY_SEGUNDOS:
+        raise ErroAcesso("Muitas tentativas. Aguarde alguns segundos antes de tentar novamente.", 429)
+    cache = st.session_state.get(CACHE_PAINEL_RECEPCAO)
+    idade = monotonic() - cache.get("carregado_em", 0) if isinstance(cache, dict) else PAINEL_RECEPCAO_CACHE_TTL_SEGUNDOS
+    if (not atualizar and isinstance(cache, dict)
+            and cache.get("sessao") == identidade
+            and cache.get("dia") == dia
+            and 0 <= idade < PAINEL_RECEPCAO_CACHE_TTL_SEGUNDOS
+            and isinstance(cache.get("consultas"), list)):
+        return cache["consultas"], cache["carregado_em"]
+
+    st.session_state.pop(CACHE_PAINEL_RECEPCAO, None)
+    token = credencial.token
+    resposta = cliente.listar_consultas(
+        token, inicio=_data_api(dia), fim=_data_api(dia, True)
+    )
+    campos_resumo = ("id", "situacao", "inicio_em", "fim_em", "paciente_nome", "profissional_nome")
+    consultas = []
+    for consulta in resposta:
+        resumo = {campo: consulta[campo] for campo in campos_resumo}
+        # A tabela Xano mantém o valor legado "Concluída" para a situação do domínio "Realizada".
+        if resumo["situacao"] == "Concluída":
+            resumo["situacao"] = "Realizada"
+        consultas.append(resumo)
+    carregado_em = monotonic()
+    st.session_state.pop("painel_recepcao_xano_erro_em", None)
+    st.session_state[CACHE_PAINEL_RECEPCAO] = {
+        "sessao": identidade,
+        "dia": dia,
+        "consultas": consultas,
+        "carregado_em": carregado_em,
+    }
+    return consultas, carregado_em
+
+
+def _horario_consulta(consulta):
+    return datetime.fromisoformat(consulta["inicio_em"].replace("Z", "+00:00")).astimezone(
+        ZoneInfo("America/Sao_Paulo")
+    )
+
+
+def _renderizar_painel_recepcao(cliente, conta, pode_cadastrar_paciente, pode_agendar):
+    """Resumo administrativo da Recepção baseado apenas nas Consultas autorizadas pelo Xano."""
+    agora = datetime.now(ZoneInfo("America/Sao_Paulo"))
+    dia = agora.date()
+    dias = ("SEGUNDA-FEIRA", "TERÇA-FEIRA", "QUARTA-FEIRA", "QUINTA-FEIRA",
+            "SEXTA-FEIRA", "SÁBADO", "DOMINGO")
+    meses = ("JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO",
+             "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO")
+    st.caption(f"{dias[dia.weekday()]}, {dia.day} DE {meses[dia.month - 1]}")
+    titulo, acao = st.columns([3, 1], vertical_alignment="center")
+    primeiro_nome = conta.nome.split()[0] if conta.nome.strip() else "equipe"
+    titulo.title(f"Olá, {primeiro_nome}! 👋")
+    titulo.caption("Aqui está um resumo da clínica hoje.")
+    consulta_integrada = navegacao.modulo_xano_disponivel("nova_consulta")
+    if pode_agendar:
+        acao.button(
+            "+ Nova consulta", key="inicio-nova-consulta",
+            on_click=abrir_nova_consulta if consulta_integrada else None,
+            disabled=not consulta_integrada, width="stretch",
+            help=None if consulta_integrada else "A tela Nova Consulta ainda não está integrada ao Xano.",
+        )
+
+    credencial = st.session_state.get(sessao.CHAVE)
+    consultas = None
+    carregado_em = None
+    erro_carregamento = None
+    atualizar = st.button("Atualizar resumo", key="inicio-painel-atualizar")
+    if not credencial:
+        st.session_state.pop(CACHE_PAINEL_RECEPCAO, None)
+        st.session_state.pop("painel_recepcao_xano_erro_em", None)
+        erro_carregamento = "Sua sessão expirou. Entre novamente para consultar o painel."
+    else:
+        try:
+            with st.spinner("Carregando o resumo do dia…"):
+                consultas, carregado_em = _carregar_consultas_painel(
+                    cliente, credencial, dia, atualizar=atualizar
+                )
+        except ErroAcesso as error:
+            st.session_state.pop(CACHE_PAINEL_RECEPCAO, None)
+            if error.status == 401:
+                st.session_state.pop("painel_recepcao_xano_erro_em", None)
+                sessao.limpar(st.session_state)
+                erro_carregamento = "Sua sessão expirou. Entre novamente para consultar o painel."
+            elif error.status == 403:
+                st.session_state.pop("painel_recepcao_xano_erro_em", None)
+                erro_carregamento = "Sua Conta de Acesso não tem permissão para consultar este painel."
+            elif error.status == 429:
+                tentativa_erro_em = st.session_state.get("painel_recepcao_xano_erro_em", 0)
+                if (not tentativa_erro_em
+                        or monotonic() - tentativa_erro_em >= PAINEL_RECEPCAO_RETRY_SEGUNDOS):
+                    st.session_state["painel_recepcao_xano_erro_em"] = monotonic()
+                erro_carregamento = "Muitas tentativas. Aguarde alguns segundos antes de atualizar novamente."
+            else:
+                erro_carregamento = "Não foi possível carregar o resumo. Tente atualizar novamente."
+
+    if erro_carregamento:
+        st.error(erro_carregamento)
+    elif carregado_em is not None:
+        st.caption(f"Atualizado há {max(0, int(monotonic() - carregado_em))} s")
+
+    if consultas is not None:
+        ordenadas = sorted(consultas, key=lambda c: (_horario_consulta(c), c["id"]))
+        realizadas = sum(c["situacao"] == "Realizada" for c in ordenadas)
+        confirmadas = sum(c["situacao"] == "Confirmada" and _horario_consulta(c) >= agora
+                          for c in ordenadas)
+        situacoes_encerradas = {"Realizada", "Cancelada", "Falta"}
+        proximas = [c for c in ordenadas if c["situacao"] not in situacoes_encerradas
+                    and (_horario_consulta(c) >= agora or c["situacao"] == "Em atendimento")]
+        proxima = proximas[0] if proximas else None
+    else:
+        ordenadas, realizadas, confirmadas, proxima = [], None, None, None
+
+    indicadores = (
+        ("Consultas hoje", "▣", len(ordenadas) if consultas is not None else "—"),
+        ("Atendimentos", "✓", realizadas if consultas is not None else "—"),
+        ("Próxima consulta", "◷", _horario_consulta(proxima).strftime("%H:%M") if proxima else "—"),
+        ("Confirmadas", "✓", confirmadas if consultas is not None else "—"),
+    )
+    metricas = st.columns(4, gap="small")
+    for indice, (rotulo, icone, valor) in enumerate(indicadores):
+        with metricas[indice]:
+            with st.container(key=f"metrica-xano-{indice}", border=True):
+                st.markdown(f"<span class='icone-metrica'>{icone}</span>", unsafe_allow_html=True)
+                st.caption(rotulo)
+                st.markdown(f"<strong class='valor-metrica'>{valor}</strong>", unsafe_allow_html=True)
+                detalhe = ("concluídos hoje" if indice == 1 and consultas is not None else
+                           proxima["paciente_nome"] if indice == 2 and proxima else
+                           "nenhuma marcada" if indice == 2 and consultas is not None else
+                           "para o restante do dia" if indice == 3 else
+                           "agendadas para hoje" if indice == 0 and consultas is not None else
+                           "Dados indisponíveis")
+                st.caption(detalhe)
+
+    agenda, atalhos = st.columns([1.75, 1], gap="medium", vertical_alignment="top")
+    with agenda:
+        with st.container(key="agenda-xano-vazia", border=True):
+            topo, link = st.columns([2, 1], vertical_alignment="center")
+            topo.subheader("Agenda de hoje")
+            topo.caption(f"{len(ordenadas)} consultas" if consultas is not None else "Resumo indisponível")
+            link.button("Ver agenda completa →", key="inicio-abrir-agenda",
+                        on_click=abrir_agenda, width="stretch")
+            st.divider()
+            if consultas is None:
+                st.info("Atualize o resumo para consultar a agenda do dia.")
+            elif not ordenadas:
+                st.info("Nenhuma consulta para hoje.")
+            else:
+                for consulta in ordenadas[:5]:
+                    horario = _horario_consulta(consulta)
+                    hora, paciente, profissional, situacao = st.columns([0.75, 1.8, 1.5, 1])
+                    hora.markdown(f"**{horario:%H:%M}**")
+                    paciente.text(consulta["paciente_nome"])
+                    profissional.text(consulta["profissional_nome"])
+                    situacao.caption(consulta["situacao"])
+                    st.divider()
+    with atalhos:
+        with st.container(key="cartao-acesso", border=True):
+            st.subheader("Acesso rápido")
+            st.caption("Acesse as áreas da clínica.")
+            if pode_cadastrar_paciente:
+                st.button("+  Novo paciente", on_click=pagina_paciente.abrir,
+                          key="inicio-cadastrar-paciente", type="primary", width="stretch")
+            st.button("▦  Visualizar agenda", on_click=abrir_agenda,
+                      key="inicio-agenda-indisponivel", width="stretch")
+        total = len(ordenadas) if consultas is not None else 0
+        taxa = confirmadas / total if total else 0
+        with st.container(key="inicio-painel-confirmadas", border=True):
+            st.markdown(f"**{confirmadas if confirmadas is not None else '—'} confirmadas**")
+            st.caption("para o restante do dia")
+            st.progress(taxa)
 
 
 def abrir_cadastro():
@@ -475,7 +660,10 @@ def renderizar_cadastro_modal(cliente):
         renderizar_cadastro(cliente)
 
 
-def renderizar_inicio(conta, administrador, pode_cadastrar_paciente, pode_agendar):
+def renderizar_inicio(cliente, conta, administrador, pode_cadastrar_paciente, pode_agendar):
+    if "recepcionista" in conta.perfis:
+        _renderizar_painel_recepcao(cliente, conta, pode_cadastrar_paciente, pode_agendar)
+        return
     dia = date.today()
     dias = ("SEGUNDA-FEIRA", "TERÇA-FEIRA", "QUARTA-FEIRA", "QUINTA-FEIRA",
             "SEXTA-FEIRA", "SÁBADO", "DOMINGO")
@@ -621,7 +809,7 @@ def renderizar(conta, cliente):
                     _renderizar_agenda(cliente, conta)
                 elif pagina == "inicio":
                     renderizar_topbar(conta, "inicio")
-                    renderizar_inicio(conta, administrador, pode_cadastrar_paciente,
+                    renderizar_inicio(cliente, conta, administrador, pode_cadastrar_paciente,
                                       bool(set(conta.perfis) & navegacao.PERFIS_NOVA_CONSULTA))
                 else:
                     renderizar_topbar(conta, pagina)
