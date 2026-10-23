@@ -663,7 +663,7 @@ def renderizar_cadastro_modal(cliente):
 def renderizar_inicio(cliente, conta, administrador, pode_cadastrar_paciente, pode_agendar):
     if "recepcionista" in conta.perfis:
         _renderizar_painel_recepcao(cliente, conta, pode_cadastrar_paciente, pode_agendar)
-def renderizar_inicio(conta, administrador, pode_cadastrar_paciente, pode_agendar, cliente=None):
+        return
     if "profissional" in conta.perfis:
         from . import painel_profissional
         painel_profissional.renderizar(cliente, conta)
@@ -815,8 +815,6 @@ def renderizar(conta, cliente):
                     renderizar_topbar(conta, "inicio")
                     renderizar_inicio(cliente, conta, administrador, pode_cadastrar_paciente,
                                       bool(set(conta.perfis) & navegacao.PERFIS_NOVA_CONSULTA))
-                    renderizar_inicio(conta, administrador, pode_cadastrar_paciente,
-                                      bool(set(conta.perfis) & navegacao.PERFIS_NOVA_CONSULTA), cliente)
                 else:
                     renderizar_topbar(conta, pagina)
                     modulo = navegacao.carregar_modulo_xano(pagina)
