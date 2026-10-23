@@ -4,7 +4,7 @@ MVP acadêmico com Python/Streamlit na interface e Xano para autenticação, aut
 
 ## Estado atual
 
-Login, identificação da Conta de Acesso, sessão de uma hora e logout estão implementados e validados no Xano. Administrador também pode cadastrar profissionais; Profissional aparece como Dentista. **O cadastro de Paciente está funcionando e pronto para uso demonstrativo** por Administrador e Recepcionista, com autorização aplicada no Xano. Recuperação de senha e funcionalidades clínicas permanecem fora desta entrega.
+Login, identificação da Conta de Acesso e logout estão implementados e validados no Xano. O export versionado define sessão interna de até oito horas; para aplicar esse prazo no ambiente publicado, configure `AUTH_SESSION_TTL_SECONDS=28800` no Xano. Administrador também pode cadastrar profissionais; Profissional aparece como Dentista. **O cadastro de Paciente está funcionando e pronto para uso demonstrativo** por Administrador e Recepcionista, com autorização aplicada no Xano. Recuperação de senha e funcionalidades clínicas permanecem fora desta entrega.
 
 As telas existentes de login, início da equipe e cadastros de Paciente e Profissional usam a identidade visual Sorriso+ e o mascote local `assets/1000323602.jpg`. A navegação exibe somente ações disponíveis para o perfil autenticado; módulos que ainda não possuem fluxo não aparecem como opções.
 
@@ -46,7 +46,7 @@ O arquivo `.env.example` é uma referência: a aplicação não carrega `.env` a
 | `XANO_HTTP_TIMEOUT_SECONDS` | Streamlit | Opcional; número positivo e finito, padrão 10 segundos |
 | `XANO_CADASTRO_PACIENTE_HABILITADO` | Streamlit | Opcional; habilitado por padrão após publicação e validação do endpoint; definir `0` para ocultar a ação |
 | `SORRISOMAIS_MODO_DEMONSTRACAO` | Streamlit | Opcional; padrão `0`; definir `1` para habilitar telas com dados fictícios limitados à sessão. O login continua usando Xano |
-| `AUTH_SESSION_TTL_SECONDS` | Xano | Padrão 3600 segundos; valores menores somente em testes isolados |
+| `AUTH_SESSION_TTL_SECONDS` | Xano | O export usa padrão e limite máximo de 28800 segundos; configure o mesmo valor na instância para aplicar oito horas |
 
 Sem configuração válida, a tela informa o problema e desabilita o formulário.
 
@@ -95,7 +95,7 @@ Na auditoria local de 02/10/2026, passaram 156 testes Python de contratos, cadas
 
 O [design](openspec/changes/archive/2026-09-25-login-streamlit-xano/design.md) detalha o contrato e as permissões. As tabelas legadas e APIs de outras funcionalidades foram preservadas.
 
-O token fica no estado da sessão Streamlit. A identidade é revalidada antes da exibição protegida. A sessão tem prazo absoluto de uma hora, sem renovação. O logout sempre limpa o estado local e informa quando não confirmou a revogação remota. Nova conexão sem estado exige novo login.
+O token fica no estado da sessão Streamlit. A identidade é revalidada antes da exibição protegida. O export Xano limita o prazo absoluto a oito horas, sem renovação, e `auth/me` devolve a validade emitida pelo backend. A instância publicada ainda precisa receber `AUTH_SESSION_TTL_SECONDS=28800` para aplicar esse padrão. O logout sempre limpa o estado local e informa quando não confirmou a revogação remota. Nova conexão sem estado exige novo login.
 
 ## Testar
 
@@ -134,7 +134,7 @@ $env:XANO_TESTAR_REAL = "1"
 .venv\Scripts\python.exe -m pytest tests/test_xano_real.py -q --tb=short
 ```
 
-Sem a opção explícita, os testes reais são ignorados. A suíte cria somente contas fictícias, com senhas aleatórias transformadas pelo campo password do Xano, e as inativa ao terminar. O teste de expiração cria um grupo temporário com validade de oito segundos e o remove em `finally`; o grupo principal permanece com uma hora. Nenhuma verificação depende de ignorar o prazo ou alterar o relógio.
+Sem a opção explícita, os testes reais são ignorados. A suíte cria somente contas fictícias, com senhas aleatórias transformadas pelo campo password do Xano, e as inativa ao terminar. O teste de expiração cria um grupo temporário com validade de oito segundos e o remove em `finally`; a validação do grupo principal espera o limite de oito horas e só deve ser executada depois de configurar a instância com `AUTH_SESSION_TTL_SECONDS=28800`. Nenhuma verificação depende de ignorar o prazo ou alterar o relógio.
 
 As chamadas da suíte são espaçadas para respeitar o limite do plano Xano. HTTP 429 pode prolongar a execução. A aplicação não repete automaticamente login ou logout.
 

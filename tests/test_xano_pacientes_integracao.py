@@ -114,7 +114,7 @@ def cadastro_real():
         login_curto = Path("backend/xano/api/sorriso_acesso/auth/login_POST.xs").read_text(encoding="utf-8-sig")
         login_curto = re.sub(r'^\s*guid = .*$', '', login_curto, flags=re.MULTILINE)
         login_curto = login_curto.replace('api_group = "Sorriso Acesso"', f'api_group = "{slug}"')
-        login_curto = login_curto.replace('$env|get:"AUTH_SESSION_TTL_SECONDS":3600|to_int', '2')
+        login_curto = login_curto.replace('$env|get:"AUTH_SESSION_TTL_SECONDS":28800|to_int', '2')
         for indice, fonte in enumerate((codigo, falha, consulta, login_curto), start=1):
             resposta = a.admin.post(a.meta + f"/apigroup/{grupo['id']}/api", data=fonte.encode("utf-8"),
                                    headers={"Content-Type": "text/x-xanoscript"}, timeout=30)

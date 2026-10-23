@@ -40,8 +40,8 @@ query "auth/login" verb=POST {
         return { value = {codigo: "ACESSO_NEGADO", mensagem: "Acesso não permitido."} }
       }
     }
-    var $duracao { value = $env|get:"AUTH_SESSION_TTL_SECONDS":3600|to_int }
-    precondition ($duracao > 0 && $duracao <= 3600) {
+    var $duracao { value = $env|get:"AUTH_SESSION_TTL_SECONDS":28800|to_int }
+    precondition ($duracao > 0 && $duracao <= 28800) {
       error_type = "standard"
       error = "Configuração de sessão inválida."
     }

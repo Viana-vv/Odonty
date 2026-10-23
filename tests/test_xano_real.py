@@ -156,7 +156,7 @@ def test_perfis_e_situacao(ambiente, perfis, situacao, status):
         token = dados["token"]
         assert dados["tipo_token"] == "Bearer"
         prazo = datetime.fromisoformat(dados["expira_em"].replace("Z", "+00:00"))
-        assert 3500 < (prazo - datetime.now(timezone.utc)).total_seconds() <= 3600
+        assert 28700 < (prazo - datetime.now(timezone.utc)).total_seconds() <= 28800
         resposta = ambiente.chamar("GET", "/auth/me", token)
         exigir_status(resposta, 200)
         assert resposta.headers.get("Cache-Control") == "no-store"
@@ -236,7 +236,7 @@ def test_expiracao_real_em_grupo_temporario(ambiente):
             codigo = arquivo.read_text(encoding="utf-8-sig")
             codigo = re.sub(r'^\s*guid = .*$', "", codigo, flags=re.MULTILINE)
             codigo = codigo.replace('api_group = "Sorriso Acesso"', 'api_group = "' + nome + '"')
-            codigo = codigo.replace('$env|get:"AUTH_SESSION_TTL_SECONDS":3600|to_int', "8")
+            codigo = codigo.replace('$env|get:"AUTH_SESSION_TTL_SECONDS":28800|to_int', "8")
             ambiente.metadados("POST", f"/apigroup/{grupo['id']}/api",
                               data=codigo.encode("utf-8"),
                               headers={"Content-Type": "text/x-xanoscript"})
@@ -249,7 +249,7 @@ def test_expiracao_real_em_grupo_temporario(ambiente):
         time.sleep(espera)
         exigir_status(ambiente.chamar("GET", "/auth/me", token, base=base), 401)
         exigir_status(ambiente.chamar("POST", "/auth/logout", token, base=base), 401)
-        # O endpoint principal continua emitindo uma hora.
+        # O endpoint principal continua emitindo sessões de até oito horas.
         dados = ambiente.entrar(conta)
         exigir_status(ambiente.chamar("POST", "/auth/logout", dados["token"]), 204)
     finally:
