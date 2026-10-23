@@ -8,6 +8,7 @@ import streamlit as st
 
 from . import sessao
 from .api import ErroAcesso
+from . import pagina_paciente
 
 CACHE_PACIENTES = "pacientes_xano_cache"
 CACHE_TTL_SEGUNDOS = 20
@@ -57,6 +58,11 @@ def _mensagem_edicao(error):
     if error.status == 429:
         return "Muitas tentativas. Aguarde um pouco antes de tentar novamente."
     return "Não foi possível concluir a edição. Tente novamente em instantes."
+
+
+def _iniciais(nome):
+    partes = nome.split()
+    return "".join(parte[0] for parte in partes[:2]).upper() or "P"
 
 
 @st.dialog("Editar Paciente", width="large")
@@ -114,7 +120,7 @@ def renderizar(cliente, conta):
     """Renderiza a listagem usando exclusivamente as opções da Agenda no Xano."""
     st.caption("BASE DE PACIENTES")
     st.title("Pacientes")
-    st.markdown("Consulte os cadastros disponíveis para a equipe.")
+    st.markdown("Consulte os dados cadastrais dos Pacientes.")
 
     mensagem = st.session_state.pop(CHAVE_MENSAGEM, None)
     if mensagem:
@@ -136,11 +142,17 @@ def renderizar(cliente, conta):
         _limpar_edicao()
         edicao = None
 
+    cabecalho, acao_cadastro = st.columns([5, 1], vertical_alignment="center")
+    with acao_cadastro:
+        if pode_editar and st.button("＋ Novo Paciente", type="primary", key="pacientes-xano-novo"):
+            pagina_paciente.abrir()
+            st.rerun()
+
     coluna_busca, coluna_atualizar, coluna_total = st.columns([5, 1, 1], vertical_alignment="center")
     with coluna_busca:
         termo = st.text_input(
-            "Buscar por nome",
-            placeholder="Digite o nome do Paciente...",
+            "Buscar Paciente",
+            placeholder="Buscar por nome...",
             key="pacientes-xano-busca",
             label_visibility="collapsed",
         ).strip().casefold()
@@ -176,13 +188,19 @@ def renderizar(cliente, conta):
         return
 
     with st.container(key="pacientes-xano-tabela", border=True):
-        identificador, nome, acoes = st.columns([1, 4, 1])
+        identificador, paciente_coluna, acao = st.columns([1, 6, 1])
         identificador.caption("ID")
-        nome.caption("Paciente")
+        paciente_coluna.caption("Paciente")
+        acao.caption("Ações")
         for paciente in filtrados:
             with st.container(key=f"pacientes-xano-linha-{paciente['id']}"):
-                identificador, nome, acao = st.columns([1, 4, 1], vertical_alignment="center")
+                identificador, detalhes, acao = st.columns([1, 6, 1], vertical_alignment="center")
                 identificador.text(str(paciente["id"]))
+                avatar, nome = detalhes.columns([1, 10], vertical_alignment="center")
+                avatar.markdown(
+                    f'<div class="paciente-avatar">{_iniciais(paciente["nome"])}</div>',
+                    unsafe_allow_html=True,
+                )
                 nome.markdown(f"**{paciente['nome']}**")
                 if pode_editar and acao.button("Editar", key=f"pacientes-xano-editar-{paciente['id']}"):
                     try:
