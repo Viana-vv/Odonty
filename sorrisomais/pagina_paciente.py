@@ -26,8 +26,9 @@ def limpar():
 
 
 def abrir():
-    st.session_state[CHAVE_ORIGEM] = st.session_state.get("pagina_equipe", "inicio")
+    origem = st.session_state.get("pagina_equipe", "inicio")
     limpar()
+    st.session_state[CHAVE_ORIGEM] = origem
     st.session_state["pagina_equipe"] = "paciente"
 
 
