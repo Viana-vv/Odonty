@@ -211,6 +211,13 @@ def renderizar(cliente, conta):
                         }
                         edicao = st.session_state[CHAVE_EDICAO]
                     except ErroAcesso as error:
+                        if error.status == 404 and not st.session_state.pop("pacientes_xano_edit_retry", False):
+                            # A lista pode ter sido atualizada depois do cache;
+                            # refaz uma leitura antes de confirmar o 404.
+                            st.session_state.pop(CACHE_PACIENTES, None)
+                            st.session_state["pacientes_xano_edit_retry"] = True
+                            st.rerun()
+                        st.session_state.pop("pacientes_xano_edit_retry", None)
                         if error.status == 401:
                             sessao.limpar(st.session_state)
                             st.error("Sua sessão expirou. Entre novamente para editar o Paciente.")

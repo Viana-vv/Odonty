@@ -16,6 +16,9 @@ def _texto_telefone(valor):
     return valor
 
 
+CHAVE_ORIGEM = "pac_origem_pagina"
+
+
 def limpar():
     for chave in list(st.session_state):
         if chave.startswith("pac_"):
@@ -23,13 +26,15 @@ def limpar():
 
 
 def abrir():
+    st.session_state[CHAVE_ORIGEM] = st.session_state.get("pagina_equipe", "inicio")
     limpar()
     st.session_state["pagina_equipe"] = "paciente"
 
 
 def voltar():
+    origem = st.session_state.pop(CHAVE_ORIGEM, "inicio")
     limpar()
-    st.session_state["pagina_equipe"] = "inicio"
+    st.session_state["pagina_equipe"] = origem
 
 
 def solicitar():
@@ -105,6 +110,8 @@ def renderizar(cliente):
             with st.spinner("Cadastrando paciente…"):
                 cliente.cadastrar_paciente(st.session_state[sessao.CHAVE].token, **dados)
             st.session_state["pac_sucesso"] = True
+            st.session_state["pac_operacao_id"] = str(uuid4())
+            st.session_state["pagina_equipe"] = st.session_state.pop(CHAVE_ORIGEM, "inicio")
         except ErroAcesso as error:
             if error.status in (401, 403):
                 sessao.limpar(st.session_state)

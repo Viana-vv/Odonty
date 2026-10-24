@@ -241,10 +241,8 @@ def test_agenda_oferece_atalho_a_nova_consulta_somente_para_perfis_autorizados(
     monkeypatch.setattr(navegacao, "import_module", importar)
 
     recepcao = abrir_agenda(agenda_simulada, "recepcionista")
-    atalho = recepcao.button(key="agenda-abrir-nova-consulta")
-    assert not atalho.disabled
-    recepcao.button(key="agenda-abrir-nova-consulta").click().run()
-    assert any(item.value == "Nova Consulta simulada" for item in recepcao.title)
+    assert not any(button.key == "agenda-abrir-nova-consulta" for button in recepcao.button)
+    assert recepcao.button(key="agenda-nova")
 
     profissional = abrir_agenda(agenda_simulada, "profissional")
     assert not any(button.key == "agenda-abrir-nova-consulta"
@@ -257,7 +255,7 @@ def test_atalho_agenda_nova_consulta_desabilitado_quando_modulo_ausente(
 
     monkeypatch.setattr(navegacao, "find_spec", lambda _nome: None)
     administrador = abrir_agenda(agenda_simulada, "administrador")
-    assert administrador.button(key="agenda-abrir-nova-consulta").disabled
+    assert not any(button.key == "agenda-abrir-nova-consulta" for button in administrador.button)
 
 
 def test_formularios_agenda_sao_exclusivos_ao_alternar(agenda_simulada):

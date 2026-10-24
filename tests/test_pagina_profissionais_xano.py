@@ -84,6 +84,8 @@ def test_recepcionista_consulta_sem_controles_de_alteracao(tela):
     pagina.renderizar(cliente, SimpleNamespace(perfis=("recepcionista",)))
     assert cliente.listar_profissionais.call_count == 1
     assert not any("Confirmar " in texto for texto, _ in interface.botoes)
+    assert any("1 profissional(is)" in texto for texto in interface.textos)
+    assert not any("Dr. Nome Fictício" in texto for texto in interface.textos)
 
 
 def test_perfil_nao_autorizado_nao_consulta(tela):

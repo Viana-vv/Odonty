@@ -195,12 +195,8 @@ def test_sucesso_limpa_preserva_equipe(paciente_api):
     assert not app.exception
     paciente_api["cadastrar_paciente"].assert_called_once()
     assert app.success
-    assert app.text_input(key="pac_nome").value == ""
-    assert app.date_input(key="pac_data_nascimento").value is None
-    assert app.number_input(key="pac_telefone").value is None
-    assert app.text_input(key="pac_cpf").value == ""
-    assert app.text_input(key="pac_email").value == ""
-    assert app.number_input(key="pac_celular").value is None
+    assert not any(c.key.startswith("pac_") for c in app.text_input)
+    assert app.session_state["pagina_equipe"] == "inicio"
     assert app.session_state["pac_operacao_id"] != operacao
     assert app.session_state[sessao.CHAVE].token == "token-adm"
 
@@ -274,6 +270,8 @@ def test_saida_limpa_dados(paciente_api, acao):
             seconds=sessao.INTERVALO_REVALIDACAO_SEGUNDOS + 1)
         app.run()
     else:
+        if acao == "Voltar":
+            botao(app, "Cadastrar paciente").click().run()
         botao(app, acao).click().run()
     assert not app.exception
     assert not any(k.startswith("pac_") for k in app.session_state)
