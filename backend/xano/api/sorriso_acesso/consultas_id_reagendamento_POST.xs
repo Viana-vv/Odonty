@@ -89,22 +89,6 @@ query "consultas/{id}/reagendamento" verb=POST {
             // Mesmas travas das rotas existentes, em ordem crescente de ID.
             foreach ($profissionais) {
               each as $profissional_id {
-                db.get profissional {
-                  field_name = "id"
-                  field_value = $profissional_id
-                  output = ["id", "agenda_lock_version"]
-                } as $profissional_trava
-                var $versao { value = 0 }
-                conditional {
-                  if ($profissional_trava.agenda_lock_version != null) {
-                    var.update $versao { value = $profissional_trava.agenda_lock_version }
-                  }
-                }
-                db.edit profissional {
-                  field_name = "id"
-                  field_value = $profissional_id
-                  data = {agenda_lock_version: ($versao + 1)}
-                } as $trava_profissional
                 db.query agenda_controle {
                   where = $db.agenda_controle.escopo == "profissional" && $db.agenda_controle.escopo_id == $profissional_id
                   return = {type: "single"}
