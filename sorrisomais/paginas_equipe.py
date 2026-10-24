@@ -438,16 +438,9 @@ def _renderizar_agenda(cliente, conta):
                    on_click=_navegar_data_agenda, args=(1,))
     pode_agendar = bool(perfis.intersection({"administrador", "recepcionista"}))
     if pode_agendar:
-        nova_consulta, nova_consulta_pagina, novo_horario = st.columns(3, gap="small")
+        nova_consulta, novo_horario = st.columns(2, gap="small")
         nova_consulta.button("＋ Nova consulta", key="agenda-nova", type="primary", width="stretch",
                     on_click=_alternar_formulario_agenda, args=("agenda_nova",))
-        consulta_integrada = navegacao.modulo_xano_disponivel("nova_consulta")
-        nova_consulta_pagina.button(
-            "Abrir Nova Consulta", key="agenda-abrir-nova-consulta",
-            on_click=abrir_nova_consulta if consulta_integrada else None,
-            disabled=not consulta_integrada, width="stretch",
-            help=None if consulta_integrada else "A tela Nova Consulta ainda não está integrada ao Xano.",
-        )
         novo_horario.button("＋ Novo horário", key="agenda-novo-horario", width="stretch",
                     on_click=_alternar_formulario_agenda, args=("agenda_nova_disponibilidade",))
 
@@ -1120,6 +1113,8 @@ def renderizar(conta, cliente):
         return
 
     perfis = set(conta.perfis)
+    if st.session_state.pop("pac_sucesso", False):
+        st.success("Paciente cadastrado com prontuÃ¡rio vazio. Este cadastro nÃ£o cria login.")
     paciente_exclusivo = perfis == {"paciente"}
     administrador = "administrador" in perfis
     pode_cadastrar_paciente = (cliente.configuracao.cadastro_paciente_habilitado

@@ -104,6 +104,10 @@ def renderizar(cliente, conta):
         st.error(str(error))
         return
 
+    administrador = "administrador" in perfis
+    profissionais_visiveis = (profissionais if administrador else
+                               [item for item in profissionais if item.get("situacao") == "ativo"])
+    profissionais = profissionais_visiveis
     if not profissionais:
         st.info("Não há Profissionais cadastrados para exibir.")
         return
@@ -123,7 +127,7 @@ def renderizar(cliente, conta):
                 st.write(f"Telefone: {profissional['telefone'] or 'Não informado'}")
                 resultado = _situacao_card(
                     cliente, profissional, credencial.token, st.session_state,
-                    administrador="administrador" in perfis,
+                    administrador=administrador,
                 )
                 if resultado is None:
                     return

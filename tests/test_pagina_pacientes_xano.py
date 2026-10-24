@@ -115,6 +115,30 @@ def test_falha_ao_carregar_edicao_nao_exibe_dados_pessoais(cliente_pacientes):
     assert not any(item.key.startswith("pacientes_xano_edicao_") for item in app.text_input)
 
 
+def test_404_na_edicao_atualiza_lista_antes_de_exibir_falha(cliente_pacientes):
+    paciente = {
+        "id": 11, "nome": "Paciente Fictícia Aurora", "data_nascimento": "2000-02-29",
+        "cpf": "52998224725", "telefone": "11900000000", "celular": "11911112222",
+        "email": "pessoa@example.com",
+    }
+    cliente_pacientes.obter_paciente.side_effect = [
+        ErroAcesso("não encontrado", 404), paciente,
+    ]
+    cliente_pacientes.listar_opcoes_agenda.side_effect = [
+        {"pacientes": [item.copy() for item in PACIENTES], "profissionais": [], "procedimentos": []},
+        {"pacientes": [item.copy() for item in PACIENTES], "profissionais": [], "procedimentos": []},
+    ]
+    app = abrir_tela(cliente_pacientes)
+
+    app.button(key="pacientes-xano-editar-11").click().run()
+    assert not app.exception
+    app.button(key="pacientes-xano-editar-11").click().run()
+
+    assert not app.exception
+    assert cliente_pacientes.obter_paciente.call_count == 2
+    assert app.text_input(key="pacientes_xano_edicao_nome").value == paciente["nome"]
+
+
 def test_salvar_edicao_envia_campos_cadastrais_e_mostra_confirmacao(cliente_pacientes):
     cliente_pacientes.obter_paciente.return_value = {
         "id": 11, "nome": "Paciente Fictícia Aurora", "data_nascimento": "2000-02-29",
