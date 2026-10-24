@@ -28,37 +28,27 @@ query "exames" verb=GET {
         }
       }
     }
-    db.get paciente {
-      field_name = "conta_acesso_id"
-      field_value = $auth.id
-      output = ["id", "situacao"]
-    } as $paciente
     db.get profissional {
       field_name = "conta_acesso_id"
       field_value = $auth.id
       output = ["id", "situacao"]
     } as $profissional
-    var $exames { value = [] }
     conditional {
-      if (($conta.perfis|includes:"paciente")) {
-        db.query exame {
-          where = $db.exame.paciente_id == $paciente.id && $db.exame.situacao == "Resultado disponível"
-          sort = {exame.solicitado_em: "desc"}
-          return = {type: "list"}
-          output = ["id", "paciente_id", "consulta_id", "profissional_id", "tipo", "situacao", "solicitado_em", "realizado_em", "resultado", "observacoes"]
-        } as $lista_paciente
-        var.update $exames { value = $lista_paciente }
-      }
-      else {
-        db.query exame {
-          where = $db.exame.profissional_id == $profissional.id
-          sort = {exame.solicitado_em: "desc"}
-          return = {type: "list"}
-          output = ["id", "paciente_id", "consulta_id", "profissional_id", "tipo", "situacao", "solicitado_em", "realizado_em", "resultado", "observacoes"]
-        } as $lista_profissional
-        var.update $exames { value = $lista_profissional }
+      if (($conta.perfis|intersect:["profissional"]|count) == 0 || $profissional == null || $profissional.situacao != "Ativo") {
+        util.set_header {
+          value = "HTTP/1.1 403 Forbidden"
+        }
+        return {
+          value = {codigo: "ACESSO_NEGADO", mensagem: "Exames disponíveis somente para Profissional autorizado."}
+        }
       }
     }
+    db.query exame {
+      where = $db.exame.profissional_id == $profissional.id
+      sort = {exame.solicitado_em: "desc"}
+      return = {type: "list"}
+      output = ["id", "paciente_id", "consulta_id", "profissional_id", "tipo", "situacao", "solicitado_em", "realizado_em", "resultado", "observacoes"]
+    } as $exames
   }
   response = {exames: $exames}
   history = false

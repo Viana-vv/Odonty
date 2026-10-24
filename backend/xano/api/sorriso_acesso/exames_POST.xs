@@ -18,7 +18,7 @@ query "exames" verb=POST {
       output = ["id", "perfis", "situacao"]
     } as $conta
     conditional {
-      if ($conta == null || $conta.situacao != "ativo" || ($conta.perfis|includes:"profissional") == false) {
+      if ($conta == null || $conta.situacao != "ativo" || ($conta.perfis|intersect:["profissional"]|count) == 0) {
         util.set_header {
           value = "HTTP/1.1 403 Forbidden"
         }
