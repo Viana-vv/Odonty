@@ -6,13 +6,14 @@ from zoneinfo import ZoneInfo
 import streamlit as st
 
 from .api import ErroAcesso
+from . import sessao
 
 FUSO_CLINICA = ZoneInfo("America/Sao_Paulo")
 
 
 def _inicio_consulta(consulta):
     try:
-        inicio = datetime.fromisoformat(consulta["inicio_em"])
+        inicio = datetime.fromisoformat(consulta["inicio_em"].replace("Z", "+00:00"))
         if inicio.tzinfo is None:
             inicio = inicio.replace(tzinfo=FUSO_CLINICA)
         return inicio.astimezone(FUSO_CLINICA)
@@ -28,9 +29,16 @@ def _cartao(consulta, inicio, *, futura):
         st.caption("Para solicitar o cancelamento, entre em contato com a clínica.")
 
 
-def renderizar(cliente, token):
+def renderizar(cliente, conta_ou_token):
     st.title("Minhas Consultas")
     st.markdown("Acompanhe suas Consultas futuras e passadas.")
+    token = conta_ou_token if isinstance(conta_ou_token, str) else None
+    if token is None:
+        credencial = st.session_state.get(sessao.CHAVE)
+        token = getattr(credencial, "token", None)
+    if not token:
+        st.error("Sua sessÃ£o nÃ£o estÃ¡ disponÃ­vel. Entre novamente.")
+        return
     try:
         consultas = cliente.listar_consultas(token)
     except ErroAcesso as erro:
