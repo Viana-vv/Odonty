@@ -41,7 +41,11 @@ def _situacao_card(cliente, profissional, token, estado, administrador):
     ativo = profissional["situacao"] == "ativo"
     st.caption("Ativo" if ativo else "Inativo")
     if not administrador:
-        return
+        # O chamador usa ``None`` para sinalizar falha de autenticação durante
+        # uma alteração de situação. Para um cartão somente de leitura, use o
+        # mesmo sentinela de operação concluída utilizado pelo administrador;
+        # caso contrário a primeira ficha encerra a renderização da lista.
+        return False
 
     proxima = "inativo" if ativo else "ativo"
     acao = "Inativar" if ativo else "Ativar"

@@ -88,6 +88,17 @@ def test_recepcionista_consulta_sem_controles_de_alteracao(tela):
     assert not any("Dr. Nome Fictício" in texto for texto in interface.textos)
 
 
+def test_recepcionista_renderiza_todos_os_profissionais_ativos(tela):
+    interface, cliente, _ = tela
+    cliente.listar_profissionais.return_value = [
+        {**PROFISSIONAIS[0], "id": 301, "nome": "Dra. Primeira Ativa"},
+        {**PROFISSIONAIS[0], "id": 302, "nome": "Dr. Segundo Ativo"},
+    ]
+    pagina.renderizar(cliente, SimpleNamespace(perfis=("recepcionista",)))
+    assert any("Dra. Primeira Ativa" in texto for texto in interface.textos)
+    assert any("Dr. Segundo Ativo" in texto for texto in interface.textos)
+
+
 def test_perfil_nao_autorizado_nao_consulta(tela):
     interface, cliente, _ = tela
     pagina.renderizar(cliente, SimpleNamespace(perfis=("profissional",)))
