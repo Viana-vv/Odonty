@@ -20,3 +20,14 @@ test('POST exige vínculo entre paciente, consulta e profissional', () => {
   assert.match(source, /\$consulta\.paciente_id != \$paciente\.id/);
   assert.match(source, /\$consulta\.profissional_id != \$profissional\.id/);
 });
+
+test('GET limita Paciente à própria lista e libera somente resultado disponível', () => {
+  const source = read('exames_GET.xs');
+  assert.match(source, /field_name = "conta_acesso_id"/);
+  assert.match(source, /field_value = \$auth\.id/);
+  assert.match(source, /\$db\.exame\.paciente_id == \$paciente_autenticado\.id/);
+  assert.match(source, /situacao == "Resultado disponível"/);
+  assert.match(source, /resultado: \$resultado_liberado/);
+  assert.match(source, /\$db\.exame\.profissional_id == \$profissional\.id/);
+  assert.match(source, /intersect:\["profissional", "paciente"\]/);
+});

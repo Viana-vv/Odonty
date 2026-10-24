@@ -14,7 +14,13 @@ def test_exports_exames_declaram_auth_e_sem_anexos():
 
 def test_get_exames_restringe_paciente_ao_resultado_disponivel():
     source = (ROOT / "backend/xano/api/sorriso_acesso/exames_GET.xs").read_text(encoding="utf-8-sig")
-    assert '$db.exame.situacao == "Resultado disponível"' in source
+    assert 'field_name = "conta_acesso_id"' in source
+    assert 'field_value = $auth.id' in source
+    assert '$db.exame.paciente_id == $paciente_autenticado.id' in source
+    assert 'situacao == "Resultado disponível"' in source
+    assert 'resultado: $resultado_liberado' in source
+    assert '$db.exame.profissional_id == $profissional.id' in source
+    assert 'intersect:["profissional", "paciente"]' in source
 
 
 def test_post_exames_exige_vinculo_com_consulta():

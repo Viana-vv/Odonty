@@ -30,6 +30,13 @@ def test_paciente_ve_apenas_resultado_liberado():
     assert any("Resultado fictício" in item.value for item in app.markdown)
 
 
+def test_paciente_nao_ve_resultado_antes_da_liberacao():
+    app = abrir([{"id": 2, "tipo": "Exame fictício", "situacao": "Solicitado", "resultado": "Resultado confidencial fictício"}])
+    assert not app.exception
+    assert not any("Resultado confidencial fictício" in item.value for item in app.markdown)
+    assert any("Resultado ainda não liberado" in item.value for item in app.info)
+
+
 def test_perfil_administrativo_nao_acessa_exames():
     app = abrir([], perfis=("recepcionista",))
     assert not app.exception
