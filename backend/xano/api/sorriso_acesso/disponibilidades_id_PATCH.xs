@@ -106,13 +106,20 @@ query "disponibilidades/{id}" verb=PATCH {
               field_value = $profissional.id
               data = {agenda_lock_version: (($profissional.agenda_lock_version|default:0) + 1)}
             } as $trava_agenda
+            // Uma reserva pode ter ocorrido enquanto esta edição aguardava a
+            // trava. Nunca sobrescrever a Disponibilidade com o estado antigo.
+            db.get disponibilidade_agenda {
+              field_name = "id"
+              field_value = $disponibilidade.id
+              output = ["id", "profissional_id", "inicio", "fim", "situacao"]
+            } as $disponibilidade_atual
             db.query disponibilidade_agenda {
               where = $db.disponibilidade_agenda.id != $disponibilidade.id && $db.disponibilidade_agenda.profissional_id == $profissional.id && $db.disponibilidade_agenda.inicio < $fim && $db.disponibilidade_agenda.fim > $inicio
               return = {type: "list"}
               output = ["id"]
             } as $sobreposicoes
             conditional {
-              if (($sobreposicoes|count) > 0) {
+              if ($disponibilidade_atual == null || $disponibilidade_atual.profissional_id != $disponibilidade.profissional_id || $disponibilidade_atual.inicio != $disponibilidade.inicio || $disponibilidade_atual.fim != $disponibilidade.fim || $disponibilidade_atual.situacao != $disponibilidade.situacao || $disponibilidade_atual.situacao == "reservado" || $disponibilidade_atual.situacao == "indisponivel" || $disponibilidade_atual.inicio <= now || ($sobreposicoes|count) > 0) {
                 var.update $conflito { value = true }
               }
               else {

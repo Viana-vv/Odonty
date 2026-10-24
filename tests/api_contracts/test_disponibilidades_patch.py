@@ -1,4 +1,5 @@
 from datetime import timedelta
+from pathlib import Path
 
 import pytest
 
@@ -38,3 +39,22 @@ def test_patch_disponibilidades_exige_campo_sem_vazio(cliente, http):
     with pytest.raises(DadosContratoInvalidos):
         cliente.atualizar_disponibilidade("token-ficticio", 15)
     http.assert_not_called()
+
+
+def test_patch_disponibilidade_revalida_estado_apos_trava_antes_de_gravar():
+    """Regressão da edição que aguardava uma reserva concorrente e a sobrescrevia."""
+    raiz = Path(__file__).resolve().parents[2]
+    fonte = (raiz / "backend/xano/api/sorriso_acesso/disponibilidades_id_PATCH.xs").read_text(encoding="utf-8")
+    transacao = fonte.split("db.transaction", 1)[1]
+    trava = transacao.index("} as $trava_agenda")
+    releitura = transacao.index("db.get disponibilidade_agenda", trava)
+    validacao = transacao.index("if ($disponibilidade_atual == null", releitura)
+    escrita = transacao.index("db.edit disponibilidade_agenda", validacao)
+    assert trava < releitura < validacao < escrita
+    guarda = transacao[validacao:escrita]
+    for campo in ("profissional_id", "inicio", "fim", "situacao"):
+        assert f"$disponibilidade_atual.{campo} != $disponibilidade.{campo}" in guarda
+    assert '$disponibilidade_atual.situacao == "reservado"' in guarda
+    assert '$disponibilidade_atual.situacao == "indisponivel"' in guarda
+    assert "$disponibilidade_atual.inicio <= now" in guarda
+    assert "var.update $conflito { value = true }" in guarda
