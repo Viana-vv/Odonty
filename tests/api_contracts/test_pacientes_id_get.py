@@ -40,6 +40,45 @@ def test_get_paciente_rejeita_resposta_incompativel(cliente, http):
         cliente.obter_paciente("token-ficticio", 19)
 
 
+@pytest.mark.parametrize("campos_vazios", [
+    ("cpf",), ("celular",), ("email",), ("telefone",),
+    ("cpf", "celular", "email"),
+])
+def test_get_paciente_abre_cadastro_antigo_com_campos_incompletos(cliente, http, campos_vazios):
+    paciente = {**PACIENTE, **dict.fromkeys(campos_vazios, "")}
+    http.return_value = resposta({"paciente": paciente})
+
+    dados = cliente.obter_paciente("token-ficticio", 19)
+
+    assert dados["id"] == 19
+    assert dados["nome"] == paciente["nome"]
+    assert all(dados[campo] == "" for campo in campos_vazios)
+
+
+def test_get_cadastro_incompleto_nao_permite_salvar_sem_preencher(cliente, http):
+    http.return_value = resposta({"paciente": {**PACIENTE, "cpf": "", "email": ""}})
+    dados = cliente.obter_paciente("token-ficticio", 19)
+    http.reset_mock()
+    dados.pop("id")
+
+    with pytest.raises(ErroAcesso) as erro:
+        cliente.atualizar_paciente("token-ficticio", 19, **dados)
+
+    assert erro.value.status == 400
+    http.assert_not_called()
+
+
+@pytest.mark.parametrize("campo,valor", [
+    ("cpf", None), ("celular", []), ("email", {}),
+    ("data_nascimento", "data-invalida"), ("data_nascimento", "1800-01-01"),
+])
+def test_get_paciente_rejeita_estrutura_incompativel(cliente, http, campo, valor):
+    http.return_value = resposta({"paciente": {**PACIENTE, campo: valor}})
+
+    with pytest.raises(ErroAcesso):
+        cliente.obter_paciente("token-ficticio", 19)
+
+
 def test_get_paciente_nao_chama_api_com_id_invalido(cliente, http):
     with pytest.raises(ValueError):
         cliente.obter_paciente("token-ficticio", 0)

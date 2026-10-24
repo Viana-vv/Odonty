@@ -15,6 +15,12 @@ O sistema SHALL permitir que Administrador ou Recepcionista ativos, com sessão 
 - **WHEN** um Administrador ativo edita os dados cadastrais válidos de um Paciente existente
 - **THEN** o sistema confirma a atualização sem modificar registros clínicos ou históricos
 
+#### Scenario: Recepcionista completa um cadastro antigo
+- **WHEN** uma Recepcionista abre um Paciente existente cujo CPF, celular ou e-mail está vazio
+- **THEN** a interface abre o formulário com os valores disponíveis e permite preencher os campos faltantes
+- **AND** o salvamento exige os mesmos dados válidos de uma atualização cadastral completa
+- **AND** após salvar, o modal fecha, a listagem é atualizada e a edição pode ser reaberta com os dados persistidos
+
 #### Scenario: Conta sem permissão tenta consultar ou editar
 - **WHEN** uma Conta de Acesso sem perfil autorizado ou com sessão inválida chama diretamente as rotas
 - **THEN** o Xano nega a operação sem revelar dados pessoais ou gravar alterações

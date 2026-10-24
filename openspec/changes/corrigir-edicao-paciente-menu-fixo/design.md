@@ -12,7 +12,9 @@ Ver `proposal.md` e `specs/edicao-paciente/spec.md`. O cliente já implementa GE
 
 - Corrigir a construção da resposta do GET usando valores opcionais inicializados e condicionais explícitas, evitando o pipe que falha em execução; publicar novamente a rota.
 - Publicar o PATCH existente no mesmo grupo após compilar o fonte, mantendo sua checagem de sessão e perfil no Xano.
-- Fixar a primeira coluna do layout em desktop com CSS `position: sticky`, altura limitada ao viewport e rolagem interna se o menu exceder a altura. Desativar esse posicionamento em telas estreitas para preservar a ordem atual.
+- Fixar a coluna Streamlit que contém o menu em desktop com CSS `position: sticky`; aplicar o posicionamento somente ao contêiner interno não funciona porque ele fica limitado pela altura da própria coluna. Limitar o menu ao viewport e permitir sua rolagem interna. Desativar esse posicionamento em telas estreitas para preservar a ordem atual.
+- Na leitura para edição, validar a estrutura da resposta e a data, aceitando os campos de contato/CPF vazios em cadastros antigos. Manter a validação obrigatória completa no envio da atualização, para que seja possível abrir e completar esses cadastros.
+- No teste visual, rolar o contêiner real `stMain` e confirmar que o conteúdo se deslocou antes de comparar a posição do menu. `window.scrollTo` não percorre a página interna do Streamlit e não serve como evidência dessa interação.
 - Manter mensagens ao usuário seguras e usar os testes de contrato existentes para validar autorização, payload e tratamento de erros.
 
 ## Risks / Trade-offs

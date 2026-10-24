@@ -1,8 +1,10 @@
 """Verificação opt-in do fluxo visual com contas e dados fictícios no Xano."""
 
 import os
+import secrets
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -11,6 +13,7 @@ import requests
 from playwright.sync_api import sync_playwright
 
 from test_xano_real import Ambiente
+from test_xano_pacientes_real import cpf_ficticio
 
 
 pytestmark = pytest.mark.skipif(
@@ -103,4 +106,105 @@ def test_navegacao_administrador_e_recepcionista_em_telas_responsivas():
         for identificador in ambiente.criadas:
             ambiente.metadados("PUT", f"/table/{ambiente.contas}/content/{identificador}",
                                 json={"situacao": "inativo"})
+        ambiente.admin.close()
+
+
+def test_recepcionista_completa_cadastro_antigo_no_xano_real():
+    ambiente = Ambiente()
+    processo = None
+    paciente_id = None
+    tabela_pacientes = None
+    raiz = Path(__file__).resolve().parents[1]
+    base_local = "http://127.0.0.1:8598"
+    capturas = Path(tempfile.gettempdir()) / "odonty-edicao-xano-real"
+    capturas.mkdir(exist_ok=True)
+    nome = "Paciente Fictício Legado " + secrets.token_hex(5)
+    email = "legado." + secrets.token_hex(6) + "@example.invalid"
+    try:
+        conta = ambiente.criar(["recepcionista"])
+        tabela_pacientes = next(t["id"] for t in ambiente.listar("/table")
+                               if t["name"] == "paciente")
+        paciente = ambiente.metadados("POST", f"/table/{tabela_pacientes}/content", json={
+            "nome": nome, "data_nascimento": "2000-02-29", "telefone": "11900000000",
+            "cpf": None, "celular": None, "email": None, "situacao": "ativo",
+        })
+        paciente_id = paciente["id"]
+        env = os.environ.copy()
+        env.update({
+            "PYTHONPATH": str(raiz / "tests" / "fixtures"),
+            "ODONTY_XANO_REAL_TEST": "1", "ODONTY_AGENDA_FICTICIA": "0",
+            "SORRISOMAIS_MODO_DEMONSTRACAO": "0",
+        })
+        time.sleep(3.1)
+        processo = subprocess.Popen(
+            [sys.executable, "-B", "-m", "streamlit", "run", "app.py",
+             "--server.headless=true", "--server.address=127.0.0.1",
+             "--server.port=8598", "--browser.gatherUsageStats=false"],
+            cwd=raiz, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        limite = time.monotonic() + 45
+        while time.monotonic() < limite:
+            if processo.poll() is not None:
+                pytest.fail("O Streamlit encerrou antes de iniciar o teste real.")
+            try:
+                if requests.get(base_local, timeout=2).status_code == 200:
+                    break
+            except requests.RequestException:
+                time.sleep(0.5)
+        else:
+            pytest.fail("O Streamlit não iniciou no prazo do teste real.")
+
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(headless=True)
+            pagina = browser.new_page(viewport={"width": 1365, "height": 900})
+            pagina.set_default_timeout(60000)
+            pagina.goto(base_local, wait_until="domcontentloaded")
+            pagina.get_by_label("E-mail").fill(conta["email"])
+            pagina.get_by_label("Senha", exact=True).fill(conta["senha"])
+            pagina.get_by_role("button", name="Entrar", exact=True).click()
+            pagina.get_by_role("button", name="Pacientes", exact=True).click()
+            pagina.get_by_placeholder("Buscar por nome...").fill(nome)
+            pagina.get_by_placeholder("Buscar por nome...").press("Enter")
+            pagina.get_by_text("1 pacientes", exact=True).wait_for()
+            pagina.get_by_role("button", name="Editar", exact=True).click()
+            dialogo = pagina.get_by_role("dialog")
+            dialogo.wait_for()
+            for campo in ("CPF *", "Celular *", "E-mail *"):
+                assert dialogo.get_by_label(campo, exact=True).input_value() == ""
+            pagina.screenshot(path=str(capturas / "cadastro-incompleto.png"))
+            dialogo.get_by_label("Nome completo *").fill(nome + " Atualizado")
+            dialogo.get_by_label("CPF *", exact=True).fill(cpf_ficticio())
+            dialogo.get_by_label("Celular *", exact=True).fill("11911112222")
+            dialogo.get_by_label("E-mail *", exact=True).fill(email)
+            dialogo.get_by_role("button", name="Salvar alterações", exact=True).click()
+            dialogo.wait_for(state="hidden")
+            pagina.get_by_text("Os dados cadastrais do Paciente foram atualizados.", exact=True).wait_for()
+            pagina.get_by_text(nome + " Atualizado", exact=True).wait_for()
+            pagina.get_by_role("button", name="Editar", exact=True).click()
+            dialogo.wait_for()
+            assert dialogo.get_by_label("E-mail *", exact=True).input_value() == email
+            assert dialogo.get_by_label("Nome completo *").input_value() == nome + " Atualizado"
+            pagina.screenshot(path=str(capturas / "cadastro-reaberto.png"))
+            dialogo.get_by_role("button", name="Cancelar", exact=True).click()
+            dialogo.wait_for(state="hidden")
+            pagina.get_by_role("button", name="Sair", exact=True).click()
+            pagina.get_by_role("button", name="Entrar", exact=True).wait_for()
+            browser.close()
+    finally:
+        if processo and processo.poll() is None:
+            processo.terminate()
+            try:
+                processo.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                processo.kill()
+                processo.wait(timeout=5)
+        time.sleep(3.1)
+        if paciente_id is not None:
+            inativado = ambiente.metadados("PUT", f"/table/{tabela_pacientes}/content/{paciente_id}",
+                                           json={"situacao": "inativo"})
+            assert inativado["situacao"] == "inativo"
+        for identificador in ambiente.criadas:
+            inativada = ambiente.metadados("PUT", f"/table/{ambiente.contas}/content/{identificador}",
+                                          json={"situacao": "inativo"})
+            assert inativada["situacao"] == "inativo"
         ambiente.admin.close()

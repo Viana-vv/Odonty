@@ -1,5 +1,8 @@
 {
   "data": "2026-10-05",
+  "pacientes_cadastrais": [
+    {"id": 101, "nome": "Paciente Fictícia Aurora", "data_nascimento": "2000-02-29", "cpf": "", "telefone": "11900000000", "celular": "", "email": ""}
+  ],
   "opcoes": {
     "pacientes": [{"id": 101, "nome": "Paciente Fictícia Aurora"}, {"id": 102, "nome": "Paciente Fictício Horizonte"}],
     "profissionais": [{"id": 201, "nome": "Dra. Exemplo Sorriso"}],
