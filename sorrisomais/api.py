@@ -188,26 +188,37 @@ class ClienteXano:
 
 
     def obter_paciente(self, token, paciente_id):
+        from datetime import date
         from .contratos_clinicos import validar_id
-        from .pacientes import validar_cadastro
 
         self._token_obrigatorio(token)
         paciente_id = validar_id(paciente_id, "Paciente")
         data = self._request("GET", f"/pacientes/{paciente_id}", token=token)
         paciente = self._item_resposta(data, "paciente", {
-            "nome": str, "data_nascimento": str, "cpf": str,
-            "telefone": str, "celular": str, "email": str,
+            "nome": str, "data_nascimento": str,
         })
         if paciente["id"] != paciente_id:
             raise ErroAcesso()
+        # Cadastros antigos podem precisar ser completados no formulário.
+        # As regras obrigatórias de gravação continuam em atualizar_paciente.
+        for campo in ("cpf", "telefone", "celular", "email"):
+            valor = data["paciente"].get(campo)
+            if not isinstance(valor, str):
+                raise ErroAcesso()
+            paciente[campo] = valor.strip()
         try:
-            dados = validar_cadastro(
-                paciente["nome"], paciente["data_nascimento"], paciente["telefone"],
-                paciente["cpf"], paciente["email"], paciente["celular"],
-            )
-        except ErroAcesso:
+            nascimento = date.fromisoformat(paciente["data_nascimento"])
+        except ValueError:
             raise ErroAcesso() from None
-        return {"id": paciente_id, **dados}
+        if not date(1900, 1, 1) <= nascimento <= date.today():
+            raise ErroAcesso()
+        paciente["nome"] = paciente["nome"].strip()
+        paciente["data_nascimento"] = nascimento.isoformat()
+        paciente["cpf"] = re.sub(r"[.\-]", "", paciente["cpf"])
+        for campo in ("telefone", "celular"):
+            paciente[campo] = re.sub(r"[ ()\-]", "", paciente[campo])
+        paciente["email"] = paciente["email"].lower()
+        return paciente
 
     def atualizar_paciente(self, token, paciente_id, *, nome, data_nascimento,
                            telefone, cpf, email, celular):

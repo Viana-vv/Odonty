@@ -1,12 +1,32 @@
-"""Backend HTTP falso opt-in para inspeção local da Agenda no navegador.
+"""Suporte HTTP opt-in para verificações no navegador.
 
-Só intercepta chamadas quando ODONTY_AGENDA_FICTICIA=1 e nunca alcança o Xano.
+ODONTY_AGENDA_FICTICIA=1 simula a API e bloqueia outros hosts.
+ODONTY_XANO_REAL_TEST=1 preserva a rede e limita as requisições reais.
 """
 import json
 import os
+import threading
+import time
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
+
+
+if os.getenv("ODONTY_XANO_REAL_TEST") == "1":
+    import requests
+
+    _request_original = requests.request
+    _lock_requisicoes = threading.Lock()
+    _ultima_requisicao = 0.0
+
+    def _request_limitado(*args, **kwargs):
+        global _ultima_requisicao
+        with _lock_requisicoes:
+            time.sleep(max(0, 3.1 - (time.monotonic() - _ultima_requisicao)))
+            _ultima_requisicao = time.monotonic()
+            return _request_original(*args, **kwargs)
+
+    requests.request = _request_limitado
 
 
 if os.getenv("ODONTY_AGENDA_FICTICIA") == "1":
@@ -77,6 +97,17 @@ if os.getenv("ODONTY_AGENDA_FICTICIA") == "1":
             return _RespostaFicticia({"codigo": "ACESSO_NEGADO"}, 401)
         if route == "/agenda/opcoes" and method == "GET":
             return _RespostaFicticia(_FIXTURE["opcoes"])
+        if route.startswith("/pacientes/") and method in {"GET", "PATCH"}:
+            paciente = next((p for p in _FIXTURE["pacientes_cadastrais"]
+                             if str(p["id"]) == route.rsplit("/", 1)[-1]), None)
+            if paciente is None:
+                return _RespostaFicticia({"codigo": "RECURSO_NAO_ENCONTRADO"}, 404)
+            if method == "PATCH":
+                paciente.update(json or {})
+                for opcao in _FIXTURE["opcoes"]["pacientes"]:
+                    if opcao["id"] == paciente["id"]:
+                        opcao["nome"] = paciente["nome"]
+            return _RespostaFicticia({"paciente": dict(paciente)})
         if route == "/consultas" and method == "GET":
             return _RespostaFicticia({"consultas": _consultas_visiveis(params or {})})
         if route == "/disponibilidades" and method == "GET":
