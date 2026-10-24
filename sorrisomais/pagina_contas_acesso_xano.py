@@ -3,7 +3,14 @@
 import streamlit as st
 
 from . import api_contas_acesso, sessao
-from .api import ErroAcesso, ROTULOS
+from .api import ErroAcesso
+
+_ROTULOS_PERFIS = {
+    "paciente": "Paciente",
+    "profissional": "Profissional",
+    "administrador": "Administrador",
+    "recepcionista": "Recepcionista",
+}
 
 
 def _iniciais(nome):
@@ -12,10 +19,11 @@ def _iniciais(nome):
 
 def renderizar(cliente, conta):
     st.caption("EQUIPE DA CLÍNICA")
-    st.title("Contas de Acesso")
-    st.write("Consulte as contas cadastradas e seus perfis de acesso.")
-
     perfis = set(getattr(conta, "perfis", ()))
+    titulo, acao_atualizar = st.columns([5, 1], vertical_alignment="center")
+    titulo.title("Contas de Acesso")
+    titulo.write("Consulte as contas cadastradas e seus perfis de acesso.")
+
     if not perfis.intersection({"administrador", "recepcionista"}):
         st.info("Seu perfil não tem permissão para consultar esta lista.")
         return
@@ -25,13 +33,22 @@ def renderizar(cliente, conta):
         st.error("Sua sessão expirou. Entre novamente para consultar as Contas de Acesso.")
         return
 
+    atualizar = acao_atualizar.button(
+        "Atualizar lista", key="contas-acesso-atualizar", width="stretch",
+    )
+
     try:
-        with st.spinner("Carregando Contas de Acesso…"):
+        mensagem_carregamento = (
+            "Atualizando Contas de Acesso…" if atualizar
+            else "Carregando Contas de Acesso…"
+        )
+        with st.spinner(mensagem_carregamento):
             contas = api_contas_acesso.listar_contas_acesso(cliente, credencial.token)
     except ErroAcesso as error:
         if error.status == 401:
             sessao.limpar(st.session_state)
-            st.error("Sua sessão expirou. Entre novamente para consultar as Contas de Acesso.")
+            st.rerun()
+            return
         elif error.status == 403:
             st.error("Sua Conta de Acesso não tem permissão para consultar esta lista.")
         else:
@@ -43,14 +60,17 @@ def renderizar(cliente, conta):
         return
 
     st.caption(f"{len(contas)} conta(s)")
-    colunas = st.columns(3, gap="medium")
-    for indice, item in enumerate(contas):
-        with colunas[indice % len(colunas)]:
-            with st.container(border=True, key=f"conta-acesso-{item['id']}"):
-                avatar, resumo = st.columns([1, 3], vertical_alignment="center")
-                avatar.markdown(f"### {_iniciais(item['nome'])}")
-                resumo.caption(item["situacao"].capitalize())
-                st.subheader(item["nome"])
-                st.caption(f"ID {item['id']}")
-                st.write(f"E-mail: {item['email']}")
-                st.write("Perfis: " + ", ".join(ROTULOS[perfil] for perfil in item["perfis"]))
+    for inicio in range(0, len(contas), 3):
+        colunas = st.columns(3, gap="medium")
+        for coluna, item in zip(colunas, contas[inicio:inicio + 3]):
+            with coluna:
+                with st.container(border=True, key=f"conta-acesso-{item['id']}"):
+                    avatar, resumo = st.columns([1, 3], vertical_alignment="center")
+                    avatar.markdown(f"### {_iniciais(item['nome'])}")
+                    resumo.caption(item["situacao"].capitalize())
+                    st.subheader(item["nome"])
+                    st.caption(f"ID {item['id']}")
+                    st.write(f"E-mail: {item['email']}")
+                    st.write("Perfis: " + ", ".join(
+                        _ROTULOS_PERFIS[perfil] for perfil in item["perfis"]
+                    ))
