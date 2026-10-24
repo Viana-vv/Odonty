@@ -167,6 +167,16 @@ footer { display: none !important; }
 .st-key-layout-equipe > [data-testid="stHorizontalBlock"] { gap: 0; }
 .st-key-menu-equipe { min-height: 100dvh; padding: 26px 18px 18px; border: 0; border-right: 1px solid var(--linha); border-radius: 0; box-shadow: none; }
 .st-key-conteudo-equipe { min-height: 100dvh; padding: 22px clamp(24px, 3.5vw, 56px); border: 0; border-radius: 0; background: #f5f8f7; }
+@media (min-width: 701px) {
+  .st-key-menu-equipe {
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow-y: auto;
+  }
+}
 .st-key-topbar-equipe { margin-bottom: 32px; padding: 8px 0 18px; }
 .st-key-topbar-equipe [data-testid="stMarkdownContainer"] { text-align: right; }
 .st-key-metrica-xano-0, .st-key-metrica-xano-1, .st-key-metrica-xano-2, .st-key-metrica-xano-3 { min-height: 144px; padding: 18px; border-radius: 12px; box-shadow: 0 2px 8px #17303808; }
