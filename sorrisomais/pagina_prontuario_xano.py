@@ -12,7 +12,13 @@ from .api import ErroAcesso
 from . import pagina_nova_evolucao_xano
 
 _CHAVE_CACHE_HISTORICO = "prontuario_historico_cache"
+_CHAVE_PENDENTE = "prontuario_paciente_pendente"
 _CACHE_HISTORICO_SEGUNDOS = 20
+
+
+def _selecionar_paciente(paciente_id):
+    """Agenda a seleção para o próximo rerun, antes do selectbox ser criado."""
+    st.session_state[_CHAVE_PENDENTE] = paciente_id
 
 
 def _carregar_dados(cliente, token):
@@ -133,6 +139,9 @@ def renderizar(cliente, conta):
 
     ids = list(pacientes)
     opcoes = [None, *ids]
+    pendente = st.session_state.pop(_CHAVE_PENDENTE, None)
+    if pendente is not None and pendente in opcoes:
+        st.session_state["prontuario_paciente_id"] = pendente
     if st.session_state.get("prontuario_paciente_id") not in opcoes:
         st.session_state["prontuario_paciente_id"] = None
     nomes = {paciente_id: pacientes[paciente_id] for paciente_id in ids}
@@ -162,9 +171,10 @@ def renderizar(cliente, conta):
                     key=f"prontuario-paciente-{paciente_id}",
                     type="primary" if paciente_id == selecionado else "secondary",
                     width="stretch",
+                    on_click=_selecionar_paciente,
+                    args=(paciente_id,),
                 ):
-                    st.session_state["prontuario_paciente_id"] = paciente_id
-                    st.rerun()
+                    pass
     with linha_tempo:
         registros_paciente = [
             registro for registro in registros
