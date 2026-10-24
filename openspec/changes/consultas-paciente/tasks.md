@@ -1,0 +1,4 @@
+- [x] Explorar documentação, contrato existente e referências visuais; revisar escopo da proposta.
+- [x] Implementar módulo Streamlit isolado para leitura de Consultas.
+- [x] Criar testes unitários da tela sem chamadas de rede.
+- [x] Executar verificações pertinentes e revisar diff.
