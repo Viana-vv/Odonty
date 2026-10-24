@@ -70,6 +70,19 @@ def test_visao_geral_mostra_todos_os_registros_e_permite_abrir_prontuario_indivi
     assert not any("Evolução fictícia Aurora" in item.value for item in app.markdown)
 
 
+def test_clicar_no_paciente_nao_altera_widget_instanciado():
+    consultas = [
+        {"paciente_id": 12, "paciente_nome": "Paciente Fictícia Aurora"},
+        {"paciente_id": 13, "paciente_nome": "Paciente Fictício Bruno"},
+    ]
+    app = abrir(consultas, [])
+
+    app.button(key="prontuario-paciente-13").click().run()
+
+    assert not app.exception
+    assert app.selectbox[0].value == 13
+
+
 def test_paciente_nao_recebe_acao_para_criar_registro_clinico():
     app = abrir(
         [{"paciente_id": 12, "paciente_nome": "Paciente Fictícia Aurora"}],
