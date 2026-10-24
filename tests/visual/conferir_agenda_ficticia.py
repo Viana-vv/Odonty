@@ -60,6 +60,15 @@ def main():
             page.get_by_text("Paciente Fictícia Aurora", exact=False).wait_for()
             page.wait_for_timeout(2000)
             page.screenshot(path=destino / "agenda-desktop.png", full_page=True)
+            menu = page.locator(".st-key-menu-equipe")
+            assert menu.evaluate("element => getComputedStyle(element).position") == "sticky"
+            page.locator(".st-key-conteudo-equipe").evaluate(
+                "element => element.style.minHeight = '1800px'"
+            )
+            page.evaluate("window.scrollTo(0, 600)")
+            page.wait_for_timeout(250)
+            assert menu.bounding_box()["y"] <= 2, "O menu saiu do viewport durante a rolagem."
+            page.evaluate("window.scrollTo(0, 0)")
             conteudo = page.locator("body").inner_text()
             assert "Dra. Exemplo Sorriso" in conteudo
             assert "Profilaxia fictícia" in conteudo
@@ -75,6 +84,7 @@ def main():
             page.get_by_role("group", name="Horário inicial").wait_for()
             page.get_by_role("group", name="Horário final").wait_for()
             page.set_viewport_size({"width": 390, "height": 844})
+            assert menu.evaluate("element => getComputedStyle(element).position") == "static"
             largura = page.evaluate("({viewport: document.documentElement.clientWidth, pagina: document.documentElement.scrollWidth})")
             assert largura["pagina"] <= largura["viewport"], f"Rolagem horizontal no formulário de horário: {largura}"
             page.screenshot(path=destino / "novo-horario-celular.png", full_page=True)
