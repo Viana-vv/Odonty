@@ -11,4 +11,6 @@
 ## 3. Verificação e entrega
 
 - [ ] 3.1 Validar compilação, autorização, conflito concorrente e rollback em grupo temporário Xano com dados fictícios e intervalo de três segundos; registrar evidências e limitações sem tocar na API de produção.
+
+  Bloqueio confirmado em 24/10/2026: nenhum alvo temporário segregado identificado na configuração acessível. A inspeção read-only encontrou ainda o PATCH local dependente de `agenda_lock_version`, ausente no schema remoto e removido do reagendamento pelo commit `910f19d`. Evidências em `verificacao-xano-2026-10-24.md`; nenhuma mutação remota realizada nesta tentativa.
 - [x] 3.2 Revisar documentação e diff; executar 43 testes de contratos Python, 49 testes de interface/transições e 7 verificações JavaScript; validar OpenSpec estrito. Entrega registrada em README.md e commit restrito à branch da Issue #64.
