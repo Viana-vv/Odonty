@@ -328,6 +328,8 @@ def test_procedimentos_real_xano_migration_autorizacao_e_realizacao(xano_procedi
     assert concurrent_done["situacao"] == "realizado" and concurrent_done["realizado_por_profissional_id"] == prof["id"]
     assert concurrent_done["realizado_em"] and concurrent_done["realizado_por_nome"] == prof["nome"]
     controls = a.metadata("GET", f"/table/{tables['agenda_controle']}/content", params={"per_page": 100})
-    professional_controls = [row for row in controls if row.get("escopo") == "profissional" and row.get("escopo_id") == prof["id"]]
+    control_rows = controls if isinstance(controls, list) else controls.get("items", [])
+    assert isinstance(control_rows, list)
+    professional_controls = [row for row in control_rows if row.get("escopo") == "profissional" and row.get("escopo_id") == prof["id"]]
     assert len(professional_controls) == 1 and professional_controls[0]["versao"] >= 2
     assert a.intervals and min(a.intervals) >= 3.0
