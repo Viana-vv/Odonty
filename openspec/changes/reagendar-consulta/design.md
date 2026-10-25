@@ -37,6 +37,8 @@ Adquirir as travas usadas pelas rotas existentes de agenda para os Profissionais
 
 A revisão encontrou uma corrida em `PATCH /disponibilidades/{id}`: a rota verificava situação antes da transação e podia sobrescrever um horário reservado enquanto aguardava a trava. O grupo autorizou a correção estritamente necessária: após a trava do Profissional, reler a Disponibilidade e rejeitar com 409 caso desapareça, fique reservada/indisponível/passada ou mude de Profissional, intervalo ou situação desde a leitura inicial. A edição só pode gravar depois dessa validação. Testes de regressão estruturais em Python/JavaScript verificam a ordem trava → releitura → comparação → gravação; não constituem execução concorrente no Xano.
 
+Na retomada de validação, o grupo autorizou alinhar o PATCH ao schema remoto atual: a trava será a linha de `agenda_controle` com escopo Profissional, compartilhada com o reagendamento, sem usar `agenda_lock_version` em Profissional. Foi autorizada a criação de grupo temporário exclusivo, com cópias isoladas dos schemas e endpoints necessários, seguida da remoção dos objetos de teste. Nenhuma rota, schema ou registro do grupo Sorriso Acesso será alterado nesses testes.
+
 ### Interface
 
 Usar `GET /agenda/opcoes`, `GET /consultas` e `GET /disponibilidades` existentes; filtrar visualmente Consultas Agendadas/Confirmadas e sempre revalidar no backend. Reutilizar limites locais de data, representação de horários e composição de seletores de Nova Consulta. Limpar seleções dependentes ao alterar filtros. Não executar cancelamento e novo agendamento como duas chamadas da interface.

@@ -45,6 +45,8 @@ def test_patch_disponibilidade_revalida_estado_apos_trava_antes_de_gravar():
     """Regressão da edição que aguardava uma reserva concorrente e a sobrescrevia."""
     raiz = Path(__file__).resolve().parents[2]
     fonte = (raiz / "backend/xano/api/sorriso_acesso/disponibilidades_id_PATCH.xs").read_text(encoding="utf-8")
+    assert "agenda_lock_version" not in fonte
+    assert "db.edit agenda_controle" in fonte
     transacao = fonte.split("db.transaction", 1)[1]
     trava = transacao.index("} as $trava_agenda")
     releitura = transacao.index("db.get disponibilidade_agenda", trava)
