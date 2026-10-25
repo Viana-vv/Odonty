@@ -25,6 +25,9 @@ O domínio já possui Consulta, Paciente e Profissional, mas não há fluxo comp
 4. **Sem arquivo nesta entrega.** A tela não terá componente de upload nem campo de URL. A decisão evita links públicos e respeita a limitação do plano atual.
 5. **Projeção por perfil.** A resposta será reduzida ao necessário para cada perfil, e mensagens de erro não conterão dados clínicos.
 
+6. **Histórico append-only de situações.** Criar tabela aditiva `exame_situacao_historico`; a solicitação registra o estado inicial e cada avanço grava evento anterior/novo, autor e data na mesma transação da atualização. Nunca editar nem excluir esses eventos. O registro atual de Exame mantém a projeção mais recente.
+7. **Transições e concorrência.** Permitir `Solicitado` para `Realizado`, `Cancelado` ou `Não realizado`, e `Realizado` para `Resultado disponível`. Estados finais não podem regredir. A realização deve ocorrer entre a solicitação e o momento atual; liberar resultado exige texto não vazio. `exame_situacao_controle`, com índice único por Exame, serializa alterações concorrentes sem editar duas vezes o registro clínico.
+
 ## Risks / Trade-offs
 
 - [Resultado clínico exposto por filtro incorreto] → centralizar filtros e autorização no Xano e testar paciente de outro paciente, profissional não relacionado e perfil sem permissão.

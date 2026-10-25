@@ -12,6 +12,12 @@ query "exames" verb=POST {
     function.run sorriso_validar_sessao {
       input = {conta_id: $auth.id, sessao_id: $auth.extras.sessao_id}
     } as $sessao
+    conditional {
+      if (($input.tipo|trim) == "" || $input.solicitado_em > now) {
+        util.set_header { value = "HTTP/1.1 400 Bad Request" }
+        return { value = {codigo: "DADOS_INVALIDOS", mensagem: "Informe um tipo de Exame e uma data de solicitação válida."} }
+      }
+    }
     db.get conta_acesso {
       field_name = "id"
       field_value = $auth.id
@@ -52,9 +58,19 @@ query "exames" verb=POST {
         }
       }
     }
-    db.add exame {
-      data = {paciente_id: $paciente.id, consulta_id: $consulta.id, profissional_id: $profissional.id, tipo: $input.tipo, situacao: "Solicitado", solicitado_em: $input.solicitado_em, observacoes: $input.observacoes, criado_em: now}
-    } as $exame
+    db.transaction {
+      stack {
+        db.add exame {
+          data = {paciente_id: $paciente.id, consulta_id: $consulta.id, profissional_id: $profissional.id, tipo: $input.tipo, situacao: "Solicitado", solicitado_em: $input.solicitado_em, observacoes: $input.observacoes, criado_em: now}
+        } as $exame
+        db.add exame_situacao_controle {
+          data = {exame_id: $exame.id, versao: 0, atualizado_em: now}
+        } as $controle
+        db.add exame_situacao_historico {
+          data = {exame_id: $exame.id, situacao_anterior: null, situacao_nova: "Solicitado", conta_acesso_id: $auth.id, alterado_em: now}
+        } as $historico
+      }
+    }
     util.set_header {
       value = "HTTP/1.1 201 Created"
     }
