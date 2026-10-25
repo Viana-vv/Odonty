@@ -68,6 +68,29 @@ query "consultas/{id}/procedimentos/{consulta_procedimento_id}/realizacao" verb=
       try {
         db.transaction {
           stack {
+            // A linha por Profissional serializa realizações concorrentes.
+            // Se ainda não existir, a chave única escopo/escopo_id permite
+            // que apenas uma criação vença; a outra transação retorna conflito.
+            db.query agenda_controle {
+              where = $db.agenda_controle.escopo == "profissional" && $db.agenda_controle.escopo_id == $profissional_autenticado.id
+              return = {type: "single"}
+              output = ["id", "versao"]
+            } as $controle_profissional
+            conditional {
+              if ($controle_profissional == null) {
+                db.add agenda_controle {
+                  data = {escopo: "profissional", escopo_id: $profissional_autenticado.id, versao: 1, atualizado_em: now}
+                } as $novo_controle_profissional
+              }
+              else {
+                db.edit agenda_controle {
+                  field_name = "id"
+                  field_value = $controle_profissional.id
+                  data = {versao: ($controle_profissional.versao + 1), atualizado_em: now}
+                } as $controle_profissional_atualizado
+              }
+            }
+            // Ler o vínculo somente depois da gravação da trava.
             db.get consulta_procedimento {
               field_name = "id"
               field_value = $vinculo.id

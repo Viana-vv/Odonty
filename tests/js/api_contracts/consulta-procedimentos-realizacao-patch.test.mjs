@@ -18,6 +18,8 @@ test('PATCH de realização é autenticado, limitado ao Profissional da Consulta
   assert.match(api, /\$consulta\.profissional_id != \$profissional_autenticado\.id/);
   assert.match(api, /\$vinculo\.situacao != "planejado"/);
   assert.match(api, /db\.transaction/);
+  assert.match(api, /db\.query agenda_controle[\s\S]*?db\.edit agenda_controle[\s\S]*?db\.get consulta_procedimento/);
+  assert.match(api, /escopo_id == \$profissional_autenticado\.id/);
   assert.match(api, /\$vinculo_atual\.situacao != "planejado"/);
   assert.match(api, /situacao: "realizado", realizado_por_profissional_id: \$profissional_autenticado\.id, realizado_em: \$realizado_em_novo/);
   assert.match(api, /field_value = \$procedimento_final\.realizado_por_profissional_id[\s\S]*realizado_por_nome: \$responsavel_final\.nome/);

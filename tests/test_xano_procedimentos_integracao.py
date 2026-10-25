@@ -96,7 +96,7 @@ class AmbienteProcedimentos:
 
 
 def remap(source, prefix):
-    names = ("conta_acesso", "sessao_acesso", "paciente", "profissional", "procedimento", "consulta", "consulta_procedimento")
+    names = ("conta_acesso", "sessao_acesso", "paciente", "profissional", "procedimento", "consulta", "consulta_procedimento", "agenda_controle")
     for name in names:
         source = re.sub(rf'(\bdb\.(?:get|add|edit|query)\s+){name}\b', rf'\g<1>{prefix}{name}', source)
         source = re.sub(rf'(\b(?:auth|table)\s*=\s*"){name}(\")', rf'\g<1>{prefix}{name}\g<2>', source)
@@ -182,6 +182,20 @@ def minimal_tables(prefix):
   }}
   index = [{{type: "primary", field: [{{name: "id"}}]}}]
 }}''',
+        f'''table {prefix}agenda_controle {{
+  auth = false
+  schema {{
+    int id
+    enum escopo {{ values = ["profissional", "paciente"] }}
+    int escopo_id
+    int versao?=0
+    timestamp atualizado_em?=now
+  }}
+  index = [
+    {{type: "primary", field: [{{name: "id"}}]}}
+    {{type: "btree|unique", field: [{{name: "escopo", op: "asc"}}, {{name: "escopo_id", op: "asc"}}]}}
+  ]
+}}''',
     ]
 
 
@@ -217,9 +231,11 @@ def xano_procedimentos():
         patch_source = source("backend/xano/api/sorriso_acesso/consultas_id_procedimentos_consulta_procedimento_id_realizacao_PATCH.xs")
         patch_source = patch_source.replace('query "consultas/{id}/procedimentos/{consulta_procedimento_id}/realizacao"',
                                             'query "consultas/{id}/procedimentos/{consulta_procedimento_id}/realizacao_lenta"')
-        marker = '    var $atualizado { value = null }'
+        marker = '''            db.get consulta_procedimento {
+              field_name = "id"
+              field_value = $vinculo.id'''
         assert patch_source.count(marker) == 1
-        patch_source = patch_source.replace(marker, '    util.sleep { value = 9 }\n' + marker)
+        patch_source = patch_source.replace(marker, '            util.sleep { value = 9 }\n' + marker)
         patch_source = re.sub(r"^\\s*guid = .*?$", "", patch_source, flags=re.MULTILINE)
         patch_source = remap(patch_source, a.prefix)
         patch_source = patch_source.replace("function.run sorriso_validar_sessao", "function.run " + a.function_name)
@@ -249,7 +265,8 @@ def account(a, accounts_table, name, role):
 def test_procedimentos_real_xano_migration_autorizacao_e_realizacao(xano_procedimentos):
     a = xano_procedimentos
     tables = {"conta_acesso": a.tables[0], "paciente": a.tables[2], "profissional": a.tables[3],
-              "procedimento": a.tables[4], "consulta": a.tables[5], "consulta_procedimento": a.tables[6]}
+              "procedimento": a.tables[4], "consulta": a.tables[5], "agenda_controle": a.tables[6],
+              "consulta_procedimento": a.tables[7]}
     prof_id, token_prof = account(a, tables["conta_acesso"], "Profissional fictício", "profissional")
     other_prof_id, token_other = account(a, tables["conta_acesso"], "Outro profissional fictício", "profissional")
     _, token_reception = account(a, tables["conta_acesso"], "Recepcionista fictícia", "recepcionista")
@@ -309,4 +326,8 @@ def test_procedimentos_real_xano_migration_autorizacao_e_realizacao(xano_procedi
     concurrent_after = a.api("GET", f"consultas/{consultation['id']}/procedimentos", token_prof)
     concurrent_done = next(p for p in concurrent_after.json()["procedimentos"] if p["id"] == concurrent_link["id"])
     assert concurrent_done["situacao"] == "realizado" and concurrent_done["realizado_por_profissional_id"] == prof["id"]
+    assert concurrent_done["realizado_em"] and concurrent_done["realizado_por_nome"] == prof["nome"]
+    controls = a.metadata("GET", f"/table/{tables['agenda_controle']}/content", params={"per_page": 100})
+    professional_controls = [row for row in controls if row.get("escopo") == "profissional" and row.get("escopo_id") == prof["id"]]
+    assert len(professional_controls) == 1 and professional_controls[0]["versao"] >= 2
     assert a.intervals and min(a.intervals) >= 3.0
