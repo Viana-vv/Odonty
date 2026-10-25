@@ -17,7 +17,7 @@ query "consultas/{id}/procedimentos" verb=GET {
     } as $solicitante
     conditional {
       if ($solicitante == null || $solicitante.situacao != "ativo" || ($solicitante.perfis|intersect:["profissional"]|count) == 0) {
-        util.set_header { value = "HTTP/1.1 403 Forbidden" duplicates = "replace" }
+        util.set_header { value = "HTTP/1.1 403 Forbidden" }
         return { value = {codigo: "ACESSO_NEGADO", mensagem: "Conta sem permissão para consultar Procedimentos."} }
       }
     }
@@ -28,7 +28,7 @@ query "consultas/{id}/procedimentos" verb=GET {
     } as $profissional_autenticado
     conditional {
       if ($profissional_autenticado == null || $profissional_autenticado.situacao != "Ativo") {
-        util.set_header { value = "HTTP/1.1 403 Forbidden" duplicates = "replace" }
+        util.set_header { value = "HTTP/1.1 403 Forbidden" }
         return { value = {codigo: "ACESSO_NEGADO", mensagem: "Profissional sem acesso ativo."} }
       }
     }
@@ -39,7 +39,7 @@ query "consultas/{id}/procedimentos" verb=GET {
     } as $consulta
     conditional {
       if ($consulta == null || $consulta.profissional_id != $profissional_autenticado.id) {
-        util.set_header { value = "HTTP/1.1 404 Not Found" duplicates = "replace" }
+        util.set_header { value = "HTTP/1.1 404 Not Found" }
         return { value = {codigo: "RECURSO_NAO_ENCONTRADO", mensagem: "Consulta não encontrada no escopo permitido."} }
       }
     }
