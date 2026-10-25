@@ -19,7 +19,8 @@ test('PATCH de realização é autenticado, limitado ao Profissional da Consulta
   assert.match(api, /\$vinculo\.situacao != "planejado"/);
   assert.match(api, /db\.transaction/);
   assert.match(api, /\$vinculo_atual\.situacao != "planejado"/);
-  assert.match(api, /situacao: "realizado", realizado_por_profissional_id: \$profissional_autenticado\.id, realizado_em: now/);
+  assert.match(api, /situacao: "realizado", realizado_por_profissional_id: \$profissional_autenticado\.id, realizado_em: \$realizado_em_novo/);
+  assert.match(api, /field_value = \$procedimento_final\.realizado_por_profissional_id[\s\S]*realizado_por_nome: \$responsavel_final\.nome/);
   assert.match(api, /HTTP\/1\.1 409 Conflict/);
 });
 
