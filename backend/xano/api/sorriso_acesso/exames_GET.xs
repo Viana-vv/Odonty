@@ -21,12 +21,8 @@ query "exames" verb=GET {
     } as $conta
     conditional {
       if ($conta == null || $conta.situacao != "ativo" || ($conta.perfis|intersect:["profissional", "paciente"]|count) == 0) {
-        util.set_header { value = "HTTP/1.1 403 Forbidden" duplicates = "replace" }
+        util.set_header { value = "HTTP/1.1 403 Forbidden" }
         return { value = {codigo: "ACESSO_NEGADO", mensagem: "Conta sem permissão para consultar Exames."} }
-      }
-      elseif (($input.paciente_id != null && $input.paciente_id <= 0) || ($input.consulta_id != null && $input.consulta_id <= 0)) {
-        util.set_header { value = "HTTP/1.1 400 Bad Request" duplicates = "replace" }
-        return { value = {codigo: "DADOS_INVALIDOS", mensagem: "Confira os filtros informados."} }
       }
     }
     var $exames { value = [] }
@@ -39,11 +35,13 @@ query "exames" verb=GET {
         } as $paciente_autenticado
         conditional {
           if ($paciente_autenticado == null || $paciente_autenticado.situacao != "ativo") {
-            util.set_header { value = "HTTP/1.1 404 Not Found" duplicates = "replace" }
+            util.set_header { value = "HTTP/1.1 404 Not Found" }
             return { value = {codigo: "RECURSO_NAO_ENCONTRADO", mensagem: "Exames não encontrados no escopo permitido."} }
           }
-          elseif ($input.paciente_id != null && $input.paciente_id != $paciente_autenticado.id) {
-            util.set_header { value = "HTTP/1.1 404 Not Found" duplicates = "replace" }
+        }
+        conditional {
+          if ($input.paciente_id > 0 && $input.paciente_id != $paciente_autenticado.id) {
+            util.set_header { value = "HTTP/1.1 404 Not Found" }
             return { value = {codigo: "RECURSO_NAO_ENCONTRADO", mensagem: "Exames não encontrados no escopo permitido."} }
           }
         }
@@ -57,7 +55,7 @@ query "exames" verb=GET {
           each as $exame {
             var $incluir_exame { value = true }
             conditional {
-              if ($input.consulta_id != null && $exame.consulta_id != $input.consulta_id) {
+              if ($input.consulta_id > 0 && $exame.consulta_id != $input.consulta_id) {
                 var.update $incluir_exame { value = false }
               }
             }
@@ -100,7 +98,7 @@ query "exames" verb=GET {
           each as $exame {
             var $incluir_exame { value = true }
             conditional {
-              if (($input.paciente_id != null && $exame.paciente_id != $input.paciente_id) || ($input.consulta_id != null && $exame.consulta_id != $input.consulta_id)) {
+              if (($input.paciente_id > 0 && $exame.paciente_id != $input.paciente_id) || ($input.consulta_id > 0 && $exame.consulta_id != $input.consulta_id)) {
                 var.update $incluir_exame { value = false }
               }
             }

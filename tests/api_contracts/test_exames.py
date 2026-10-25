@@ -21,9 +21,14 @@ def test_get_exames_restringe_paciente_ao_resultado_disponivel():
     assert 'resultado: $resultado_liberado' in source
     assert '$db.exame.profissional_id == $profissional.id' in source
     assert 'intersect:["profissional", "paciente"]' in source
+    assert '$input.paciente_id > 0' in source
+    assert '$input.consulta_id > 0' in source
 
 
 def test_post_exames_exige_vinculo_com_consulta():
     source = (ROOT / "backend/xano/api/sorriso_acesso/exames_POST.xs").read_text(encoding="utf-8-sig")
     assert "$consulta.paciente_id != $paciente.id" in source
     assert "$consulta.profissional_id != $profissional.id" in source
+    assert "$input.solicitado_em > now" in source
+    assert "db.add exame_situacao_controle" in source
+    assert "db.add exame_situacao_historico" in source
