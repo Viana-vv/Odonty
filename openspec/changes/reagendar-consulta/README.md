@@ -1,43 +1,34 @@
-# Reagendar Consulta — Issue #64
+﻿# Reagendar Consulta — Issue #64
 
-Implementação local pronta para revisão, sem publicação. A verificação real no Xano permanece pendente e a change não foi arquivada.
+Implementação e validação Xano temporária concluídas para revisão. Nenhuma publicação em produção, integração à branch principal ou arquivamento da change foi realizada.
 
 ## Entrega
 
-- Tabela aditiva `consulta_reagendamento` com origem e destino únicos, responsável, justificativa e data; relações anteriores permanecem intactas.
-- `POST /consultas/{id}/reagendamento` cancela a Consulta original, cria a nova, vincula ambas, audita e atualiza as Disponibilidades na mesma transação.
-- `PATCH /disponibilidades/{id}` relê e revalida o estado após a trava para rejeitar edição obsoleta concorrente. Essa correção foi autorizada por ser necessária à reserva segura.
-- `sorrisomais.reagendamento_consulta.reagendar_consulta(cliente, token, consulta_id, disponibilidade_id, justificativa)` usa o transporte REST comum. Não há cancelamento e criação em duas chamadas.
-- `sorrisomais.pagina_reagendar_consulta_xano.renderizar(cliente, conta)` oferece a interface administrativa; a navegação será integrada pelo agente principal. A tela segue o formulário Nova Consulta do kit Sorriso Mais, com seletores funcionais e composição em duas colunas.
+- Tabela aditiva `consulta_reagendamento` mantém vínculo entre Consulta original e nova, profissional responsável, justificativa e data.
+- `POST /consultas/{id}/reagendamento` cancela a Consulta original, cria a nova, registra o vínculo e atualiza as Disponibilidades na mesma transação.
+- `PATCH /disponibilidades/{id}` usa a trava compatível `agenda_controle` e relê/revalida o estado para rejeitar edições obsoletas durante uma reserva concorrente.
+- O cliente REST usa o transporte comum. O fluxo não divide cancelamento e criação em chamadas separadas.
+- A tela Streamlit isolada segue a composição de Nova Consulta do kit Sorriso Mais. A navegação permanece para integração posterior, conforme o escopo desta change.
 
-## Verificações executadas
+## Testes locais
 
-```powershell
-python -m pytest tests/api_contracts/test_consultas_id_reagendamento_post.py tests/api_contracts/test_disponibilidades_patch.py tests/api_contracts/test_consultas_post.py tests/api_contracts/test_consultas_get.py -q
-```
+- Python: 56 testes passaram, incluindo os 20 AppTests da tela e testes de contrato/regressão.
+- JavaScript: cinco testes passaram.
+- `openspec validate reagendar-consulta --strict`: válido.
+- `git diff --check`: passou.
 
-43 testes passaram: 30 para o contrato novo e regressões dos contratos de Consulta e Disponibilidade. HTTP simulado, sem rede. As verificações de transação, travas e releitura analisam a estrutura do export; não comprovam concorrência nem rollback na execução Xano.
+Os testes de tela verificaram seletores, filtros, campos obrigatórios, lista vazia, permissões, sucesso, conflito, erros, sessão expirada e atualização da interface.
 
-```powershell
-python -m pytest tests/test_pagina_reagendar_consulta_xano.py tests/test_pagina_nova_consulta_xano.py tests/test_transicoes_consulta.py -q
-```
+## Validação real em Xano temporário — 25/10/2026
 
-49 testes passaram, sendo 20 AppTests da nova tela. Cobertura de seleção, deduplicação de Consultas, filtros, campos obrigatórios, listas vazias, perfis, sucesso, conflito, falhas, sessão expirada e cancelamento da interface. Os dois grupos Python foram executados separadamente: a mistura de AppTest antes de contratos no mesmo processo afeta a descoberta das fixtures existentes.
+O dry-run confirmou somente criação de objetos: 13 tabelas, uma função e sete rotas. O grupo `teste-reagendamento-64-70383d36` compilou e passou os cenários com dados fictícios, usando 74 requisições e intervalo mínimo medido de 3,188 s.
 
-```powershell
-node --test tests/js/api_contracts/consultas-id-reagendamento-post.test.mjs tests/js/api_contracts/disponibilidades-patch.test.mjs tests/js/api_contracts/consultas-post.test.mjs tests/js/api_contracts/consultas-get.test.mjs
-openspec validate reagendar-consulta --strict
-git diff --check
-```
+Foram verificados login e permissões (401/403), entradas inválidas (400), recurso inexistente (404), horário ocupado (409), reagendamento por Administrador e Recepcionista (201), preservação dos vínculos e relações anteriores, repetição (409) e rollback induzido sem alteração do snapshot.
 
-7 verificações JavaScript passaram; OpenSpec válido e diff sem erros de espaço.
+Quatro disputas concorrentes reais mantiveram as duas operações sobrepostas no servidor: mesma Consulta, mesmo destino, mesmo Paciente e edição da Disponibilidade durante a reserva. Cada cenário resultou em uma operação 201 e outra 409. A limpeza confirmou a remoção do grupo, das 13 tabelas e da função temporários. O plano, bundle e relatório foram gravados fora do repositório em pasta temporária local; nenhum segredo foi registrado.
 
-O dry-run do CLI Xano para os dois exports novos mostrou somente criação da tabela e do endpoint. Foi prévia, sem mutação; não foi tratado como prova de compilação/publicação.
+A primeira verificação read-only de 24/10 está documentada em [verificacao-xano-2026-10-24.md](verificacao-xano-2026-10-24.md). Ela registrou bloqueios que foram corrigidos e validados na execução temporária seguinte.
 
-## Limitação real e próximos passos
+## Verificação visual integrada
 
-Os dois perfis locais encontrados apontam para o workspace principal 149129; não há grupo/workspace temporário isolado identificado na configuração local. Conforme orientação de coordenação, nenhuma mutação remota, publicação ou chamada à API de produção foi executada. Não foram acessados registros de pacientes. A tarefa 3.1 continua aberta.
-
-Antes de publicar, executar em ambiente temporário isolado: compilação dos exports, sessão ausente/expirada, perfis administrativos e negados, sucesso com vínculo persistente, preservação de relações originais, recursos inválidos, intervalo inválido/passado, destino bloqueado/ocupado, conflitos de Paciente e Profissional, duas reservas concorrentes, dois reagendamentos da mesma Consulta, edição de Disponibilidade aguardando reserva e falha induzida depois da criação para comprovar rollback integral. Usar dados fictícios e aguardar pelo menos três segundos entre chamadas.
-
-A inspeção visual integrada de desktop e celular deve conferir os espaçamentos, os seletores em duas colunas e a reorganização responsiva do formulário; ela depende da integração de navegação pelo principal e deve ser informada diretamente ao grupo, sem tarefa manual no OpenSpec.
+A tela foi testada isoladamente com AppTests. A inspeção visual final em desktop e celular depende da integração da navegação e deve ser conferida após a integração temporária; não foi executada nesta worktree isolada.

@@ -12,6 +12,8 @@ test('cliente declara PATCH /disponibilidades/{id}', () => {
 });
 test('edição aguardando trava não pode sobrescrever reserva concorrente', () => {
   const source = readFileSync(resolve(root, 'backend/xano/api/sorriso_acesso/disponibilidades_id_PATCH.xs'), 'utf8');
+  assert.doesNotMatch(source, /agenda_lock_version/);
+  assert.match(source, /db\.edit agenda_controle/);
   const transacao = source.split('db.transaction')[1];
   const trava = transacao.indexOf('} as $trava_agenda');
   const releitura = transacao.indexOf('db.get disponibilidade_agenda', trava);
