@@ -245,6 +245,7 @@ def test_exames_real_autorizacao_transicoes_historico_e_cronologia(xano_exames):
     outro_profissional_id, token_outro = conta(a, tables["conta_acesso"], "Outro Profissional Fictício", "profissional")
     paciente_conta_id, token_paciente = conta(a, tables["conta_acesso"], "Paciente Fictício", "paciente")
     _, token_recepcao = conta(a, tables["conta_acesso"], "Recepcionista Fictícia", "recepcionista")
+    _, token_profissional_sem_vinculo = conta(a, tables["conta_acesso"], "Profissional sem vínculo Fictício", "profissional")
     profissional = a.metadata("POST", f"/table/{tables['profissional']}/content", json={"conta_acesso_id": profissional_id, "situacao": "Ativo"})
     outro_profissional = a.metadata("POST", f"/table/{tables['profissional']}/content", json={"conta_acesso_id": outro_profissional_id, "situacao": "Ativo"})
     paciente = a.metadata("POST", f"/table/{tables['paciente']}/content", json={"nome": "Paciente Fictício", "conta_acesso_id": paciente_conta_id, "situacao": "ativo"})
@@ -286,6 +287,8 @@ def test_exames_real_autorizacao_transicoes_historico_e_cronologia(xano_exames):
     fora_escopo = a.api("PATCH", f"/exames/{exame['id']}/situacao", token_outro, json={"situacao": "Cancelado"})
     assert fora_escopo.status_code == 404
     listado_recepcao = a.api("GET", "/exames", token_recepcao)
+    sem_vinculo = a.api("GET", "/exames", token_profissional_sem_vinculo)
+    assert sem_vinculo.status_code == 403
     assert listado_recepcao.status_code == 403
 
     controle = a.metadata("GET", f"/table/{tables['exame_situacao_controle']}/content", params={"page": 1, "per_page": 100})

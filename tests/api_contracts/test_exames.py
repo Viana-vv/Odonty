@@ -23,6 +23,7 @@ def test_get_exames_restringe_paciente_ao_resultado_disponivel():
     assert 'intersect:["profissional", "paciente"]' in source
     assert '$input.paciente_id > 0' in source
     assert '$input.consulta_id > 0' in source
+    assert 'HTTP/1.1 403 Forbidden" duplicates = "replace"' not in source
 
 
 def test_post_exames_exige_vinculo_com_consulta():

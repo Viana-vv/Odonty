@@ -84,7 +84,7 @@ query "exames" verb=GET {
         } as $profissional
         conditional {
           if ($profissional == null || $profissional.situacao != "Ativo") {
-            util.set_header { value = "HTTP/1.1 403 Forbidden" duplicates = "replace" }
+            util.set_header { value = "HTTP/1.1 403 Forbidden" }
             return { value = {codigo: "ACESSO_NEGADO", mensagem: "Profissional sem permissão clínica ativa."} }
           }
         }
