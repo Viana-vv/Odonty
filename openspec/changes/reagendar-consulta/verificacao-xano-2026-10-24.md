@@ -42,3 +42,7 @@ O problema foi informado à coordenação antes de prosseguir. O próximo passo 
 Em ambiente temporário segregado, compilar os exports e executar os cenários já descritos no README: autorização, preservação do vínculo e das relações originais, conflitos de Paciente e Profissional, concorrência sobre a mesma Consulta e o mesmo destino, edição de Disponibilidade aguardando a reserva e falha induzida para comprovar rollback integral. O início de cada requisição deve respeitar intervalo mínimo de três segundos; concorrência pode ser exercitada mantendo a primeira execução aberta no servidor durante o início da segunda, usando instrumentação exclusiva de teste.
 
 A tarefa 3.1 continua aberta. Nenhum PR, merge, publicação em produção ou alteração na branch `main` foi realizado.
+
+## Atualização posterior — 25/10/2026
+
+Este documento registra somente a inspeção read-only feita em 24/10. A estratégia de trava foi alinhada a `agenda_controle`, e a validação seguinte em grupo Xano temporário concluiu com sucesso: 74 requisições, intervalo mínimo de 3,188 s, testes de rollback e quatro cenários concorrentes 201/409. O grupo, suas 13 tabelas e função de sessão foram removidos. O resultado vigente está consolidado no `README.md` e na tarefa 3.1 de `tasks.md`.
