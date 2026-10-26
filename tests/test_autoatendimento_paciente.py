@@ -135,3 +135,48 @@ def test_login_paciente_limpa_senha_e_abre_portal():
     assert any(item.value == "Olá, Paciente Fictício" for item in app.title)
     assert "senha-ficticia" not in repr(dict(app.session_state))
     assert app.session_state[sessao_paciente.CHAVE_CREDENCIAL].token == "token-ficticio"
+
+
+def test_login_paciente_exibe_erro_sem_manter_senha():
+    cliente = ClienteFake()
+    cliente.entrar = Mock(side_effect=ErroAcesso("E-mail ou senha incorretos, ou conta indisponível.", 401))
+    app = AppTest.from_function(_renderizar_portal, args=(cliente,)).run()
+    app.text_input(key="paciente_email").set_value("paciente@exemplo.invalid")
+    app.text_input(key="paciente_senha").set_value("senha-ficticia")
+    app.button[0].click().run()
+
+    assert not app.exception
+    assert any("E-mail ou senha incorretos" in item.value for item in app.error)
+    assert "senha-ficticia" not in repr(dict(app.session_state))
+    assert app.session_state.get("paciente_senha", "") == ""
+    assert sessao_paciente.CHAVE_CREDENCIAL not in app.session_state
+
+
+@pytest.mark.parametrize("etapa,erro", [
+    ("entrar", ErroAcesso("Não foi possível conectar ao serviço. Tente novamente em instantes.")),
+    ("identificar", ErroAcesso("Sua conta não tem permissão para acessar esta área.", 403)),
+])
+def test_login_paciente_limpa_senha_em_falha_de_rede_ou_identidade(etapa, erro):
+    cliente = ClienteFake()
+    setattr(cliente, etapa, Mock(side_effect=erro))
+    cliente.sair = Mock()
+    app = AppTest.from_function(_renderizar_portal, args=(cliente,)).run()
+    app.text_input(key="paciente_email").set_value("paciente@exemplo.invalid")
+    app.text_input(key="paciente_senha").set_value("senha-ficticia")
+    app.button[0].click().run()
+
+    assert not app.exception
+    assert any(str(erro) in item.value for item in app.error)
+    assert "senha-ficticia" not in repr(dict(app.session_state))
+    assert app.session_state.get("paciente_senha", "") == ""
+    assert sessao_paciente.CHAVE_CREDENCIAL not in app.session_state
+
+
+def test_tela_login_paciente_nao_exibe_instrucao_de_endereco_da_equipe():
+    app = AppTest.from_function(_renderizar_portal, args=(ClienteFake(),)).run()
+
+    assert not app.exception
+    texto = " ".join(item.value for grupo in (app.caption, app.markdown, app.text) for item in grupo)
+    assert "Acesso pessoal do Paciente" not in texto
+    assert "A equipe utiliza outro endereço" not in texto
+    assert any(item.value == "Entre na sua conta" for item in app.title)

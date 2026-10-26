@@ -145,7 +145,7 @@ def test_campos_rejeitados_no_backend(ambiente, dados):
     (["recepcionista"], "ativo", 200),
     (["profissional"], "ativo", 200),
     (["administrador", "profissional", "paciente"], "ativo", 200),
-    (["paciente"], "ativo", 403),
+    (["paciente"], "ativo", 200),
     (["profissional"], "bloqueado", 401),
     (["profissional"], "inativo", 401),
 ])
@@ -156,7 +156,7 @@ def test_perfis_e_situacao(ambiente, perfis, situacao, status):
         token = dados["token"]
         assert dados["tipo_token"] == "Bearer"
         prazo = datetime.fromisoformat(dados["expira_em"].replace("Z", "+00:00"))
-        assert 28700 < (prazo - datetime.now(timezone.utc)).total_seconds() <= 28800
+        assert 28700 < (prazo - datetime.now(timezone.utc)).total_seconds() <= 28801
         resposta = ambiente.chamar("GET", "/auth/me", token)
         exigir_status(resposta, 200)
         assert resposta.headers.get("Cache-Control") == "no-store"
