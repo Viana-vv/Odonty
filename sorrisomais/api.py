@@ -592,10 +592,17 @@ class ClienteXano:
         if consulta_id is not None:
             params["consulta_id"] = validar_id(consulta_id, "Consulta")
         data = self._request("GET", "/registros-clinicos", token=token, params=params or None)
-        return self._lista_resposta(data, "registros_clinicos", {
+        registros = self._lista_resposta(data, "registros_clinicos", {
             "paciente_id": int, "profissional_id": int, "prontuario_id": int,
             "conteudo": str, "liberado_paciente": bool,
         })
+        originais = data.get("registros_clinicos", [])
+        registrados_em = {item.get("id"): item.get("registrado_em") for item in originais
+                          if isinstance(item, dict) and isinstance(item.get("registrado_em"), str)}
+        for registro in registros:
+            if registro["id"] in registrados_em:
+                registro["registrado_em"] = registrados_em[registro["id"]]
+        return registros
 
     def retificar_registro_clinico(self, token, registro_id, conteudo, justificativa):
         from .contratos_clinicos import validar_id, validar_texto

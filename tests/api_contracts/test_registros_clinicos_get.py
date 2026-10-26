@@ -1,19 +1,37 @@
+import pytest
 from pathlib import Path
 
 from conftest import resposta
 
 
-def test_get_registros_clinicos_envia_filtros_e_conteudo_somente_no_endpoint_clinico(cliente, http):
+def test_get_registros_clinicos_envia_filtro_e_conteudo_somente_no_endpoint_clinico(cliente, http):
     http.return_value = resposta({"registros_clinicos": [{
         "id": 5, "paciente_id": 4, "profissional_id": 8, "prontuario_id": 6,
         "conteudo": "Registro fictício", "liberado_paciente": False,
+        "registrado_em": "2026-10-01T12:00:00Z",
     }]})
     resultado = cliente.listar_registros_clinicos("token-ficticio", paciente_id=4, consulta_id=9)
     assert resultado[0]["conteudo"] == "Registro fictício"
+    assert resultado[0]["registrado_em"] == "2026-10-01T12:00:00Z"
     assert http.call_args.args[:2] == (
         "GET", "https://exemplo.invalid/api:teste/registros-clinicos",
     )
     assert http.call_args.kwargs["params"] == {"paciente_id": 4, "consulta_id": 9}
+
+
+def test_get_registros_clinicos_do_portal_nao_envia_identificador_de_paciente(cliente, http):
+    http.return_value = resposta({"registros_clinicos": [{
+        "id": 7, "paciente_id": 4, "profissional_id": 8, "prontuario_id": 6,
+        "conteudo": "Orientação fictícia liberada", "liberado_paciente": True,
+        "registrado_em": "2026-10-01T12:00:00Z",
+    }]})
+
+    registros = cliente.listar_registros_clinicos("token-ficticio")
+
+    assert registros[0]["liberado_paciente"] is True
+    assert registros[0]["registrado_em"] == "2026-10-01T12:00:00Z"
+    assert http.call_args.kwargs["params"] is None
+    assert http.call_args.kwargs["headers"]["Authorization"] == "Bearer token-ficticio"
 
 
 def test_get_registros_clinicos_limita_paciente_a_vinculo_proprio_e_itens_liberados():
@@ -38,6 +56,6 @@ def test_export_get_filtra_no_xano_por_escopo_obrigatorio():
     assert '$registro.paciente_id != $input.paciente_id' in export
     assert '$registro.consulta_id != $input.consulta_id' in export
     assert 'history = false' in export
-    where_clauses = [linha.split("where =", 1)[1] for linha in export.splitlines() if "where =" in linha]
+    where_clauses = [line.split("where =", 1)[1] for line in export.splitlines() if "where =" in line]
     assert len(where_clauses) == 2
-    assert all("== null ||" not in clausula for clausula in where_clauses)
+    assert all("== null ||" not in clause for clause in where_clauses)

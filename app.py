@@ -5,9 +5,9 @@ from pathlib import Path
 
 import streamlit as st
 
-from sorrisomais.api import ClienteXano, ErroAcesso, ROTULOS
+from sorrisomais.api import ClienteXano, ErroAcesso
 from sorrisomais.config import Configuracao, ConfiguracaoInvalida
-from sorrisomais import sessao, paginas_equipe
+from sorrisomais import sessao, paginas_equipe, acesso_equipe
 
 RAIZ = Path(__file__).parent
 st.set_page_config(page_title="Entrar · Sorriso+", page_icon=str(RAIZ / "assets" / "mascote-sorriso.png"), layout="wide")
@@ -45,7 +45,7 @@ except ErroAcesso as error:
     conta = None
 
 if conta:
-    paginas_equipe.renderizar(conta, cliente)
+    acesso_equipe.renderizar(conta, cliente, paginas_equipe)
     # Reexecuta a página no prazo de expiração mesmo sem interação.
     @st.fragment(run_every="15s")
     def verificar_prazo():
