@@ -31,4 +31,3 @@ Ver [proposal.md](proposal.md) para a motivação e [specs/consultas/spec.md](sp
 1. Atualizar o endpoint versionado e os testes unitários locais.
 2. Em grupo seguro, comparar o endpoint remoto com a change e validar respostas de Paciente e equipe usando contas de teste autorizadas.
 3. Reverter a publicação do endpoint no Xano para a versão anterior caso a resposta da equipe ou o escopo do Paciente não corresponda aos cenários.
-
