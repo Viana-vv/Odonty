@@ -57,6 +57,9 @@ def simular_modulos_integrados(monkeypatch, areas):
 
 
 def abrir_app(conta, cliente, pagina="inicio"):
+    # Carrega dependências da tela antes da janela de execução do AppTest.
+    from sorrisomais import paginas_equipe  # noqa: F401
+
     app = AppTest.from_function(renderizar_equipe, args=(conta, cliente))
     app.session_state["pagina_equipe"] = pagina
     app.session_state[sessao.CHAVE] = Credencial(
