@@ -229,8 +229,8 @@ footer { display: none !important; }
 @media (max-width:900px) {
  .st-key-painel-profissional-metricas > [data-testid="stHorizontalBlock"] { flex-wrap:wrap; }
  .st-key-painel-profissional-metricas > [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] { width:calc(50% - .5rem) !important; flex:1 1 calc(50% - .5rem); min-width:0; }
- .st-key-painel-profissional-conteudo > [data-testid="stHorizontalBlock"] { flex-direction:column; }
- .st-key-painel-profissional-conteudo > [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] { width:100% !important; flex:1 1 100%; min-width:0; }
+ .st-key-painel-profissional-conteudo > [data-testid="stLayoutWrapper"] > [data-testid="stHorizontalBlock"] { flex-direction:column; }
+ .st-key-painel-profissional-conteudo > [data-testid="stLayoutWrapper"] > [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] { width:100% !important; flex:1 1 100%; min-width:0; }
 }
 @media (max-width:560px) {
  .st-key-painel-profissional-metrica-0, .st-key-painel-profissional-metrica-1, .st-key-painel-profissional-metrica-2, .st-key-painel-profissional-metrica-3,
