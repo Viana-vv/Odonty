@@ -18,6 +18,7 @@ PAINEL_RECEPCAO_RETRY_SEGUNDOS = 20
 PAINEL_ADMIN_CACHE_TTL_SEGUNDOS = 20
 PAINEL_ADMIN_RETRY_SEGUNDOS = 20
 CACHE_PAINEL_ADMIN = "painel_administrativo_xano_cache"
+CHAVE_CONSULTA_PROCEDIMENTOS = "consulta_procedimentos_contexto"
 RAIZ = Path(__file__).resolve().parents[1]
 
 
@@ -249,16 +250,39 @@ def voltar():
 
 
 def abrir_inicio():
+    st.session_state.pop(CHAVE_CONSULTA_PROCEDIMENTOS, None)
     limpar_formulario()
     pagina_paciente.limpar()
     st.session_state["pagina_equipe"] = "inicio"
 
 
 def abrir_agenda():
+    st.session_state.pop(CHAVE_CONSULTA_PROCEDIMENTOS, None)
     st.session_state["pagina_equipe"] = "agenda"
 
 
+def abrir_procedimentos_consulta(consulta):
+    """Abre Procedimentos somente com o contexto da Consulta escolhida."""
+    if not isinstance(consulta, dict) or not isinstance(consulta.get("id"), int):
+        st.session_state.pop(CHAVE_CONSULTA_PROCEDIMENTOS, None)
+        st.session_state["pagina_equipe"] = "agenda"
+        return
+    credencial = st.session_state.get(sessao.CHAVE)
+    token = getattr(credencial, "token", None)
+    if not token:
+        st.session_state.pop(CHAVE_CONSULTA_PROCEDIMENTOS, None)
+        st.session_state["pagina_equipe"] = "agenda"
+        return
+    campos = ("id", "paciente_nome", "inicio_em")
+    st.session_state[CHAVE_CONSULTA_PROCEDIMENTOS] = {
+        "sessao": hashlib.sha256(token.encode("utf-8")).hexdigest(),
+        "consulta": {campo: consulta[campo] for campo in campos if campo in consulta},
+    }
+    st.session_state["pagina_equipe"] = "procedimentos_consulta"
+
+
 def abrir_area_conectada(area):
+    st.session_state.pop(CHAVE_CONSULTA_PROCEDIMENTOS, None)
     limpar_formulario()
     pagina_paciente.limpar()
     st.session_state["pagina_equipe"] = area
@@ -490,6 +514,13 @@ def _renderizar_agenda(cliente, conta):
             col_paciente.caption(", ".join(consulta["procedimentos"]) or "Procedimento não informado")
             col_prof.write(consulta["profissional_nome"])
             col_situacao.write(consulta["situacao"])
+            if "profissional" in perfis:
+                acao_procedimentos = st.columns([3, 1])[1]
+                acao_procedimentos.button(
+                    "Procedimentos", key=f"agenda-procedimentos-{consulta['id']}",
+                    on_click=abrir_procedimentos_consulta, args=(consulta,),
+                    width="stretch",
+                )
             permitidas = transicoes.get(consulta["situacao"], [])
             if "profissional" not in perfis:
                 permitidas = [s for s in permitidas if s in {"Confirmada", "Cancelada"}]
@@ -1113,6 +1144,15 @@ def renderizar(conta, cliente):
         return
 
     perfis = set(conta.perfis)
+    contexto = st.session_state.get(CHAVE_CONSULTA_PROCEDIMENTOS)
+    pagina_anterior = st.session_state.get("pagina_equipe")
+    credencial_atual = st.session_state.get(sessao.CHAVE)
+    token_atual = getattr(credencial_atual, "token", None)
+    identidade_atual = (hashlib.sha256(token_atual.encode("utf-8")).hexdigest()
+                        if token_atual else None)
+    if (pagina_anterior != "procedimentos_consulta" and contexto is not None
+            or isinstance(contexto, dict) and contexto.get("sessao") != identidade_atual):
+        st.session_state.pop(CHAVE_CONSULTA_PROCEDIMENTOS, None)
     if st.session_state.pop("pac_sucesso", False):
         st.success("Paciente cadastrado com prontuÃ¡rio vazio. Este cadastro nÃ£o cria login.")
     paciente_exclusivo = perfis == {"paciente"}
@@ -1135,6 +1175,7 @@ def renderizar(conta, cliente):
     elif pagina not in {"inicio", "agenda", "cadastro", "paciente"} and (
             not navegacao.pode_acessar(conta.perfis, pagina)
             or not navegacao.modulo_xano_disponivel(pagina)):
+        st.session_state.pop(CHAVE_CONSULTA_PROCEDIMENTOS, None)
         pagina = pagina_padrao
         st.session_state["pagina_equipe"] = pagina
     ocupado = (st.session_state.get("cad_processando", False)
@@ -1188,6 +1229,22 @@ def renderizar(conta, cliente):
                 if pagina == "agenda":
                     renderizar_topbar(conta, "agenda")
                     _renderizar_agenda(cliente, conta)
+                elif pagina == "procedimentos_consulta":
+                    renderizar_topbar(conta, pagina)
+                    contexto = st.session_state.get(CHAVE_CONSULTA_PROCEDIMENTOS)
+                    consulta = contexto.get("consulta") if isinstance(contexto, dict) else None
+                    modulo = navegacao.carregar_modulo_xano(pagina)
+                    if (not isinstance(consulta, dict)
+                            or not isinstance(consulta.get("id"), int)):
+                        st.info("Selecione uma Consulta na Agenda para acompanhar seus Procedimentos.")
+                        st.button("Voltar à Agenda", key="procedimentos-voltar-agenda",
+                                  on_click=abrir_agenda)
+                    elif modulo and callable(getattr(modulo, "renderizar", None)):
+                        modulo.renderizar(cliente, conta, consulta)
+                    else:
+                        st.error("A área de Procedimentos da Consulta está indisponível no momento.")
+                        st.button("Voltar à Agenda", key="procedimentos-indisponivel-agenda",
+                                  on_click=abrir_agenda)
                 elif pagina == "inicio":
                     renderizar_topbar(conta, "inicio")
                     renderizar_inicio(cliente, conta, administrador, pode_cadastrar_paciente,
@@ -1198,7 +1255,8 @@ def renderizar(conta, cliente):
                     if modulo and callable(getattr(modulo, "renderizar", None)):
                         modulo.renderizar(cliente, conta)
                     else:
-                        st.info("A integração desta área com o Xano ainda não está disponível.")
+                        st.error("Esta área está indisponível no momento.")
+                        st.session_state["pagina_equipe"] = "inicio"
     if administrador and pagina == "cadastro":
         renderizar_cadastro_modal(cliente)
     elif pode_cadastrar_paciente and pagina == "paciente":
@@ -1211,6 +1269,8 @@ def renderizar_topbar(conta, pagina):
         "inicio": "Visão geral", "agenda": "Agenda", "pacientes": "Pacientes",
         "profissionais": "Profissionais", "prontuarios": "Prontuários",
         "procedimentos": "Procedimentos", "paciente": "Novo paciente",
+        "exames": "Exames", "reagendar_consulta": "Reagendamento",
+        "procedimentos_consulta": "Procedimentos da Consulta",
         "cadastro": "Novo profissional", "nova_consulta": "Nova consulta",
     }
     with st.container(key="topbar-equipe"):
