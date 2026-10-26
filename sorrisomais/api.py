@@ -406,9 +406,12 @@ class ClienteXano:
             normalizado["disponibilidade_id"] = disponibilidade_id
             for campo in ("paciente_nome", "profissional_nome"):
                 valor = item.get(campo)
-                if not isinstance(valor, str) or not valor.strip():
+                if campo == "profissional_nome" and (not isinstance(valor, str) or not valor.strip()):
                     raise ErroAcesso()
-                normalizado[campo] = valor.strip()
+                if valor is not None:
+                    if not isinstance(valor, str) or not valor.strip():
+                        raise ErroAcesso()
+                    normalizado[campo] = valor.strip()
             nomes = []
             for campo in ("procedimento_nome", "procedimento_vinculado_nome"):
                 nome = item.get(campo)

@@ -1,6 +1,7 @@
 from datetime import timedelta
 import json
 from pathlib import Path
+import re
 
 import pytest
 
@@ -49,3 +50,35 @@ def test_get_consultas_rejeita_resposta_sem_rotulos(cliente, http):
     }]})
     with pytest.raises(ErroAcesso):
         cliente.listar_consultas("token-ficticio")
+
+
+def test_get_consultas_aceita_resposta_minima_do_paciente_sem_procedimentos(cliente, http):
+    consulta_minima = {
+        "id": 501,
+        "paciente_id": 101,
+        "profissional_id": 201,
+        "inicio_em": "2026-10-05T16:00:00+00:00",
+        "fim_em": "2026-10-05T16:45:00+00:00",
+        "situacao": "Agendada",
+        "profissional_nome": "Dra. Exemplo Sorriso",
+    }
+    http.return_value = resposta({"consultas": [consulta_minima]})
+
+    resultado = cliente.listar_consultas("token-ficticio")
+
+    assert resultado == [{
+        **consulta_minima,
+        "disponibilidade_id": None,
+        "procedimentos": [],
+    }]
+
+
+def test_get_consultas_serializa_paciente_sem_campos_de_procedimento():
+    fonte = (Path(__file__).parents[2] / "backend" / "xano" / "api" / "sorriso_acesso" / "consultas_GET.xs").read_text(encoding="utf-8")
+    inicio_serializacao = fonte.index("var $fim_iso")
+    inicio_ramo = fonte.index('if (($solicitante.perfis|intersect:["paciente"]|count) > 0) {', inicio_serializacao)
+    fim_ramo = fonte.index("\n          else {", inicio_ramo)
+    ramo_paciente = fonte[inicio_ramo:fim_ramo]
+    assert "profissional_nome:" in ramo_paciente
+    assert not re.search(r"procedimento|disponibilidade_id|paciente_nome|telefone|cpf|conteudo_clinico", ramo_paciente, re.I)
+    assert "procedimento_vinculado_nome" in fonte

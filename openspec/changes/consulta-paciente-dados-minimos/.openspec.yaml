@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-10-26
+goal: Retornar ao Paciente somente dados administrativos mínimos e preservar a
+  resposta da equipe
