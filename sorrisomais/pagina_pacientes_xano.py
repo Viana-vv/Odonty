@@ -2,43 +2,29 @@
 
 import hashlib
 from datetime import date
-from time import monotonic
 
 import streamlit as st
 
 from . import sessao
 from .api import ErroAcesso
+from . import cache_xano
 from . import pagina_paciente
 
-CACHE_PACIENTES = "pacientes_xano_cache"
-CACHE_TTL_SEGUNDOS = 20
 CHAVE_EDICAO = "pacientes_xano_edicao"
 PREFIXO_FORMULARIO = "pacientes_xano_edicao_"
 CHAVE_MENSAGEM = "pacientes_xano_mensagem"
 
 
 def _carregar_pacientes(cliente, credencial, atualizar=False):
-    """Mantém a resposta somente nesta sessão; falhas nunca entram no cache."""
-    identificador_sessao = hashlib.sha256(credencial.token.encode("utf-8")).hexdigest()
-    cache = st.session_state.get(CACHE_PACIENTES)
-    idade_cache = (monotonic() - cache.get("carregado_em", 0)
-                   if isinstance(cache, dict) else CACHE_TTL_SEGUNDOS)
-    if (not atualizar and isinstance(cache, dict)
-            and cache.get("sessao") == identificador_sessao
-            and 0 <= idade_cache < CACHE_TTL_SEGUNDOS
-            and isinstance(cache.get("pacientes"), list)):
-        return cache["pacientes"]
-
-    if atualizar:
-        st.session_state.pop(CACHE_PACIENTES, None)
-    opcoes = cliente.listar_opcoes_agenda(credencial.token)
-    pacientes = opcoes["pacientes"]
-    st.session_state[CACHE_PACIENTES] = {
-        "sessao": identificador_sessao,
-        "pacientes": pacientes,
-        "carregado_em": monotonic(),
-    }
-    return pacientes
+    """Carrega a lista no cache privado da sessão autenticada."""
+    opcoes = cache_xano.carregar_cache(
+        st.session_state,
+        credencial.token,
+        "agenda/opcoes",
+        lambda: cliente.listar_opcoes_agenda(credencial.token),
+        force=atualizar,
+    )
+    return opcoes["pacientes"]
 
 
 def _limpar_edicao():
@@ -103,7 +89,10 @@ def _renderizar_edicao(cliente, credencial, edicao):
                 cpf=cpf, email=email, celular=celular,
             )
             _limpar_edicao()
-            st.session_state.pop(CACHE_PACIENTES, None)
+            cache_xano.invalidar_cache(
+                st.session_state,
+                namespaces=["pacientes", "agenda/opcoes", f"paciente:{paciente['id']}"],
+            )
             st.session_state[CHAVE_MENSAGEM] = "Os dados cadastrais do Paciente foram atualizados."
             st.rerun()
         except ErroAcesso as error:
@@ -167,7 +156,7 @@ def renderizar(cliente, conta):
                 sessao.limpar(st.session_state)
                 st.error("Sua sessão expirou. Entre novamente para consultar os Pacientes.")
             else:
-                st.session_state.pop(CACHE_PACIENTES, None)
+                cache_xano.invalidar_cache(st.session_state, namespaces=["pacientes", "agenda/opcoes"])
                 _limpar_edicao()
                 st.error("Sua Conta de Acesso não tem permissão para consultar os Pacientes.")
         else:
@@ -204,7 +193,12 @@ def renderizar(cliente, conta):
                 nome.markdown(f"**{paciente['nome']}**")
                 if pode_editar and acao.button("Editar", key=f"pacientes-xano-editar-{paciente['id']}"):
                     try:
-                        dados = cliente.obter_paciente(credencial.token, paciente["id"])
+                        dados = cache_xano.carregar_cache(
+                            st.session_state,
+                            credencial.token,
+                            f"paciente:{paciente['id']}",
+                            lambda: cliente.obter_paciente(credencial.token, paciente["id"]),
+                        )
                         _limpar_edicao()
                         st.session_state[CHAVE_EDICAO] = {
                             "sessao": identificador_sessao, "paciente": dados,
@@ -214,7 +208,7 @@ def renderizar(cliente, conta):
                         if error.status == 404 and not st.session_state.pop("pacientes_xano_edit_retry", False):
                             # A lista pode ter sido atualizada depois do cache;
                             # refaz uma leitura antes de confirmar o 404.
-                            st.session_state.pop(CACHE_PACIENTES, None)
+                            cache_xano.invalidar_cache(st.session_state, namespaces=["pacientes", "agenda/opcoes"])
                             st.session_state["pacientes_xano_edit_retry"] = True
                             st.rerun()
                         st.session_state.pop("pacientes_xano_edit_retry", None)

@@ -208,3 +208,145 @@ def test_recepcionista_completa_cadastro_antigo_no_xano_real():
                                           json={"situacao": "inativo"})
             assert inativada["situacao"] == "inativo"
         ambiente.admin.close()
+
+
+def test_cadastro_publicado_na_ui_admin_e_recepcionista():
+    """Envia o formulário real e confirma a listagem usando apenas dados fictícios."""
+    ambiente = Ambiente()
+    contas = []
+    nomes = []
+    ids_pacientes = set()
+    processo = None
+    raiz = Path(__file__).resolve().parents[1]
+    porta = "8601"
+    base_local = f"http://127.0.0.1:{porta}"
+    env = os.environ.copy()
+    env.update({
+        "PYTHONPATH": str(raiz / "tests" / "fixtures"),
+        "ODONTY_XANO_REAL_TEST": "1",
+        "SORRISOMAIS_MODO_DEMONSTRACAO": "0",
+        "XANO_API_BASE_URL": ambiente.base,
+        "XANO_CADASTRO_PACIENTE_HABILITADO": "1",
+    })
+    tabelas = {t["name"]: t["id"] for t in ambiente.listar("/table")}
+    token_admin = None
+    try:
+        administrador = ambiente.criar(["administrador"])
+        recepcionista = ambiente.criar(["recepcionista"])
+        contas.extend((administrador, recepcionista))
+        token_admin = ambiente.entrar(administrador)["token"]
+        processo = subprocess.Popen(
+            [sys.executable, "-B", "-m", "streamlit", "run", "app.py",
+             "--server.headless", "true", "--server.address", "127.0.0.1",
+             "--server.port", porta, "--browser.gatherUsageStats", "false"],
+            cwd=raiz, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        limite = time.monotonic() + 45
+        while time.monotonic() < limite:
+            if processo.poll() is not None:
+                pytest.fail("O servidor Streamlit encerrou antes de responder.")
+            try:
+                if requests.get(base_local, timeout=2).status_code == 200:
+                    break
+            except requests.RequestException:
+                time.sleep(0.5)
+        else:
+            pytest.fail("O servidor Streamlit não ficou disponível no tempo esperado.")
+
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(headless=True)
+            for perfil, conta in (("administrador", administrador), ("recepcionista", recepcionista)):
+                nome = "Paciente Fictício UI " + perfil + " " + secrets.token_hex(4)
+                cpf = cpf_ficticio()
+                nomes.append(nome)
+                pagina = browser.new_page(viewport={"width": 1440, "height": 1000})
+                pagina.set_default_timeout(30000)
+                pagina.goto(base_local, wait_until="domcontentloaded")
+                pagina.get_by_label("E-mail").fill(conta["email"])
+                pagina.get_by_label("Senha", exact=True).fill(conta["senha"])
+                pagina.get_by_role("button", name="Entrar", exact=True).click()
+                pagina.get_by_role("button", name="Pacientes", exact=True).click()
+                pagina.get_by_role("heading", name="Pacientes", exact=True).wait_for()
+                pagina.locator(".st-key-pacientes-xano-novo button").click()
+                pagina.get_by_role("heading", name="Novo paciente", exact=True).wait_for()
+                pagina.get_by_label("Nome completo *").fill(nome)
+                pagina.locator('[data-testid="stDateInput"] input').fill("2000-02-29")
+                pagina.keyboard.press("Escape")
+                pagina.get_by_label("Telefone *").fill("1133330000")
+                pagina.get_by_label("CPF *").fill(cpf)
+                pagina.get_by_label("E-mail *").fill("ui." + secrets.token_hex(6) + "@example.com")
+                pagina.get_by_label("Celular *").fill("11999990000")
+                pagina.get_by_role("button", name="Cadastrar paciente", exact=True).last.click()
+                try:
+                    pagina.get_by_text(nome, exact=True).wait_for(timeout=12000)
+                except Exception:
+                    alertas = pagina.get_by_test_id("stAlert").all_text_contents()
+                    resposta = ambiente.chamar("GET", "/agenda/opcoes", token_admin)
+                    persistido = False
+                    if resposta.status_code == 200:
+                        encontrado = next(
+                            (item for item in resposta.json().get("pacientes", [])
+                             if item.get("nome") == nome), None,
+                        )
+                        if encontrado:
+                            ids_pacientes.add(encontrado["id"])
+                            persistido = True
+                    ui_state = {
+                        "patients_heading": pagina.get_by_role("heading", name="Pacientes", exact=True).count(),
+                        "name_field": pagina.get_by_label("Nome completo *").count(),
+                        "exceptions": pagina.locator('[data-testid="stException"]').count(),
+                    }
+                    pytest.fail(
+                        f"Paciente ausente (persistido={persistido}). "
+                        + "Alertas: " + " | ".join(alertas) + " | UI: " + repr(ui_state)
+                    )
+                assert pagina.get_by_role("heading", name="Pacientes", exact=True).is_visible()
+                assert not pagina.get_by_label("Nome completo *").count()
+                pagina.close()
+
+                resposta = ambiente.chamar("GET", "/agenda/opcoes", token_admin)
+                if resposta.status_code != 200:
+                    pytest.fail(f"GET publicado de opções retornou HTTP {resposta.status_code}.")
+                pacientes = resposta.json().get("pacientes", [])
+                paciente = next((item for item in pacientes if item.get("nome") == nome), None)
+                assert paciente is not None
+                paciente_id = paciente["id"]
+                ids_pacientes.add(paciente_id)
+                registro = ambiente.metadados(
+                    "GET", f"/table/{tabelas['paciente']}/content/{paciente_id}"
+                )
+                assert registro["situacao"] == "ativo"
+                assert registro["cpf"] == cpf
+                prontuarios = ambiente.listar(f"/table/{tabelas['prontuario_paciente']}/content")
+                vinculados = [item for item in prontuarios if item.get("paciente_id") == paciente_id]
+                assert len(vinculados) == 1
+                prontuario_id = vinculados[0]["id"]
+                prontuario = ambiente.metadados(
+                    "GET", f"/table/{tabelas['prontuario_paciente']}/content/{prontuario_id}"
+                )
+                assert prontuario["situacao"] == "ativo"
+                assert prontuario["paciente_id"] == paciente_id
+            browser.close()
+    finally:
+        if processo and processo.poll() is None:
+            processo.terminate()
+            try:
+                processo.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                processo.kill()
+                processo.wait(timeout=5)
+        # Caso uma asserção interrompa o fluxo, localiza os dados fictícios pela API de opções.
+        if token_admin and nomes:
+            for nome in nomes:
+                resposta = ambiente.chamar("GET", "/agenda/opcoes", token_admin)
+                if resposta.status_code == 200:
+                    for paciente in resposta.json().get("pacientes", []):
+                        if paciente.get("nome") == nome:
+                            ids_pacientes.add(paciente["id"])
+        for paciente_id in ids_pacientes:
+            ambiente.metadados("PUT", f"/table/{tabelas['paciente']}/content/{paciente_id}",
+                               json={"situacao": "inativo"})
+        for identificador in ambiente.criadas:
+            ambiente.metadados("PUT", f"/table/{ambiente.contas}/content/{identificador}",
+                               json={"situacao": "inativo"})
+        ambiente.admin.close()

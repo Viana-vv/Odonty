@@ -1,6 +1,7 @@
 """Contrato e interface com dados sintéticos; não substituem testes no Xano."""
 
 from datetime import date, timedelta
+from hashlib import sha256
 from uuid import uuid4
 from unittest.mock import Mock
 
@@ -157,13 +158,23 @@ def paciente_api(api, monkeypatch):
     cadastrar = Mock(return_value=12)
     monkeypatch.setattr(ClienteXano, "cadastrar_paciente", cadastrar)
     api["cadastrar_paciente"] = cadastrar
+    consultas = Mock(return_value=[])
+    opcoes = Mock(return_value={"pacientes": [], "profissionais": [], "procedimentos": []})
+    monkeypatch.setattr(ClienteXano, "listar_consultas", consultas)
+    monkeypatch.setattr(ClienteXano, "listar_opcoes_agenda", opcoes)
+    api["listar_consultas"] = consultas
+    api["listar_opcoes_agenda"] = opcoes
     return api
 
 
 def formulario(api):
     app = abrir_admin(api)
-    botao(app, "Cadastrar paciente").click().run()
+    app.session_state["pagina_equipe"] = "pacientes"
+    app.run()
     assert not app.exception
+    app.button(key="pacientes-xano-novo").click().run()
+    assert not app.exception
+    assert app.session_state["pagina_equipe"] == "paciente"
     return app
 
 
@@ -197,7 +208,7 @@ def test_sucesso_limpa_preserva_equipe(paciente_api):
     paciente_api["cadastrar_paciente"].assert_called_once()
     assert app.success
     assert not any(c.key.startswith("pac_") for c in app.text_input)
-    assert app.session_state["pagina_equipe"] == "inicio"
+    assert app.session_state["pagina_equipe"] == "pacientes"
     assert app.session_state["pac_operacao_id"] != operacao
     assert app.session_state[sessao.CHAVE].token == "token-adm"
 
@@ -363,6 +374,13 @@ def renderizar_pagina_paciente_isolada(cliente):
     renderizar(cliente)
 
 
+def cache_opcoes_ficticias(token):
+    return {
+        (sha256(token.encode("utf-8")).hexdigest(), "agenda/opcoes"):
+            {"pacientes": [{"id": 1}], "profissionais": [], "procedimentos": []},
+    }
+
+
 def test_cache_pacientes_so_invalida_apos_sucesso_confirmado():
     cliente = Mock()
     cliente.cadastrar_paciente.return_value = 12
@@ -372,11 +390,11 @@ def test_cache_pacientes_so_invalida_apos_sucesso_confirmado():
     app.session_state["pac_pendente"] = dados
     app.session_state["pac_processando"] = True
     app.session_state["pac_operacao_id"] = dados["operacao_id"]
-    app.session_state["pacientes_xano_cache"] = {"pacientes": [{"id": 1}]}
+    app.session_state["xano_get_cache"] = cache_opcoes_ficticias("token-ficticio")
     app.run()
     assert not app.exception
     cliente.cadastrar_paciente.assert_called_once()
-    assert "pacientes_xano_cache" not in app.session_state
+    assert "xano_get_cache" not in app.session_state
 
 
 def test_resultado_incerto_preserva_cache_e_chave_idempotente():
@@ -388,11 +406,11 @@ def test_resultado_incerto_preserva_cache_e_chave_idempotente():
     app.session_state["pac_pendente"] = dados
     app.session_state["pac_processando"] = True
     app.session_state["pac_operacao_id"] = dados["operacao_id"]
-    app.session_state["pacientes_xano_cache"] = {"pacientes": [{"id": 1}]}
+    app.session_state["xano_get_cache"] = cache_opcoes_ficticias("token-ficticio")
     app.run()
     assert not app.exception
     assert app.session_state["pac_pendente"] == dados
-    assert app.session_state["pacientes_xano_cache"] == {"pacientes": [{"id": 1}]}
+    assert "agenda/opcoes" in {key[1] for key in app.session_state["xano_get_cache"]}
     assert app.session_state["pac_operacao_id"] == dados["operacao_id"]
     cliente.cadastrar_paciente.assert_called_once()
 
@@ -406,10 +424,33 @@ def test_rejeicao_de_cadastro_nao_invalida_cache():
     app.session_state["pac_pendente"] = dados
     app.session_state["pac_processando"] = True
     app.session_state["pac_operacao_id"] = dados["operacao_id"]
-    app.session_state["pacientes_xano_cache"] = {"pacientes": [{"id": 1}]}
+    app.session_state["xano_get_cache"] = cache_opcoes_ficticias("token-ficticio")
     app.run()
     assert not app.exception
-    assert app.session_state["pacientes_xano_cache"] == {"pacientes": [{"id": 1}]}
+    assert "agenda/opcoes" in {key[1] for key in app.session_state["xano_get_cache"]}
     assert "pac_pendente" not in app.session_state
     assert app.session_state["pac_operacao_id"] != dados["operacao_id"]
     cliente.cadastrar_paciente.assert_called_once()
+
+
+def test_sucesso_volta_a_lista_faz_um_get_e_exibe_paciente_novo(paciente_api):
+    pacientes = [{"id": 11, "nome": "Paciente Fictício Existente"}]
+    paciente_api["listar_opcoes_agenda"].side_effect = lambda _token: {
+        "pacientes": [item.copy() for item in pacientes], "profissionais": [], "procedimentos": [],
+    }
+
+    def cadastrar(_token, **_dados):
+        pacientes.append({"id": 12, "nome": DADOS["nome"]})
+        return 12
+
+    paciente_api["cadastrar_paciente"].side_effect = cadastrar
+    app = formulario(paciente_api)
+    chamadas_antes_do_post = paciente_api["listar_opcoes_agenda"].call_count
+    preencher(app)
+    botao(app, "Cadastrar").click().run()
+
+    assert not app.exception
+    assert app.session_state["pagina_equipe"] == "pacientes"
+    assert paciente_api["cadastrar_paciente"].call_count == 1
+    assert paciente_api["listar_opcoes_agenda"].call_count == chamadas_antes_do_post + 1
+    assert any(DADOS["nome"] in item.value for item in app.markdown)

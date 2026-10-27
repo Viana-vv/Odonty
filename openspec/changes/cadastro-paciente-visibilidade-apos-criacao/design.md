@@ -1,7 +1,9 @@
-﻿# Design: Atualização do cache após cadastro
+# Design: Preservar a rota e invalidar cache após confirmação
 
-No caminho de resposta 201 validada por `ClienteXano.cadastrar_paciente`, invalidar o namespace `pacientes` por meio de `cache_xano.invalidar_cache`. A chamada não recebe nem persiste o token. Enquanto o módulo compartilhado não estiver presente neste branch, a integração conserva um ponto local de invalidação da chave de sessão usada pela listagem, para que o branch permaneça executável; a coordenação deve reconciliar com a API comum antes do merge.
+Em `paginas_equipe.renderizar`, tratar `pagina == "paciente"` como rota interna com topbar, sem tentar carregá-la por `navegacao.carregar_modulo_xano`. O modal existente continua sendo renderizado após a área de conteúdo; a rota permanece no estado da sessão até completar o POST.
 
-Nenhuma invalidação ocorre no `except` ou em resultado incerto. O estado `pac_pendente`, inclusive `operacao_id`, continua preservado para reenvio idempotente. A rota POST e seus contratos permanecem inalterados.
+No retorno 201 validado por `ClienteXano.cadastrar_paciente`, invalidar namespaces `pacientes` e `agenda/opcoes` via `cache_xano.invalidar_cache`. A lista usa `cache_xano.carregar_cache` no namespace `pacientes`, com a consulta como loader e o botão Atualizar como `force=True`. Tokens não são persistidos pelo helper.
 
-A verificação usa AppTest com cliente mockado e cache previamente populado, confirma chamada única ao POST e que o cache foi removido após sucesso. O teste real isolado já exercita a rota publicada em apigroup temporário para Administrador e Recepcionista; não requer novos dados reais.
+Nenhuma invalidação acontece no `except`: timeout, falha de rede, resposta incompatível e rejeição preservam comportamento atual. Resultado incerto conserva `pac_pendente` e `operacao_id` para reenvio manual.
+
+Verificação: AppTest do fluxo pela listagem, formulário, POST mockado, navegação de volta, novo GET único e Paciente visível; testes existentes de sucesso e resultado incerto; teste opt-in contra POST publicado como Administrador e Recepcionista com verificação de persistência por Metadata API e limpeza/inativação.

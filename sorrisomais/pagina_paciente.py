@@ -7,18 +7,8 @@ import streamlit as st
 
 from . import sessao
 from .api import ErroAcesso
+from . import cache_xano
 from .pacientes import hoje, validar_cadastro
-
-
-def _invalidar_cache_pacientes():
-    """Invalida a listagem após confirmação, usando cache compartilhado quando disponível."""
-    try:
-        from . import cache_xano
-    except ImportError:
-        # Compatibilidade temporária até a API compartilhada chegar a este branch.
-        st.session_state.pop("pacientes_xano_cache", None)
-    else:
-        cache_xano.invalidar_cache(st.session_state, namespaces=["pacientes"])
 
 
 def _texto_telefone(valor):
@@ -121,9 +111,11 @@ def renderizar(cliente):
         try:
             with st.spinner("Cadastrando paciente…"):
                 cliente.cadastrar_paciente(st.session_state[sessao.CHAVE].token, **dados)
-            _invalidar_cache_pacientes()
+            cache_xano.invalidar_cache(st.session_state, namespaces=["pacientes", "agenda/opcoes"])
             st.session_state["pac_sucesso"] = True
             st.session_state["pac_operacao_id"] = str(uuid4())
+            st.session_state.pop("pac_pendente", None)
+            st.session_state.pop("pac_conflitante", None)
             st.session_state["pagina_equipe"] = st.session_state.pop(CHAVE_ORIGEM, "inicio")
         except ErroAcesso as error:
             if error.status in (401, 403):

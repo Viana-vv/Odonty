@@ -2,6 +2,17 @@
 
 ## ADDED Requirements
 
+### Requirement: Rota do formulário permanece disponível durante o envio
+O sistema SHALL manter a rota administrativa de cadastro de Paciente durante cada rerun do formulário, até que a operação seja concluída, rejeitada ou abandonada pela equipe.
+
+#### Scenario: Envio pelo modal
+- **WHEN** Administrador ou Recepcionista abre o cadastro e envia dados válidos
+- **THEN** o formulário continua montado durante o processamento e o cliente REST recebe um único POST.
+
+#### Scenario: Resultado incerto
+- **WHEN** o POST termina sem confirmação
+- **THEN** o formulário permanece acessível com a operação e os dados pendentes para reenvio manual.
+
 ### Requirement: Atualização da listagem após cadastro confirmado
 Após o Xano confirmar e o cliente validar a resposta de criação, o sistema SHALL invalidar o cache da lista de Pacientes da sessão antes de retornar à listagem.
 

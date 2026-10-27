@@ -1,19 +1,21 @@
-﻿# Proposta: Atualizar a lista após cadastrar Paciente
+# Proposta: Corrigir envio do cadastro e atualizar a lista de Pacientes
 
 ## Problema
 
-A listagem conectada mantém Pacientes em cache por até 20 segundos na sessão. Quando o cadastro retorna sucesso, a navegação volta à lista sem invalidar esse cache; por isso, o Paciente recém-criado pode não aparecer e a equipe pode interpretar a operação como falha.
+A rota interna `paciente` passa pelo fallback de módulos conectados em `paginas_equipe.renderizar`. Como não existe módulo Xano chamado `paciente`, o fallback redefine a navegação para `inicio`. O modal pode aparecer na primeira renderização, mas some no rerun que processaria o envio; assim, o POST não chega ao Xano e nenhum Paciente é criado. Após uma confirmação válida, a listagem também pode servir dados em cache e ocultar o novo cadastro.
 
 ## Escopo
 
-- Invalidar o cache da listagem de Pacientes somente depois de o POST ser confirmado como sucesso.
-- Preservar a chave e o payload da operação quando o resultado do POST for incerto.
+- Preservar a rota `paciente` durante o ciclo de renderização do formulário e do POST.
+- Invalidar os caches `pacientes` e `agenda/opcoes` somente após sucesso confirmado pelo cliente REST.
+- Cobrir o retorno à lista com novo GET e exibição do Paciente criado.
+- Preservar operação idempotente e dados pendentes em resultados incertos.
 
 ## Fora do escopo
 
 - Alterar contrato REST, endpoint Xano, permissões, modelo de dados ou idempotência.
-- Alterar outros caches ou telas sem dependência da lista de Pacientes.
+- Alterar outros fluxos/telas da equipe.
 
 ## Dependências e riscos
 
-A invalidação deve usar a API de cache compartilhado quando disponível. A mudança não pode invalidar em timeout, resposta incompatível ou rejeição definitiva, pois esses casos não confirmam criação.
+Dependência explícita: Issue #100 fornece `sorrisomais.cache_xano`; esta change integra a lista e o detalhe de Paciente a essa API de cache. a change deve ser integrada junto da implementação desse helper. A verificação em Xano deve usar somente contas e Pacientes fictícios, inativando os cadastros de teste e preservando o histórico do Prontuário.
