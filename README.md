@@ -213,3 +213,17 @@ No macOS, execute `.venv/bin/python -B -m pytest tests/test_acesso.py tests/test
 - [Verificações e tarefas](openspec/changes/archive/2026-09-25-login-streamlit-xano/tasks.md)
 
 O MVP utiliza somente dados fictícios e não é destinado ao uso clínico real.
+## Verificação publicada do autoatendimento do Paciente
+
+A integração somente leitura usa uma Conta de Acesso de Paciente fictícia já provisionada no Xano publicado. Configure `XANO_AUTOATENDIMENTO_EMAIL` e `XANO_AUTOATENDIMENTO_SENHA` diretamente no ambiente local ou no gerenciador de segredos; não registre esses valores em arquivos, argumentos, capturas ou logs. A URL continua sendo `XANO_API_BASE_URL`.
+
+No PowerShell, habilite a suíte apenas no terminal atual:
+
+```powershell
+$env:XANO_TESTAR_AUTOATENDIMENTO_PUBLICADO = "1"
+.venv\Scripts\python.exe -B -m pytest tests/test_xano_autoatendimento_publicado.py -q --tb=short
+```
+
+A jornada confirma `/auth/me` sem sessão (401), login e perfil Paciente ativo, leituras de Consultas, Registros Clínicos e Exames sem enviar `paciente_id`, liberação de Registros Clínicos, resultado liberado, ausência de referências públicas de arquivos e logout em `finally`. Não imprime nem persiste os corpos das respostas. Sem a flag, o teste é ignorado sem rede; com a flag e pré-requisitos ausentes, falha claramente sem iniciar chamadas.
+
+A Conta de Acesso deve conter exclusivamente dados fictícios e estar vinculada a dados igualmente fictícios. Esta worktree possui URL Xano, mas não possui credenciais de Paciente para teste; portanto, a confirmação contra o grupo publicado permanece pendente até que o responsável forneça uma Conta de Acesso de teste por canal seguro.
