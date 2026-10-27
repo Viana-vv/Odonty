@@ -7,6 +7,7 @@ import streamlit as st
 
 from . import sessao
 from .api import ErroAcesso
+from .cache_xano import carregar_cache, invalidar_cache
 from .exames_api import ClienteExames, SITUACOES_EXAME
 
 _FUSO_CLINICA = ZoneInfo("America/Sao_Paulo")
@@ -24,17 +25,17 @@ def _rotulo_consulta(consulta, pacientes):
     return f"{inicio:%d/%m/%Y às %H:%M} · {paciente} · {consulta.get('situacao', 'Consulta')}"
 
 
-def _opcoes_solicitacao(cliente, token):
+def _opcoes_solicitacao(cliente, token, *, force=False):
     """Carrega dados administrativos e Consultas autorizadas, com cache por sessão."""
     from .pagina_nova_consulta_xano import _leitura_com_cache
 
     opcoes = _leitura_com_cache(
-        token, ("exames-solicitacao-opcoes",),
-        lambda: cliente.listar_opcoes_agenda(token),
+        token, ("agenda/opcoes",),
+        lambda: cliente.listar_opcoes_agenda(token), force=force,
     )
     consultas = _leitura_com_cache(
-        token, ("exames-solicitacao-consultas",),
-        lambda: cliente.listar_consultas(token),
+        token, ("consultas",),
+        lambda: cliente.listar_consultas(token), force=force,
     )
     return opcoes, consultas
 
@@ -56,6 +57,7 @@ def _cartao(exame, *, profissional=False, cliente=None, token=None):
 def renderizar(cliente, conta):
     st.caption("ATENDIMENTO CLÍNICO  /  EXAMES")
     st.title("Exames")
+    atualizar = st.button("Atualizar Exames", key="exames-atualizar")
     st.markdown("Acompanhe solicitações e resultados com acesso controlado pelo Xano.")
     perfis = set(getattr(conta, "perfis", ()))
     if not perfis.intersection({"profissional", "paciente"}):
@@ -67,7 +69,7 @@ def renderizar(cliente, conta):
         return
     api = ClienteExames(cliente)
     try:
-        exames = api.listar(credencial.token)
+        exames = carregar_cache(st.session_state, credencial.token, "exames", lambda: api.listar(credencial.token), force=atualizar)
     except ErroAcesso as error:
         if error.status == 401:
             sessao.limpar(st.session_state)
@@ -82,7 +84,7 @@ def renderizar(cliente, conta):
         with st.expander("Solicitar exame", expanded=False):
             try:
                 opcoes, consultas_disponiveis = _opcoes_solicitacao(
-                    cliente, credencial.token
+                    cliente, credencial.token, force=atualizar
                 )
             except ErroAcesso as error:
                 if error.status == 401:
@@ -137,6 +139,7 @@ def renderizar(cliente, conta):
                             solicitado_em=solicitado_em.isoformat(),
                             observacoes=observacoes,
                         )
+                        invalidar_cache(st.session_state, ("exames", "prontuario"))
                         st.success("Exame solicitado.")
                     except ErroAcesso as error:
                         st.error(str(error))

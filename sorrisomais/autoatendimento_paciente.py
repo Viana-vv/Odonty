@@ -11,6 +11,7 @@ from .api import ErroAcesso
 from .exames_api import ClienteExames
 from .pagina_consultas_paciente import renderizar as renderizar_consultas
 from . import sessao_paciente
+from .cache_xano import carregar_cache
 
 FUSO_CLINICA = ZoneInfo("America/Sao_Paulo")
 RAIZ_PROJETO = Path(__file__).resolve().parent.parent
@@ -40,10 +41,10 @@ def _renderizar_consultas(cliente, token):
     renderizar_consultas(cliente, token)
 
 
-def _renderizar_registros(cliente, token):
+def _renderizar_registros(cliente, token, *, force=False):
     st.subheader("Informações liberadas pela clínica")
     try:
-        registros = cliente.listar_registros_clinicos(token)
+        registros = carregar_cache(st.session_state, token, "registros-clinicos", lambda: cliente.listar_registros_clinicos(token), force=force)
     except ErroAcesso as erro:
         _mensagem_erro(erro)
         return
@@ -59,11 +60,11 @@ def _renderizar_registros(cliente, token):
             st.caption(f"Profissional: {nome}")
 
 
-def _renderizar_exames(cliente, token):
+def _renderizar_exames(cliente, token, *, force=False):
     st.subheader("Meus Exames")
     st.caption("Resultados são exibidos depois que a clínica os libera.")
     try:
-        exames = ClienteExames(cliente).listar(token)
+        exames = carregar_cache(st.session_state, token, "exames", lambda: ClienteExames(cliente).listar(token), force=force)
     except ErroAcesso as erro:
         _mensagem_erro(erro)
         return
@@ -146,6 +147,8 @@ def renderizar(cliente):
     with consultas_tab:
         _renderizar_consultas(cliente, token)
     with registros_tab:
-        _renderizar_registros(cliente, token)
+        atualizar_registros = st.button("Atualizar informa\u00e7\u00f5es", key="autoatendimento-registros-atualizar")
+        _renderizar_registros(cliente, token, force=atualizar_registros)
     with exames_tab:
-        _renderizar_exames(cliente, token)
+        atualizar_exames = st.button("Atualizar Exames", key="autoatendimento-exames-atualizar")
+        _renderizar_exames(cliente, token, force=atualizar_exames)

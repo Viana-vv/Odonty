@@ -1,17 +1,12 @@
 """Catálogo de Procedimentos conectado, somente para leitura."""
 
-from hashlib import sha256
-from time import monotonic
 
 import streamlit as st
 
 from . import sessao
 from .api import ErroAcesso
+from .cache_xano import carregar_cache
 
-
-_CACHE_CHAVE = "procedimentos_xano_catalogo_cache"
-_FALHA_CHAVE = "procedimentos_xano_catalogo_falha"
-_CACHE_TTL_SEGUNDOS = 20
 
 
 def _filtrar_procedimentos(procedimentos, busca):
@@ -37,66 +32,23 @@ def renderizar(cliente, conta):
         st.info("Sua sessão expirou. Entre novamente para acessar o catálogo de Procedimentos.")
         return
 
-    identificador_token = sha256(token.encode("utf-8")).hexdigest()
-    cache = st.session_state.get(_CACHE_CHAVE)
-    if cache is not None and (
-        not isinstance(cache, dict) or cache.get("token") != identificador_token
-    ):
-        st.session_state.pop(_CACHE_CHAVE, None)
-        cache = None
-    if cache is not None and monotonic() - cache.get("carregado_em", 0) >= _CACHE_TTL_SEGUNDOS:
-        st.session_state.pop(_CACHE_CHAVE, None)
-        cache = None
-    if st.session_state.get(_FALHA_CHAVE) != identificador_token:
-        st.session_state.pop(_FALHA_CHAVE, None)
-
     busca = st.text_input("Buscar Procedimento", key="procedimentos_xano_busca").strip()
-    falha = st.session_state.get(_FALHA_CHAVE)
-    if falha == identificador_token:
-        st.error("Não foi possível carregar os Procedimentos. Tente novamente.")
-        if st.button("Tentar novamente", key="procedimentos_xano_recarregar"):
-            st.session_state.pop(_FALHA_CHAVE, None)
+    atualizar = st.button("Atualizar cat\u00e1logo", key="procedimentos_xano_atualizar")
+    try:
+        opcoes = carregar_cache(st.session_state, token, "agenda/opcoes", lambda: cliente.listar_opcoes_agenda(token), force=atualizar)
+        procedimentos = opcoes["procedimentos"]
+    except ErroAcesso as error:
+        if error.status in (401, 403):
+            sessao.limpar(st.session_state)
+        st.error(str(error) if error.status in (401, 403) else "N\u00e3o foi poss\u00edvel carregar os Procedimentos. Tente novamente.")
+        if error.status not in (401, 403) and st.button("Tentar novamente", key="procedimentos_xano_recarregar"):
             st.rerun()
         return
-
-    if cache is None:
-        try:
-            with st.spinner("Carregando Procedimentos…"):
-                opcoes = cliente.listar_opcoes_agenda(token)
-            procedimentos = opcoes["procedimentos"]
-        except ErroAcesso as error:
-            if error.status in (401, 403):
-                st.session_state.pop(_CACHE_CHAVE, None)
-                st.session_state.pop(_FALHA_CHAVE, None)
-                sessao.limpar(st.session_state)
-                st.error(str(error))
-                return
-            st.session_state[_FALHA_CHAVE] = identificador_token
-            st.error("Não foi possível carregar os Procedimentos. Tente novamente.")
-            if st.button("Tentar novamente", key="procedimentos_xano_recarregar"):
-                st.session_state.pop(_FALHA_CHAVE, None)
-                st.rerun()
-            return
-        except (KeyError, TypeError, ValueError):
-            st.session_state[_FALHA_CHAVE] = identificador_token
-            st.error("Não foi possível carregar os Procedimentos. Tente novamente.")
-            if st.button("Tentar novamente", key="procedimentos_xano_recarregar"):
-                st.session_state.pop(_FALHA_CHAVE, None)
-                st.rerun()
-            return
-        st.session_state[_CACHE_CHAVE] = {
-            "token": identificador_token,
-            "carregado_em": monotonic(),
-            "procedimentos": procedimentos,
-        }
-    else:
-        procedimentos = cache["procedimentos"]
-
-    if st.session_state.get(_CACHE_CHAVE) is not None and st.button(
-        "Atualizar catálogo", key="procedimentos_xano_atualizar"
-    ):
-        st.session_state.pop(_CACHE_CHAVE, None)
-        st.rerun()
+    except (KeyError, TypeError, ValueError):
+        st.error("N\u00e3o foi poss\u00edvel carregar os Procedimentos. Tente novamente.")
+        if st.button("Tentar novamente", key="procedimentos_xano_recarregar"):
+            st.rerun()
+        return
 
     encontrados = _filtrar_procedimentos(procedimentos, busca)
     if not encontrados:

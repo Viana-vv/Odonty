@@ -4,6 +4,7 @@ import streamlit as st
 
 from . import api_contas_acesso, sessao
 from .api import ErroAcesso
+from .cache_xano import carregar_cache
 
 _ROTULOS_PERFIS = {
     "paciente": "Paciente",
@@ -43,7 +44,7 @@ def renderizar(cliente, conta):
             else "Carregando Contas de Acesso…"
         )
         with st.spinner(mensagem_carregamento):
-            contas = api_contas_acesso.listar_contas_acesso(cliente, credencial.token)
+            contas = carregar_cache(st.session_state, credencial.token, "contas-acesso", lambda: api_contas_acesso.listar_contas_acesso(cliente, credencial.token), force=atualizar)
     except ErroAcesso as error:
         if error.status == 401:
             sessao.limpar(st.session_state)
