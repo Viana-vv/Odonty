@@ -7,6 +7,7 @@ import streamlit as st
 
 from .api import ErroAcesso
 from . import sessao
+from .cache_xano import carregar_cache
 
 FUSO_CLINICA = ZoneInfo("America/Sao_Paulo")
 
@@ -32,6 +33,7 @@ def _cartao(consulta, inicio, *, futura):
 def renderizar(cliente, conta_ou_token):
     st.title("Minhas Consultas")
     st.markdown("Acompanhe suas Consultas futuras e passadas.")
+    atualizar = st.button("Atualizar Consultas", key="consultas-paciente-atualizar")
     token = conta_ou_token if isinstance(conta_ou_token, str) else None
     if token is None:
         credencial = st.session_state.get(sessao.CHAVE)
@@ -40,7 +42,7 @@ def renderizar(cliente, conta_ou_token):
         st.error("Sua sessÃ£o nÃ£o estÃ¡ disponÃ­vel. Entre novamente.")
         return
     try:
-        consultas = cliente.listar_consultas(token)
+        consultas = carregar_cache(st.session_state, token, "consultas", lambda: cliente.listar_consultas(token), force=atualizar)
     except ErroAcesso as erro:
         if erro.status in (401, 403):
             st.error("Não foi possível acessar suas Consultas. Entre novamente ou contate a clínica.")

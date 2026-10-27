@@ -107,7 +107,7 @@ def test_rerun_reutiliza_consultas_e_opcoes_por_vinte_segundos(cliente_painel):
     cliente_painel.listar_opcoes_agenda.assert_called_once_with("token-ficticio")
 
 
-def test_cache_do_painel_expira_apos_vinte_segundos(cliente_painel, monkeypatch):
+def test_cache_do_painel_persiste_apos_janela_anterior(cliente_painel, monkeypatch):
     relogio = {"agora": 100.0}
     monkeypatch.setattr(paginas_equipe, "monotonic", lambda: relogio["agora"])
     app = abrir_painel(cliente_painel)
@@ -115,8 +115,8 @@ def test_cache_do_painel_expira_apos_vinte_segundos(cliente_painel, monkeypatch)
     relogio["agora"] = 121.0
     app.run()
 
-    assert cliente_painel.listar_consultas.call_count == 2
-    assert cliente_painel.listar_opcoes_agenda.call_count == 2
+    assert cliente_painel.listar_consultas.call_count == 1
+    assert cliente_painel.listar_opcoes_agenda.call_count == 1
 
 
 def test_limpar_sessao_remove_caches_administrativo_e_da_agenda():

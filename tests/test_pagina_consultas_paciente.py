@@ -64,3 +64,12 @@ def test_requisicao_nao_recebe_identificador_de_paciente():
     cliente.listar_consultas.return_value = []
     _abrir(cliente)
     cliente.listar_consultas.assert_called_once_with("token-ficticio")
+
+
+def test_atualizar_forca_nova_leitura():
+    cliente = Mock()
+    cliente.listar_consultas.return_value = []
+    app = AppTest.from_function(_renderizar_tela, args=(cliente,)).run()
+    assert cliente.listar_consultas.call_count == 1
+    app.button(key="consultas-paciente-atualizar").click().run()
+    assert cliente.listar_consultas.call_count == 2

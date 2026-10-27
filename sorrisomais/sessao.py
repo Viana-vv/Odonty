@@ -11,6 +11,8 @@ INTERVALO_REVALIDACAO_SEGUNDOS = 20
 
 
 def limpar(estado):
+    from .cache_xano import invalidar_cache
+    invalidar_cache(estado)
     for chave in (CHAVE, CHAVE_CONTA, CHAVE_VERIFICADA, "cad_especialidades_cache",
                   "cad_especialidades_cache_em", "cad_especialidades_erro_em",
                   "prontuario_historico_cache", "prontuario_paciente_id",
@@ -63,6 +65,11 @@ def identificar(estado, cliente):
         conta = cliente.identificar(credencial.token)
         if conta.expira_em != credencial.expira_em:
             raise ErroAcesso()
+        anterior = estado.get(CHAVE_CONTA)
+        if (isinstance(anterior, ContaAcesso)
+                and (anterior.id != conta.id or anterior.perfis != conta.perfis)):
+            from .cache_xano import invalidar_cache
+            invalidar_cache(estado)
         estado[CHAVE_CONTA] = conta
         estado[CHAVE_VERIFICADA] = agora
         return conta

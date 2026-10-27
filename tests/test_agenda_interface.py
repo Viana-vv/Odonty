@@ -152,7 +152,7 @@ def test_filtros_da_agenda_reutilizam_leitura_da_mesma_data(agenda_simulada):
     assert agenda_simulada["listagens"] == chamadas_antes
 
 
-def test_cache_da_agenda_expira_apos_vinte_segundos(agenda_simulada, monkeypatch):
+def test_cache_da_agenda_persiste_apos_vinte_segundos(agenda_simulada, monkeypatch):
     from sorrisomais import paginas_equipe
 
     relogio = {"agora": 100.0}
@@ -163,7 +163,7 @@ def test_cache_da_agenda_expira_apos_vinte_segundos(agenda_simulada, monkeypatch
     relogio["agora"] = 121.0
     app.run()
 
-    assert agenda_simulada["listagens"] == chamadas_antes + 1
+    assert agenda_simulada["listagens"] == chamadas_antes
 
 
 def test_profissional_consulta_agenda_sem_acao_de_criar(agenda_simulada):
@@ -205,8 +205,8 @@ def test_painel_profissional_lida_com_sessao_expirada(agenda_simulada):
 
     app = abrir_agenda(agenda_simulada, "profissional")
     app.button(key="menu-inicio").click().run()
-    del app.session_state["agenda_xano_cache"]
     agenda_simulada["erro_consultas"] = ErroAcesso("mensagem interna", 401)
+    app.session_state["xano_get_cache"] = {}
     app.button(key="menu-inicio").click().run()
 
     assert not app.exception
