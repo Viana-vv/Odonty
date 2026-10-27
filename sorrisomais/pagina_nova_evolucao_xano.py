@@ -3,6 +3,7 @@
 import streamlit as st
 
 from . import sessao
+from .cache_xano import invalidar_cache
 from .api import ErroAcesso
 
 _CHAVE_CACHE = "prontuario_historico_cache"
@@ -108,6 +109,7 @@ def renderizar(cliente, conta, consultas):
                 st.error("Não foi possível confirmar o Registro Clínico. Atualize o histórico antes de tentar novamente.")
                 return
 
+            invalidar_cache(st.session_state, ("registros-clinicos", "prontuario"))
             st.session_state.pop(_CHAVE_CACHE, None)
             st.session_state.pop(_CHAVE_ABERTO, None)
             st.session_state["prontuario_aviso"] = "Registro Clínico salvo no Prontuário."

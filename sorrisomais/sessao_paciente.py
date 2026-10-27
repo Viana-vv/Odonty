@@ -9,6 +9,8 @@ CHAVE_CONTA = "paciente_conta"
 
 
 def limpar(estado):
+    from .cache_xano import invalidar_cache
+    invalidar_cache(estado)
     estado.pop(CHAVE_CREDENCIAL, None)
     estado.pop(CHAVE_CONTA, None)
     estado.pop("paciente_email", None)

@@ -1,7 +1,5 @@
 """Histórico individual do Prontuário integrado aos contratos existentes do Xano."""
 
-import hashlib
-import time
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -10,10 +8,9 @@ import streamlit as st
 from . import sessao
 from .api import ErroAcesso
 from . import pagina_nova_evolucao_xano
+from .cache_xano import carregar_cache
 
-_CHAVE_CACHE_HISTORICO = "prontuario_historico_cache"
 _CHAVE_PENDENTE = "prontuario_paciente_pendente"
-_CACHE_HISTORICO_SEGUNDOS = 20
 
 
 def _selecionar_paciente(paciente_id):
@@ -21,25 +18,9 @@ def _selecionar_paciente(paciente_id):
     st.session_state[_CHAVE_PENDENTE] = paciente_id
 
 
-def _carregar_dados(cliente, token):
-    """Reutiliza respostas bem-sucedidas durante reruns da mesma sessão."""
-    identificador_token = hashlib.sha256(token.encode("utf-8")).hexdigest()
-    agora = time.monotonic()
-    cache = st.session_state.get(_CHAVE_CACHE_HISTORICO)
-    if (isinstance(cache, dict)
-            and cache.get("token") == identificador_token
-            and agora - cache.get("instante", 0) < _CACHE_HISTORICO_SEGUNDOS):
-        return cache["consultas"], cache["registros"]
-
-    st.session_state.pop(_CHAVE_CACHE_HISTORICO, None)
-    consultas = cliente.listar_consultas(token)
-    registros = cliente.listar_registros_clinicos(token)
-    st.session_state[_CHAVE_CACHE_HISTORICO] = {
-        "token": identificador_token,
-        "instante": time.monotonic(),
-        "consultas": consultas,
-        "registros": registros,
-    }
+def _carregar_dados(cliente, token, *, force=False):
+    consultas = carregar_cache(st.session_state, token, "consultas", lambda: cliente.listar_consultas(token), force=force)
+    registros = carregar_cache(st.session_state, token, "registros-clinicos", lambda: cliente.listar_registros_clinicos(token), force=force)
     return consultas, registros
 
 
@@ -102,6 +83,7 @@ def renderizar(cliente, conta):
     with titulo:
         st.caption("HISTÓRICO CLÍNICO")
         st.title("Prontuários")
+        atualizar = st.button("Atualizar Prontuario", key="prontuario-atualizar")
         st.markdown("Registre evoluções e consulte os atendimentos realizados.")
 
     aviso = st.session_state.pop("prontuario_aviso", None)
@@ -120,7 +102,7 @@ def renderizar(cliente, conta):
 
     try:
         with st.spinner("Carregando histórico clínico…"):
-            consultas, registros = _carregar_dados(cliente, credencial.token)
+            consultas, registros = _carregar_dados(cliente, credencial.token, force=atualizar)
     except ErroAcesso as error:
         if error.status == 401:
             sessao.limpar(st.session_state)

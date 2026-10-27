@@ -68,7 +68,7 @@ def _formulario(cliente, token, opcoes):
         st.session_state[PREFIXO + "paciente-anterior"] = paciente_id
 
     consultas = _leitura_com_cache(
-        token, ("reagendamento-consultas", paciente_id),
+        token, ("consultas:paciente", paciente_id),
         lambda: cliente.listar_consultas(token, paciente_id=paciente_id),
     )
     # GET pode repetir uma Consulta por Procedimento; o seletor usa seu ID único.
@@ -111,7 +111,7 @@ def _formulario(cliente, token, opcoes):
         st.session_state[PREFIXO + "filtro-horarios"] = filtro
     inicio, fim = _limites_data(dia)
     disponibilidades = _leitura_com_cache(
-        token, ("reagendamento-disponibilidades", profissional_id, inicio, fim),
+        token, ("disponibilidades", profissional_id, inicio, fim),
         lambda: cliente.listar_disponibilidades(token, profissional_id, inicio, fim),
     )
     horarios = {item["id"]: _horario_legivel(item) for item in disponibilidades

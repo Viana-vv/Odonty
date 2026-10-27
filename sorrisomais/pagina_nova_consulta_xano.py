@@ -1,7 +1,4 @@
 """Tela isolada para agendamento conectado de Consulta."""
-import copy
-import hashlib
-import time as relogio
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
@@ -11,32 +8,39 @@ from .api import ErroAcesso
 from . import sessao
 
 FUSO_CLINICA = ZoneInfo("America/Sao_Paulo")
-TTL_CACHE_LEITURAS_SEGUNDOS = 20
-
-
 def _limpar_cache_leituras():
     st.session_state.pop("nova-consulta-cache-leituras", None)
+    from .cache_xano import invalidar_cache
+    invalidar_cache(st.session_state)
 
 
-def _leitura_com_cache(token, chave, carregar):
-    """Evita repetir GETs em cada rerun sem compartilhar dados entre sessões."""
-    cache = st.session_state.setdefault("nova-consulta-cache-leituras", {})
-    token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
-    chave_cache = (token_hash, *chave)
-    agora = relogio.monotonic()
-    entrada = cache.get(chave_cache)
-    if entrada and entrada[0] > agora:
-        return copy.deepcopy(entrada[1])
-    cache.pop(chave_cache, None)
+def _normalizar_namespace_cache(chave):
+    partes = tuple(chave)
+    recurso = str(partes[0])
+    parametros = partes[1:]
+    if recurso in {"agenda/opcoes", "exames-solicitacao-opcoes"}:
+        return "agenda/opcoes"
+    if recurso in {"consultas", "exames-solicitacao-consultas"}:
+        namespace = "consultas"
+        if parametros:
+            namespace += f":paciente={parametros[0]}"
+        return namespace
+    if recurso in {"reagendamento-consultas", "consultas:paciente"}:
+        return f"consultas:paciente={parametros[0]}"
+    if "disponibilidades" in recurso:
+        profissional, inicio, fim = parametros
+        return f"disponibilidades:profissional={profissional}:inicio={inicio}:fim={fim}"
+    if parametros:
+        return recurso + ":" + ":".join(str(parte) for parte in parametros)
+    return recurso
 
-    # Só respostas bem-sucedidas são guardadas; ErroAcesso não deixa dados
-    # antigos serem apresentados como se fossem resultado da leitura atual.
-    resposta = carregar()
-    cache[chave_cache] = (
-        relogio.monotonic() + TTL_CACHE_LEITURAS_SEGUNDOS,
-        copy.deepcopy(resposta),
+
+def _leitura_com_cache(token, chave, carregar, *, force=False):
+    """Normaliza o namespace e delega ao cache privado central."""
+    from .cache_xano import carregar_cache
+    return carregar_cache(
+        st.session_state, token, _normalizar_namespace_cache(chave), carregar, force=force
     )
-    return resposta
 
 
 def _limites_data(dia):

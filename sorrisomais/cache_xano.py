@@ -26,7 +26,7 @@ def invalidar_cache(state, namespaces=None):
     """Invalida todos os GETs em cache ou apenas namespaces informados."""
     if namespaces is None:
         _limpar(state)
-        # Remo??o de caches legados enquanto cada tela passa ao helper comum.
+        # Remoção de caches legados enquanto cada tela passa ao helper comum.
         for chave in (
             "cad_especialidades_cache", "cad_especialidades_cache_em",
             "painel_recepcao_xano_cache", "painel_recepcao_xano_erro_em",
@@ -60,10 +60,10 @@ def invalidar_cache(state, namespaces=None):
 
 
 def carregar_cache(state, token, namespace, loader, force=False):
-    """Carrega sob demanda e reutiliza somente sucesso na sess?o/Conta atual.
+    """Carrega sob demanda e reutiliza somente sucesso na sessão/Conta atual.
 
-    ``namespace`` deve ser uma chave l?gica completa, incluindo par?metros do
-    GET (por exemplo ``consultas:paciente=12``). O token nunca ? persistido.
+    ``namespace`` deve ser uma chave lógica completa, incluindo parâmetros do
+    GET (por exemplo ``consultas:paciente=12``). O token nunca é persistido.
     """
     if not isinstance(token, str) or not token:
         invalidar_cache(state)
