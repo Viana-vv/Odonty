@@ -10,6 +10,17 @@ from .api import ErroAcesso
 from .pacientes import hoje, validar_cadastro
 
 
+def _invalidar_cache_pacientes():
+    """Invalida a listagem após confirmação, usando cache compartilhado quando disponível."""
+    try:
+        from . import cache_xano
+    except ImportError:
+        # Compatibilidade temporária até a API compartilhada chegar a este branch.
+        st.session_state.pop("pacientes_xano_cache", None)
+    else:
+        cache_xano.invalidar_cache(st.session_state, namespaces=["pacientes"])
+
+
 def _texto_telefone(valor):
     if isinstance(valor, int) and not isinstance(valor, bool):
         return str(valor)
@@ -110,6 +121,7 @@ def renderizar(cliente):
         try:
             with st.spinner("Cadastrando paciente…"):
                 cliente.cadastrar_paciente(st.session_state[sessao.CHAVE].token, **dados)
+            _invalidar_cache_pacientes()
             st.session_state["pac_sucesso"] = True
             st.session_state["pac_operacao_id"] = str(uuid4())
             st.session_state["pagina_equipe"] = st.session_state.pop(CHAVE_ORIGEM, "inicio")

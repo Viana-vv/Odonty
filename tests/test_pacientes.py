@@ -6,6 +6,7 @@ from unittest.mock import Mock
 
 import pytest
 import requests
+from streamlit.testing.v1 import AppTest
 
 from sorrisomais import sessao
 from sorrisomais.api import ClienteXano, ContaAcesso, ErroAcesso
@@ -355,3 +356,60 @@ def test_callback_duplo_nao_sobrescreve_operacao(monkeypatch):
     estado["pac_nome"] = "Outro Paciente Fictício"
     pagina_paciente.solicitar()
     assert estado["pac_pendente"] == primeira
+
+
+def renderizar_pagina_paciente_isolada(cliente):
+    from sorrisomais.pagina_paciente import renderizar
+    renderizar(cliente)
+
+
+def test_cache_pacientes_so_invalida_apos_sucesso_confirmado():
+    cliente = Mock()
+    cliente.cadastrar_paciente.return_value = 12
+    app = AppTest.from_function(renderizar_pagina_paciente_isolada, args=(cliente,)).run()
+    app.session_state[sessao.CHAVE] = type("CredencialTeste", (), {"token": "token-ficticio"})()
+    dados = payload()
+    app.session_state["pac_pendente"] = dados
+    app.session_state["pac_processando"] = True
+    app.session_state["pac_operacao_id"] = dados["operacao_id"]
+    app.session_state["pacientes_xano_cache"] = {"pacientes": [{"id": 1}]}
+    app.run()
+    assert not app.exception
+    cliente.cadastrar_paciente.assert_called_once()
+    assert "pacientes_xano_cache" not in app.session_state
+
+
+def test_resultado_incerto_preserva_cache_e_chave_idempotente():
+    cliente = Mock()
+    cliente.cadastrar_paciente.side_effect = ErroAcesso("Sem confirmação", 503)
+    app = AppTest.from_function(renderizar_pagina_paciente_isolada, args=(cliente,)).run()
+    app.session_state[sessao.CHAVE] = type("CredencialTeste", (), {"token": "token-ficticio"})()
+    dados = payload()
+    app.session_state["pac_pendente"] = dados
+    app.session_state["pac_processando"] = True
+    app.session_state["pac_operacao_id"] = dados["operacao_id"]
+    app.session_state["pacientes_xano_cache"] = {"pacientes": [{"id": 1}]}
+    app.run()
+    assert not app.exception
+    assert app.session_state["pac_pendente"] == dados
+    assert app.session_state["pacientes_xano_cache"] == {"pacientes": [{"id": 1}]}
+    assert app.session_state["pac_operacao_id"] == dados["operacao_id"]
+    cliente.cadastrar_paciente.assert_called_once()
+
+
+def test_rejeicao_de_cadastro_nao_invalida_cache():
+    cliente = Mock()
+    cliente.cadastrar_paciente.side_effect = ErroAcesso("Corrija os dados", 400)
+    app = AppTest.from_function(renderizar_pagina_paciente_isolada, args=(cliente,)).run()
+    app.session_state[sessao.CHAVE] = type("CredencialTeste", (), {"token": "token-ficticio"})()
+    dados = payload()
+    app.session_state["pac_pendente"] = dados
+    app.session_state["pac_processando"] = True
+    app.session_state["pac_operacao_id"] = dados["operacao_id"]
+    app.session_state["pacientes_xano_cache"] = {"pacientes": [{"id": 1}]}
+    app.run()
+    assert not app.exception
+    assert app.session_state["pacientes_xano_cache"] == {"pacientes": [{"id": 1}]}
+    assert "pac_pendente" not in app.session_state
+    assert app.session_state["pac_operacao_id"] != dados["operacao_id"]
+    cliente.cadastrar_paciente.assert_called_once()
