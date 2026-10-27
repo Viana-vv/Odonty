@@ -1107,6 +1107,8 @@ def renderizar(conta, cliente):
                         st.error("A área de Procedimentos da Consulta está indisponível no momento.")
                         st.button("Voltar à Agenda", key="procedimentos-indisponivel-agenda",
                                   on_click=abrir_agenda)
+                elif pagina == "paciente":
+                    renderizar_topbar(conta, pagina)
                 elif pagina == "inicio":
                     renderizar_topbar(conta, "inicio")
                     renderizar_inicio(cliente, conta, administrador, pode_cadastrar_paciente,
