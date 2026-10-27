@@ -57,6 +57,11 @@ Prontuários e Registros Clínicos ainda não têm integração Xano confirmada;
 essas áreas aparecem somente na demonstração fictícia até aprovação de uma
 change própria baseada no contrato real.
 
+O export local de `GET /registros-clinicos` também inclui retificações
+append-only com conteúdo, justificativa, autoria e data. Essa alteração ainda
+não foi publicada nem validada no grupo Xano; o fluxo clínico continua
+desabilitado no modo Xano até essa validação.
+
 Na branch `feat/3-retomada-cadastro-profissional`, os métodos clientes e os
 testes unitários locais dos contratos propostos para Disponibilidades, Consultas
 e Registros Clínicos foram iniciados conforme a change

@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from conftest import resposta
@@ -35,3 +37,11 @@ def test_post_retificacoes_nao_expoe_resposta_interna_em_conflito(cliente, http)
         )
     assert erro.value.status == 409
     assert "detalhe clínico interno" not in str(erro.value)
+
+
+def test_post_retificacoes_restringe_escrita_a_profissional_autorizado():
+    caminho = (Path(__file__).resolve().parents[2] / "backend" / "xano" / "api"
+               / "sorriso_acesso" / "registros_clinicos_id_retificacoes_POST.xs")
+    codigo = caminho.read_text(encoding="utf-8-sig")
+    assert '($solicitante.perfis|includes:"profissional") == false' in codigo
+    assert '"Profissional sem permissão clínica ativa."' in codigo

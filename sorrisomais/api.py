@@ -605,6 +605,13 @@ class ClienteXano:
         for registro in registros:
             if registro["id"] in registrados_em:
                 registro["registrado_em"] = registrados_em[registro["id"]]
+        for registro, original in zip(registros, originais):
+            retificacoes = original.get("retificacoes", []) if isinstance(original, dict) else []
+            if not isinstance(retificacoes, list):
+                raise ErroAcesso()
+            registro["retificacoes"] = [self._item_resposta({"retificacao": item}, "retificacao", {
+                "profissional_id": int, "conteudo": str, "justificativa": str, "criada_em": str,
+            }) for item in retificacoes]
         return registros
 
     def retificar_registro_clinico(self, token, registro_id, conteudo, justificativa):

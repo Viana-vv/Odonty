@@ -144,3 +144,17 @@ def test_falha_na_api_nao_e_cacheada_e_pode_ser_tentada_novamente():
 
     assert not app.exception
     assert app.session_state["_chamadas_api_prontuario"] == 2
+
+
+def test_historico_apresenta_original_e_trilha_de_retificacao():
+    registros = [{
+        "id": 8, "paciente_id": 12, "conteudo": "Conteúdo original fictício",
+        "registrado_em": "2026-10-10T12:00:00Z",
+        "retificacoes": [{"id": 4, "profissional_id": 8, "conteudo": "Conteúdo corrigido fictício",
+                         "justificativa": "Correção de digitação", "criada_em": "2026-10-11T12:00:00Z"}],
+    }]
+    app = abrir([{"paciente_id": 12, "paciente_nome": "Paciente Aurora"}], registros)
+    textos = [item.value for item in app.markdown]
+    assert any("Conteúdo original fictício" in texto for texto in textos)
+    assert any("Conteúdo corrigido fictício" in texto for texto in textos)
+    assert any("Correção de digitação" in item.value for item in app.caption)

@@ -33,6 +33,7 @@ def test_post_registros_clinicos_sem_consulta_explicita_exige_vinculo_profission
     caminho = (Path(__file__).resolve().parents[2] / "backend" / "xano" / "api"
                / "sorriso_acesso" / "registros_clinicos_POST.xs")
     codigo = caminho.read_text(encoding="utf-8-sig")
+    assert '($solicitante.perfis|includes:"profissional") == false' in codigo
     assert "db.query consulta" in codigo
     assert "$db.consulta.paciente_id == $paciente.id && $db.consulta.profissional_id == $profissional.id" in codigo
     assert 'if ($consulta_escopo == null)' in codigo
