@@ -78,6 +78,3 @@ def test_autoatendimento_publicado_read_only():
                 token = None
                 sessao.headers.pop("Authorization", None)
         sessao.close()
-
-
-
