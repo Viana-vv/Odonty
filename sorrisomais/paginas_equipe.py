@@ -30,7 +30,21 @@ def renderizar_marca_menu():
 
 
 def listar_especialidades_sessao(cliente, token, *, force=False):
-    return carregar_cache(st.session_state, token, "especialidades", lambda: cliente.listar_especialidades(token), force=force)
+    chave_erro = "cad_especialidades_erro_em"
+    ultimo_erro = st.session_state.get(chave_erro)
+    if ultimo_erro is not None and 0 <= monotonic() - ultimo_erro < ESPECIALIDADES_RETRY_SEGUNDOS:
+        raise ErroAcesso("Muitas tentativas. Aguarde alguns segundos antes de tentar novamente.", 429)
+    try:
+        especialidades = carregar_cache(
+            st.session_state, token, "especialidades",
+            lambda: cliente.listar_especialidades(token), force=force,
+        )
+    except ErroAcesso as error:
+        if error.status == 429:
+            st.session_state[chave_erro] = monotonic()
+        raise
+    st.session_state.pop(chave_erro, None)
+    return especialidades
 
 
 def limpar_formulario():
@@ -688,13 +702,16 @@ def renderizar_cadastro(cliente):
         atualizar_especialidades = st.button("Atualizar especialidades", key="cad-especialidades-atualizar")
         especialidades = listar_especialidades_sessao(cliente, token, force=atualizar_especialidades)
     except ErroAcesso as error:
-        limpar_formulario()
         if error.status in (401, 403):
+            limpar_formulario()
             sessao.limpar(st.session_state)
             st.session_state["aviso"] = ("error", str(error))
             st.rerun()
-        st.error("Não foi possível carregar as especialidades. Tente novamente em instantes.")
-        st.button("Tentar novamente", on_click=limpar_formulario)
+        if error.status == 429:
+            st.error("Muitas tentativas. Aguarde 20 segundos antes de tentar novamente.")
+        else:
+            st.error("Não foi possível carregar as especialidades. Tente novamente em instantes.")
+        st.button("Tentar novamente", key="cad-especialidades-retry")
         return
     opcoes = {item["id"]: item["nome"] for item in especialidades}
     if not opcoes:
@@ -1107,7 +1124,7 @@ def renderizar(conta, cliente):
                         st.error("A área de Procedimentos da Consulta está indisponível no momento.")
                         st.button("Voltar à Agenda", key="procedimentos-indisponivel-agenda",
                                   on_click=abrir_agenda)
-                elif pagina == "paciente":
+                elif pagina in {"paciente", "cadastro"}:
                     renderizar_topbar(conta, pagina)
                 elif pagina == "inicio":
                     renderizar_topbar(conta, "inicio")
