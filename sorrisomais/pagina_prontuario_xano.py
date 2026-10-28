@@ -75,6 +75,17 @@ def _renderizar_historico(registros):
                 with st.container(key=f"conteudo-registro-clinico-{registro.get('id', 'sem-id')}"):
                     st.write(conteudo)
             st.caption(f"Registro #{registro.get('id', '—')}")
+            for retificacao in registro.get("retificacoes", []):
+                with st.container(key=f"retificacao-registro-{retificacao.get('id', 'sem-id')}", border=True):
+                    st.caption(
+                        f"Retificação #{retificacao.get('id', '—')} · "
+                        f"{_data_legivel(retificacao.get('criada_em'))} · "
+                        f"Profissional ID {retificacao.get('profissional_id', '—')}"
+                    )
+                    if isinstance(retificacao.get("justificativa"), str):
+                        st.caption(f"Justificativa: {retificacao['justificativa']}")
+                    if isinstance(retificacao.get("conteudo"), str) and retificacao["conteudo"].strip():
+                        st.write(retificacao["conteudo"])
 
 
 def renderizar(cliente, conta):

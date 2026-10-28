@@ -50,20 +50,25 @@ O arquivo `.env.example` é uma referência: a aplicação não carrega `.env` a
 
 Sem configuração válida, a tela informa o problema e desabilita o formulário.
 
-Além de login, identificação, logout, cadastros de Paciente e Profissional e
-listagem de Especialidades, o cliente REST e as fontes versionadas do Xano
-incluem contratos para Disponibilidades e Consultas. A tela demonstrativa com
-dados fictícios continua disponível separadamente.
+No modo Xano atual, permanecem disponíveis login, identificação e logout,
+cadastro de Paciente, cadastro de Profissional e listagem de Especialidades
+necessária ao cadastro. Agenda, Consultas, listagens e perfil de Paciente,
+Prontuários e Registros Clínicos ainda não têm integração Xano confirmada;
+essas áreas aparecem somente na demonstração fictícia até aprovação de uma
+change própria baseada no contrato real.
 
-A change `agenda-consultas-registros-clinicos-api` foi implementada e arquivada.
-Os contratos locais de `GET /disponibilidades`, `POST /disponibilidades`,
-`PATCH /disponibilidades/{id}`, `POST /consultas`, `GET /consultas` e
-`PATCH /consultas/{id}/situacao` possuem testes Python e JavaScript sem chamadas
-reais à rede. Em smoke público, `GET /disponibilidades` e `GET /consultas`
-responderam HTTP 200 com autenticação e HTTP 401 sem credencial. Esse smoke
-confirma as respostas observadas nessas rotas, mas não substitui uma validação
-de schemas, permissões completas, transações ou concorrência via Metadata API;
-essa inspeção não foi realizada nesta entrega.
+O export local de `GET /registros-clinicos` também inclui retificações
+append-only com conteúdo, justificativa, autoria e data. Essa alteração ainda
+não foi publicada nem validada no grupo Xano; o fluxo clínico continua
+desabilitado no modo Xano até essa validação.
+
+Na branch `feat/3-retomada-cadastro-profissional`, os métodos clientes e os
+testes unitários locais dos contratos propostos para Disponibilidades, Consultas
+e Registros Clínicos foram iniciados conforme a change
+`agenda-consultas-registros-clinicos-api`. Isso não significa que as rotas estejam
+publicadas ou validadas no Xano. A criação das tabelas e endpoints, autorização,
+transações, concorrência e isolamento clínico ainda dependem de verificação em
+um workspace de teste do Xano.
 
 Para respeitar o limite de requisições do workspace, a Conta de Acesso é
 revalidada no máximo uma vez a cada 20 segundos durante reruns da interface.
