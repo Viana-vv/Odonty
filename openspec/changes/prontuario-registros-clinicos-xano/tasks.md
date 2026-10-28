@@ -11,3 +11,4 @@
 - [x] 2.2 Executar testes Python e JavaScript dos três contratos GET/POST e AppTest do Prontuário sem chamadas de rede reais.
 - [x] 2.3 Validar integração no Xano publicado com contas fictícias de Profissional, Paciente e Recepcionista, incluindo histórico e retificação; registrar bloqueio se credenciais/rotas não estiverem disponíveis. Bloqueado: não há credenciais de teste configuradas para acesso autenticado.
 - [x] 2.4 Atualizar README com status real da publicação e resultado verificável; não declarar Xano validado sem integração real.
+- [x] 2.5 Impedir que o GET carregue retificações para Paciente quando o Registro Clínico não estiver liberado; cobrir a autorização com testes Python e JavaScript.

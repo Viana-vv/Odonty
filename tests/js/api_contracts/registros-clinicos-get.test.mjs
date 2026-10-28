@@ -33,3 +33,11 @@ test('GET /registros-clinicos retorna retificações vinculadas aos itens autori
   assert.match(source, /justificativa/);
   assert.match(source, /criada_em/);
 });
+
+test('GET /registros-clinicos não consulta retificações para paciente sem liberação', () => {
+  const source = readFileSync(resolve(root, 'backend/xano/api/sorriso_acesso/registros_clinicos_GET.xs'), 'utf8');
+  const guarda = /\(\$solicitante\.perfis\|intersect:\["paciente"\]\|count\) == 0 \|\| \$registro\.liberado_paciente == true/;
+  assert.match(source, guarda);
+  assert.ok(source.indexOf('if (($solicitante.perfis|intersect:["paciente"]|count) == 0') < source.indexOf('db.query registro_clinico_retificacao'));
+  assert.match(source, /var \$retificacoes \{ value = \[\] \}/);
+});

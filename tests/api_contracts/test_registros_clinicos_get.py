@@ -79,3 +79,13 @@ def test_get_registros_clinicos_preserva_retificacoes_e_metadados(cliente, http)
         "id": 7, "profissional_id": 8, "conteudo": "Correção fictícia",
         "justificativa": "Ajuste de digitação", "criada_em": "2026-10-02T12:00:00Z",
     }]
+
+
+def test_get_xano_so_busca_retificacoes_para_paciente_quando_registro_esta_liberado():
+    raiz = Path(__file__).resolve().parents[2]
+    codigo = (raiz / "backend/xano/api/sorriso_acesso/registros_clinicos_GET.xs").read_text(encoding="utf-8")
+
+    guarda = '($solicitante.perfis|intersect:["paciente"]|count) == 0 || $registro.liberado_paciente == true'
+    assert guarda in codigo
+    assert codigo.index(guarda) < codigo.index("db.query registro_clinico_retificacao")
+    assert 'var $retificacoes { value = [] }' in codigo
