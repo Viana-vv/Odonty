@@ -91,12 +91,18 @@ aguarda 20 segundos. Nenhum desses caches é compartilhado entre sessões.
 | `POST /auth/logout` | Bearer token | 204 sem corpo |
 | `GET /especialidades` | Bearer token de Administrador | 200 com especialidades ativas |
 | `POST /profissionais` | Bearer token de Administrador e JSON estrito | 201 com Profissional e Conta de Acesso vinculados |
+| `GET /disponibilidades` | Bearer token e filtros opcionais de Profissional/período | 200 com Disponibilidades livres autorizadas |
+| `POST /disponibilidades` | Bearer token e dados de Profissional/início/fim | 201 com Disponibilidade criada |
+| `PATCH /disponibilidades/{id}` | Bearer token e intervalo ou situação | 200 com Disponibilidade atualizada |
+| `POST /consultas` | Bearer token, Paciente, Disponibilidade e Procedimentos opcionais | 201 com Consulta agendada |
+| `GET /consultas` | Bearer token e filtros opcionais por Paciente/Profissional/período/situação | 200 com Consultas no escopo autorizado |
+| `PATCH /consultas/{id}/situacao` | Bearer token, nova situação e motivo quando exigido | 200 com Consulta atualizada |
 
 O cadastro de Profissional exige `nome`, `email`, `senha`, `cro` e `especialidade_id`. A confirmação da senha é validada somente na interface e não é enviada. O backend normaliza e-mail e CRO, exige uma especialidade ativa e define o único perfil da nova Conta de Acesso como `profissional`. A resposta não contém senha, e-mail, hash ou token. A autorização é verificada no Xano em cada chamada.
 
 Erros esperados no cadastro: 400 para dados inválidos, 401 para sessão inválida, 403 para acesso não autorizado, 409 para e-mail ou CRO duplicado e 429 para limite de requisições. Timeout, erro 5xx ou resposta incompatível são tratados como resultado não confirmado; o cliente não repete automaticamente a operação. Consulte a [especificação de cadastro de Profissional](openspec/specs/cadastro-profissional/spec.md) para os requisitos e cenários do fluxo.
 
-Na auditoria local de 02/10/2026, passaram 156 testes Python de contratos, cadastro, autenticação e interface. Os cinco testes JavaScript de login, identidade, logout, especialidades e cadastro de Profissional também passaram. Esses testes substituem a rede por respostas simuladas e não fazem parte de uma validação do Xano publicado; não comprovam permissões, transações ou concorrência no backend.
+Na verificação local das rotas de Consultas e Disponibilidades, passaram 28 testes Python (`PYTHONPATH=. pytest tests/api_contracts/test_consultas_get.py tests/api_contracts/test_consultas_post.py tests/api_contracts/test_disponibilidades_get.py tests/api_contracts/test_disponibilidades_post.py tests/api_contracts/test_disponibilidades_patch.py tests/api_contracts/test_consultas_situacao_patch.py`) e 7 testes JavaScript (`node --test tests/js/api_contracts/consultas-get.test.mjs tests/js/api_contracts/consultas-post.test.mjs tests/js/api_contracts/disponibilidades-get.test.mjs tests/js/api_contracts/disponibilidades-post.test.mjs tests/js/api_contracts/disponibilidades-patch.test.mjs tests/js/api_contracts/consultas-situacao-patch.test.mjs`). Os testes unitários usam clientes simulados e não acessam a rede. O smoke público autenticado de `GET /consultas` e `GET /disponibilidades` retornou 200; sem credencial, ambas responderam 401. Não foi feita inspeção via Metadata API, portanto esses resultados não confirmam a configuração interna completa do Xano.
 
 O [design](openspec/changes/archive/2026-09-25-login-streamlit-xano/design.md) detalha o contrato e as permissões. As tabelas legadas e APIs de outras funcionalidades foram preservadas.
 
