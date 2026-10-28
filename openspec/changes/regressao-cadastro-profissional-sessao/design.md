@@ -1,19 +1,19 @@
 ## Contexto
 
-Os testes reproduzem que a seleção do cadastro some durante a edição do formulário. O callback `abrir_cadastro` chama a limpeza geral, que apaga os dados de formulário ao abrir. Além disso, a lista de Especialidades é exibida através de um campo de atualização separado, cujo evento pode iniciar uma nova renderização, e a mensagem de logout está divergente da política vigente.
+Os testes reproduzem que a seleÃ§Ã£o do cadastro some durante a ediÃ§Ã£o do formulÃ¡rio. O callback `abrir_cadastro` chama a limpeza geral, que apaga os dados de formulÃ¡rio ao abrir. AlÃ©m disso, a lista de Especialidades Ã© exibida atravÃ©s de um campo de atualizaÃ§Ã£o separado, cujo evento pode iniciar uma nova renderizaÃ§Ã£o, e a mensagem de logout estÃ¡ divergente da polÃ­tica vigente.
 
-## Decisões
+## DecisÃµes
 
-- A navegação para o cadastro será idempotente: limpar campos apenas ao entrar pela primeira vez, não a cada rerun enquanto o cadastro já está aberto.
-- A lista de Especialidades permanecerá no cache de sessão existente, com escopo por token e TTL atual; erros 429 continuam sujeitos ao bloqueio de repetição.
-- Campos não secretos devem sobreviver a reruns. Senha e confirmação permanecem efêmeras e são limpas após submissão/saída.
-- A mensagem de falha de logout seguirá o prazo de uma hora definido em `openspec/specs/acesso-autenticado`.
-- Não serão alterados endpoints, payloads, Xano ou as regras de autorização.
+- A navegaÃ§Ã£o para o cadastro serÃ¡ idempotente: limpar campos apenas ao entrar pela primeira vez, nÃ£o a cada rerun enquanto o cadastro jÃ¡ estÃ¡ aberto.
+- A lista de Especialidades permanecerÃ¡ no cache de sessÃ£o existente, com escopo por token e sem expiração automática. A atualização manual solicita nova leitura; após erro 429, novas tentativas ficam bloqueadas por 20 segundos. Esse bloqueio não invalida uma lista válida já armazenada; erros 429 continuam sujeitos ao bloqueio de repetiÃ§Ã£o.
+- Campos nÃ£o secretos devem sobreviver a reruns. Senha e confirmaÃ§Ã£o permanecem efÃªmeras e sÃ£o limpas apÃ³s submissÃ£o/saÃ­da.
+- A mensagem de falha de logout seguirÃ¡ o prazo de uma hora definido em `openspec/specs/acesso-autenticado`.
+- NÃ£o serÃ£o alterados endpoints, payloads, Xano ou as regras de autorizaÃ§Ã£o.
 
-## Riscos e validação
+## Riscos e validaÃ§Ã£o
 
-Alterar callbacks de navegação pode reter valores entre visitas indevidas; a entrada inicial e o botão Voltar precisam continuar limpando o formulário. Validar com `tests/test_profissionais.py` e `tests/test_acesso.py`; a validação real no Xano depende de credenciais disponíveis e não deve usar serviço temporário.
+Alterar callbacks de navegaÃ§Ã£o pode reter valores entre visitas indevidas; a entrada inicial e o botÃ£o Voltar precisam continuar limpando o formulÃ¡rio. Validar com `tests/test_profissionais.py` e `tests/test_acesso.py`; a validaÃ§Ã£o real no Xano depende de credenciais disponÃ­veis e nÃ£o deve usar serviÃ§o temporÃ¡rio.
 
-## Questões em aberto
+## QuestÃµes em aberto
 
 Nenhuma.
