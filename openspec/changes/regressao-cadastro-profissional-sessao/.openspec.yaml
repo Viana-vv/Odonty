@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-10-27
+goal: Restaurar o fluxo autorizado de cadastro de Profissional e a integridade
+  da sessão administrativa

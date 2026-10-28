@@ -120,9 +120,13 @@ def api(monkeypatch):
         "sair": Mock(),
         "listar_especialidades": Mock(return_value=[{"id": 1, "nome": "Clínica geral"}]),
         "cadastrar_profissional": Mock(return_value=10),
+        "listar_consultas": Mock(return_value=[]),
+        "listar_opcoes_agenda": Mock(return_value={"pacientes": []}),
     }
     for nome, mock in mocks.items():
         monkeypatch.setattr(ClienteXano, nome, mock)
+    monkeypatch.setattr(requests, "request", Mock(side_effect=AssertionError(
+        "Os testes de interface não devem enviar requisições reais.")))
     return mocks
 
 
@@ -164,13 +168,67 @@ def test_especialidades_nao_sao_recarregadas_a_cada_rerun(api):
     assert api["listar_especialidades"].call_count == 1
 
 
-def test_limite_especialidades_nao_repete_get_antes_de_20_segundos(api):
+@pytest.mark.parametrize("origem", ["menu-cadastrar-profissional", "inicio-cadastrar-profissional"])
+def test_cadastro_permanece_aberto_apos_edicao_e_rerun(api, origem):
+    app = abrir_admin(api)
+    app.button(key=origem).click().run()
+    assert not app.exception
+    assert app.session_state["pagina_equipe"] == "cadastro"
+    assert not app.error
+
+    for campo in ("nome", "email", "cro"):
+        app.text_input(key="cad_" + campo).set_value(DADOS[campo]).run()
+        assert not app.exception
+        assert app.session_state["pagina_equipe"] == "cadastro"
+    app.selectbox(key="cad_especialidade").select(1).run()
+    app.run()
+
+    assert not app.exception
+    assert not app.error
+    for campo in ("nome", "email", "cro"):
+        assert app.text_input(key="cad_" + campo).value == DADOS[campo]
+    assert app.selectbox(key="cad_especialidade").value == 1
+    api["listar_especialidades"].assert_called_once_with("token-adm")
+    api["cadastrar_profissional"].assert_not_called()
+
+
+def test_limite_especialidades_nao_repete_get_antes_de_20_segundos(api, monkeypatch):
+    agora = [100.0]
+    monkeypatch.setattr(paginas_equipe, "monotonic", lambda: agora[0])
     api["listar_especialidades"].side_effect = ErroAcesso("Muitas tentativas.", 429)
     app = abrir_form(api)
     assert api["listar_especialidades"].call_count == 1
     botao(app, "Tentar novamente").click().run()
     assert not app.exception
     assert api["listar_especialidades"].call_count == 1
+    agora[0] = 119.9
+    app.button(key="cad-especialidades-atualizar").click().run()
+    assert not app.exception
+    assert api["listar_especialidades"].call_count == 1
+    assert any("Aguarde" in erro.value for erro in app.error)
+
+    agora[0] = 120.0
+    api["listar_especialidades"].side_effect = None
+    botao(app, "Tentar novamente").click().run()
+    assert not app.exception
+    assert api["listar_especialidades"].call_count == 2
+    assert app.text_input(key="cad_nome").value == ""
+    app.run()
+    assert api["listar_especialidades"].call_count == 2
+
+
+def test_especialidades_so_recarregam_ao_atualizar_sem_ttl(api, monkeypatch):
+    agora = [100.0]
+    monkeypatch.setattr(paginas_equipe, "monotonic", lambda: agora[0])
+    app = abrir_form(api)
+    app.text_input(key="cad_nome").set_value(DADOS["nome"]).run()
+    agora[0] += 600
+    app.run()
+    api["listar_especialidades"].assert_called_once_with("token-adm")
+    app.button(key="cad-especialidades-atualizar").click().run()
+    assert not app.exception
+    assert api["listar_especialidades"].call_count == 2
+    assert app.text_input(key="cad_nome").value == DADOS["nome"]
 
 
 def preencher(app, confirmacao=None):
