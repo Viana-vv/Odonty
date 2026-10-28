@@ -17,7 +17,7 @@ Ver `proposal.md`. A rota GET existente autoriza a Conta de Acesso e retorna os 
 
 ## Risks / Trade-offs
 
-- [Mais leituras internas por registro] → manter seleção dentro da lista já limitada por autorização e avaliar paginação em mudança futura se o volume crescer.
+- [P2: custo N+1 ao consultar retificações] → o GET executa uma consulta interna de retificações para cada Registro Clínico incluído; a consulta permanece limitada a registros autorizados e a tabela possui índice por `registro_clinico_id`. Não foi possível confirmar no código ou nos testes existentes a sintaxe Xano para buscar por uma lista de IDs, então não se introduziu uma consulta em lote presumida. Reavaliar quando houver sintaxe validada e teste no grupo publicado; considerar paginação se o volume crescer.
 - [Grupo publicado diverge do export local] → não considerar deploy validado até testar a rota e permissões no Xano publicado.
 
 ## Migration Plan

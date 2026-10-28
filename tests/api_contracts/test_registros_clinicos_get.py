@@ -89,3 +89,17 @@ def test_get_xano_so_busca_retificacoes_para_paciente_quando_registro_esta_liber
     assert guarda in codigo
     assert codigo.index(guarda) < codigo.index("db.query registro_clinico_retificacao")
     assert 'var $retificacoes { value = [] }' in codigo
+
+
+def test_export_get_documenta_consulta_de_retificacoes_por_registro():
+    raiz = Path(__file__).resolve().parents[2]
+    codigo = (raiz / "backend/xano/api/sorriso_acesso/registros_clinicos_GET.xs").read_text(encoding="utf-8")
+
+    inicio_loop = codigo.index("foreach ($registros_escopo)")
+    fim_loop = codigo.index("\n      }\n    }\n  }\n  response", inicio_loop)
+    bloco_loop = codigo[inicio_loop:fim_loop]
+
+    # A consulta por ID mantém o vínculo autorizado sem depender de um operador
+    # de lista cuja sintaxe Xano ainda não foi confirmada neste projeto.
+    assert bloco_loop.count("db.query registro_clinico_retificacao") == 1
+    assert "$db.registro_clinico_retificacao.registro_clinico_id == $registro.id" in bloco_loop
