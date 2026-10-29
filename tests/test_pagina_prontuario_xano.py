@@ -6,7 +6,7 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 
-def abrir(consultas, registros, *, perfis=("profissional",), erro=None):
+def abrir(consultas, registros, *, perfis=("profissional",), erro=None, erro_gravacao=None):
     script = f'''\
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -18,7 +18,9 @@ from sorrisomais.api import Credencial, ErroAcesso
 from sorrisomais import sessao
 from sorrisomais.pagina_prontuario_xano import renderizar
 
-st.session_state[sessao.CHAVE] = Credencial("token-ficticio", datetime.now(timezone.utc) + timedelta(hours=1))
+if "_iniciado" not in st.session_state:
+    st.session_state["_iniciado"] = True
+    st.session_state[sessao.CHAVE] = Credencial("token-ficticio", datetime.now(timezone.utc) + timedelta(hours=1))
 class ClienteFalso:
     def listar_consultas(self, token):
         st.session_state["_chamadas_api_prontuario"] = st.session_state.get("_chamadas_api_prontuario", 0) + 1
@@ -26,7 +28,9 @@ class ClienteFalso:
     def listar_registros_clinicos(self, token):
         st.session_state["_chamadas_api_prontuario"] = st.session_state.get("_chamadas_api_prontuario", 0) + 1
         {f'raise ErroAcesso("Falha segura.", {erro})' if erro else f'return {registros!r}'}
-renderizar(ClienteFalso(), SimpleNamespace(perfis={perfis!r}))
+    def registrar_clinico(self, *args, **kwargs):
+        {f'raise ErroAcesso("Falha segura.", {erro_gravacao})' if erro_gravacao else 'return {"id": 42}'}
+renderizar(ClienteFalso(), SimpleNamespace(nome="Dra. Fictícia", perfis={perfis!r}))
 '''
     return AppTest.from_string(script, default_timeout=20).run()
 
@@ -158,3 +162,18 @@ def test_historico_apresenta_original_e_trilha_de_retificacao():
     assert any("Conteúdo original fictício" in texto for texto in textos)
     assert any("Conteúdo corrigido fictício" in texto for texto in textos)
     assert any("Correção de digitação" in item.value for item in app.caption)
+
+
+def test_expiracao_ao_salvar_nao_reapresenta_historico_carregado():
+    consultas = [{
+        "id": 17, "paciente_id": 12, "paciente_nome": "Paciente Fictícia Aurora",
+        "inicio_em": "2026-10-10T12:00:00Z", "situacao": "Realizada",
+    }]
+    registros = [{"id": 8, "paciente_id": 12, "conteudo": "Histórico fictício restrito"}]
+    app = abrir(consultas, registros, erro_gravacao=401)
+    app.button(key="prontuario-nova-evolucao").click().run()
+    app.text_area[0].set_value("Nova evolução fictícia")
+    next(botao for botao in app.button if botao.label == "Salvar no prontuário").click().run()
+    assert not app.exception
+    assert "credencial" not in app.session_state
+    assert not any("Histórico fictício restrito" in item.value for item in app.markdown)
