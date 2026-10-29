@@ -43,14 +43,15 @@ def _renderizar_lista(cliente, token, consulta, procedimentos):
                 elif criado_em:
                     st.caption(f"Planejado em {_data_legivel(criado_em)}")
             with coluna_situacao:
+                indicador = st.empty()
                 if situacao == "realizado":
-                    st.success("Realizado")
+                    indicador.success("Realizado")
                 elif situacao == "planejado":
-                    st.info("Planejado")
+                    indicador.info("Planejado")
                 elif situacao in {"autorizado", "cancelado"}:
-                    st.caption(situacao.capitalize())
+                    indicador.caption(situacao.capitalize())
                 else:
-                    st.warning("Situação indisponível")
+                    indicador.warning("Situação indisponível")
 
             if situacao == "realizado":
                 responsavel = procedimento.get("realizado_por_nome")
@@ -61,13 +62,16 @@ def _renderizar_lista(cliente, token, consulta, procedimentos):
                     st.caption(f"Realizado em {_data_legivel(data)}")
             elif situacao == "planejado":
                 chave = f"marcar-procedimento-realizado-{identificador}"
-                if st.button("Marcar como realizado", key=chave, type="primary"):
+                acao = st.empty()
+                if acao.button("Marcar como realizado", key=chave, type="primary"):
                     try:
                         with st.spinner("Registrando realização…"):
                             realizado = cliente.marcar_procedimento_realizado(
                                 token, consulta["id"], identificador
                             )
                         procedimento.update(realizado)
+                        acao.empty()
+                        indicador.success("Realizado")
                         st.success("Procedimento marcado como realizado.")
                         responsavel = procedimento.get("realizado_por_nome")
                         data = procedimento.get("realizado_em")
@@ -77,14 +81,14 @@ def _renderizar_lista(cliente, token, consulta, procedimentos):
                             st.caption(f"Realizado em {_data_legivel(data)}")
                     except ErroAcesso as erro:
                         if erro.status == 401:
+                            acao.empty()
                             sessao.limpar(st.session_state)
                             st.error("Sua sessão expirou. Entre novamente.")
+                            return
                         else:
                             st.error(str(erro))
-                        return
                     except Exception:
                         st.error("Não foi possível registrar a realização. Tente novamente.")
-                        return
 
 
 def renderizar(cliente, conta, consulta):

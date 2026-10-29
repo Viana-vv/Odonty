@@ -1,9 +1,10 @@
 """Testes da página independente de Procedimentos de uma Consulta."""
 from pathlib import Path
+import pytest
 from streamlit.testing.v1 import AppTest
 
 
-def abrir(procedimentos, *, perfis=("profissional",), consulta=None, erro=None):
+def abrir(procedimentos, *, perfis=("profissional",), consulta=None, erro=None, erro_realizacao=None):
     script = f'''\
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -21,6 +22,8 @@ class ClienteFalso:
     def listar_procedimentos_consulta(self, token, consulta_id):
         {f'raise ErroAcesso("Falha segura.", {erro})' if erro else 'return st.session_state["itens_teste_procedimentos"]'}
     def marcar_procedimento_realizado(self, token, consulta_id, vinculo_id):
+        st.session_state["chamadas_realizacao"] = st.session_state.get("chamadas_realizacao", 0) + 1
+        {f'raise ErroAcesso("Falha segura na realização.", {erro_realizacao})' if erro_realizacao else 'pass'}
         for item in st.session_state["itens_teste_procedimentos"]:
             if item["id"] == vinculo_id:
                 item.update({{"situacao": "realizado", "realizado_por_nome": "Dra. Fictícia", "realizado_em": "2026-10-24T10:00:00Z"}})
@@ -54,9 +57,14 @@ def test_tela_exibe_planejamento_e_permite_realizacao():
     assert not app.exception
     assert any("Procedimento marcado como realizado." in bloco.value for bloco in app.success)
     assert any("Realizado por Dra. Fictícia" in bloco.value for bloco in app.caption)
+    assert not any(botao.label == "Marcar como realizado" for botao in app.button)
+    assert not any(bloco.value == "Planejado" for bloco in app.info)
+    assert any(bloco.value == "Realizado" for bloco in app.success)
+    assert app.session_state["chamadas_realizacao"] == 1
     app.run()
     assert not app.exception
     assert not any(botao.label == "Marcar como realizado" for botao in app.button)
+    assert app.session_state["chamadas_realizacao"] == 1
 
 
 def test_tela_realizado_nao_expoe_acao_e_lista_vazia_tem_estado():
@@ -86,3 +94,27 @@ def test_tela_expirada_limpa_sessao():
     app = abrir([item()], erro=401)
     assert not app.exception
     assert any("Sua sessão expirou" in bloco.value for bloco in app.error)
+
+
+@pytest.mark.parametrize("status", [403, 404, 409, 429, 503])
+def test_falha_na_realizacao_preserva_os_demais_itens_e_permite_tentar_novamente(status):
+    segundo = {**item(), "id": 32, "procedimento_nome": "Restauração fictícia"}
+    app = abrir([item(), segundo], erro_realizacao=status)
+    app.button[0].click().run()
+
+    assert not app.exception
+    assert any("Falha segura na realização." in bloco.value for bloco in app.error)
+    assert any(bloco.value == "Restauração fictícia" for bloco in app.subheader)
+    assert len([botao for botao in app.button if botao.label == "Marcar como realizado"]) == 2
+    assert not app.success
+    assert app.session_state["chamadas_realizacao"] == 1
+
+
+def test_sessao_expirada_na_realizacao_interrompe_as_acoes_protegidas():
+    app = abrir([item()], erro_realizacao=401)
+    app.button[0].click().run()
+
+    assert not app.exception
+    assert any("Sua sessão expirou" in bloco.value for bloco in app.error)
+    assert "credencial" not in app.session_state
+    assert not any(botao.label == "Marcar como realizado" for botao in app.button)

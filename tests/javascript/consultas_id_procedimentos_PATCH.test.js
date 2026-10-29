@@ -13,7 +13,8 @@ test('PATCH permite somente a transição planejado para realizado', () => {
   assert.match(fonte, /situacao != "planejado"/);
   assert.match(fonte, /situacao: "realizado"/);
   assert.match(fonte, /realizado_por_profissional_id: \$profissional_autenticado\.id/);
-  assert.match(fonte, /realizado_em: now/);
+  assert.match(fonte, /var \$realizado_em_novo\s*\{\s*value = now\s*\}/);
+  assert.match(fonte, /realizado_em: \$realizado_em_novo/);
 });
 
 test('PATCH preserva os valores de planejamento', () => {
