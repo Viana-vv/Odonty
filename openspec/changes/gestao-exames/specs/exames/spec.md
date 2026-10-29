@@ -37,6 +37,8 @@ O sistema SHALL listar Exames conforme o perfil autenticado e SHALL exibir resul
 ### Requirement: Atualizar situação e resultado
 O sistema SHALL permitir que o Profissional autorizado avance a situação do Exame em sequência validada, preserve cada transição em histórico imutável e mantenha o resultado informado.
 
+A tela SHALL apresentar ao Profissional somente as transições permitidas para a situação atual: `Realizado`, `Cancelado` ou `Não realizado` para um Exame `Solicitado`; e `Resultado disponível` para um Exame `Realizado`. A tela SHALL solicitar data de realização para as transições que a exigem e resultado textual antes de disponibilizá-lo ao Paciente.
+
 #### Scenario: Resultado liberado
 - **WHEN** o Profissional autorizado registra a realização e depois informa resultado válido com situação `Resultado disponível`
 - **THEN** o Xano atualiza o Exame e o Paciente passa a visualizar o resultado
@@ -53,6 +55,14 @@ O sistema SHALL permitir que o Profissional autorizado avance a situação do Ex
 - **WHEN** a realização antecede a solicitação, está no futuro ou o Profissional tenta liberar resultado vazio
 - **THEN** o Xano rejeita a alteração e preserva o Exame e seu histórico
 
+### Scenario: Profissional atualiza situação pela tela
+- **WHEN** um Profissional autorizado abre um Exame com situação que admite transição
+- **THEN** a tela oferece somente as próximas situações permitidas, coleta os campos necessários e envia a atualização ao Xano
+
+### Scenario: Paciente consulta sem controles de alteração
+- **WHEN** um Paciente abre a tela de Exames
+- **THEN** a tela permite consulta dos próprios Exames e não oferece controles para solicitar ou alterar situações
+
 ### Requirement: Privacidade e ausência de anexos
 O sistema SHALL armazenar apenas solicitação, resultado e observações nesta entrega, sem upload, link público ou referência de arquivo.
 
@@ -62,4 +72,4 @@ O sistema SHALL armazenar apenas solicitação, resultado e observações nesta 
 
 #### Scenario: Erro de API
 - **WHEN** a API falha ao carregar ou salvar um Exame
-- **THEN** a interface informa uma mensagem compreensível sem exibir token, stack trace ou conteúdo clínico em logs
+- **THEN** a interface informa uma mensagem compreensível e oferece nova tentativa ao falhar o carregamento, sem exibir token, stack trace ou conteúdo clínico em logs

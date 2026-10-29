@@ -13,9 +13,11 @@
 
 - [x] 3.1 Implementar a tela de Exames com hierarquia, cores, espaçamento e estados visuais do kit Sorriso Mais, verificando renderização em estados carregando, vazio, sucesso e erro.
 - [x] 3.2 Integrar formulário e listagem ao cliente REST sem expor resultado indevido, upload ou URL pública, verificando permissões e mensagens compreensíveis.
+- [x] 3.3 Exibir ao Profissional as transições permitidas, os campos de realização/resultado e a ação de atualizar; manter os controles de alteração ocultos para Paciente e permitir retentativa de carregamento.
 
 ## 4. Verificação final
 
 - [x] 4.1 Executar testes Python e JavaScript da change, lint/compilação e `openspec validate --strict`, corrigindo falhas antes do commit.
 - [x] 4.2 Executar cenários remotos somente em Xano temporário com dados fictícios e intervalo de rate limit. Em 25/10/2026, `pytest tests/test_xano_exames_integracao.py` passou (1 teste, 197,21 s), cobrindo compilação, autenticação, autorização, escopo próprio, transições, cronologia, histórico, resultado obrigatório, respostas HTTP e intervalo mínimo de 4,05 s; grupo, função e tabelas temporários foram removidos sem erro.
 - [x] 4.3 Revisar diff, confirmar que não há credenciais/dados reais e criar commit descritivo na branch da atividade.
+- [x] 4.4 Verificar por testes locais a transição e liberação de resultado pela tela, conferir os contratos e registrar se a integração real está disponível nesta execução. Suíte completa: 517 passaram, 116 ignorados por gates de integração; testes JavaScript de contratos de Exames: 5 passaram; `openspec validate gestao-exames --type change --strict`: válido. Nesta execução, `XANO_TESTAR_EXAMES` permaneceu desativado; nenhuma chamada real ao Xano foi feita. As rotas presentes nos exports são GET/POST `/exames` e PATCH `/exames/{id}/situacao`; elas não foram revalidadas remotamente nesta execução.
