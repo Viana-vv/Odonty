@@ -90,6 +90,22 @@ query consultas verb=GET {
           if ($incluir_consulta) {
         var $inicio_iso { value = $consulta.inicio_em|format_timestamp:"c":"UTC" }
         var $fim_iso { value = $consulta.fim_em|format_timestamp:"c":"UTC" }
+        conditional {
+          if (($solicitante.perfis|intersect:["paciente"]|count) > 0) {
+            // O Paciente recebe somente identificadores e dados administrativos mínimos.
+            db.get profissional {
+              field_name = "id"
+              field_value = $consulta.profissional_id
+              output = ["id", "nome"]
+            } as $profissional_paciente
+            var $consulta_formatada {
+              value = {id: $consulta.id, paciente_id: $consulta.paciente_id, profissional_id: $consulta.profissional_id, inicio_em: $inicio_iso, fim_em: $fim_iso, situacao: $consulta.situacao, profissional_nome: $profissional_paciente.nome}
+            }
+            var.update $consultas_formatadas {
+              value = $consultas_formatadas|push:$consulta_formatada
+            }
+          }
+          else {
         db.get paciente {
           field_name = "id"
           field_value = $consulta.paciente_id
@@ -164,6 +180,7 @@ query consultas verb=GET {
             }
           }
         }
+          }
           }
         }
       }

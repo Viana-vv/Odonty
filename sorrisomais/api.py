@@ -188,26 +188,37 @@ class ClienteXano:
 
 
     def obter_paciente(self, token, paciente_id):
+        from datetime import date
         from .contratos_clinicos import validar_id
-        from .pacientes import validar_cadastro
 
         self._token_obrigatorio(token)
         paciente_id = validar_id(paciente_id, "Paciente")
         data = self._request("GET", f"/pacientes/{paciente_id}", token=token)
         paciente = self._item_resposta(data, "paciente", {
-            "nome": str, "data_nascimento": str, "cpf": str,
-            "telefone": str, "celular": str, "email": str,
+            "nome": str, "data_nascimento": str,
         })
         if paciente["id"] != paciente_id:
             raise ErroAcesso()
+        # Cadastros antigos podem precisar ser completados no formulário.
+        # As regras obrigatórias de gravação continuam em atualizar_paciente.
+        for campo in ("cpf", "telefone", "celular", "email"):
+            valor = data["paciente"].get(campo)
+            if not isinstance(valor, str):
+                raise ErroAcesso()
+            paciente[campo] = valor.strip()
         try:
-            dados = validar_cadastro(
-                paciente["nome"], paciente["data_nascimento"], paciente["telefone"],
-                paciente["cpf"], paciente["email"], paciente["celular"],
-            )
-        except ErroAcesso:
+            nascimento = date.fromisoformat(paciente["data_nascimento"])
+        except ValueError:
             raise ErroAcesso() from None
-        return {"id": paciente_id, **dados}
+        if not date(1900, 1, 1) <= nascimento <= date.today():
+            raise ErroAcesso()
+        paciente["nome"] = paciente["nome"].strip()
+        paciente["data_nascimento"] = nascimento.isoformat()
+        paciente["cpf"] = re.sub(r"[.\-]", "", paciente["cpf"])
+        for campo in ("telefone", "celular"):
+            paciente[campo] = re.sub(r"[ ()\-]", "", paciente[campo])
+        paciente["email"] = paciente["email"].lower()
+        return paciente
 
     def atualizar_paciente(self, token, paciente_id, *, nome, data_nascimento,
                            telefone, cpf, email, celular):
@@ -395,9 +406,12 @@ class ClienteXano:
             normalizado["disponibilidade_id"] = disponibilidade_id
             for campo in ("paciente_nome", "profissional_nome"):
                 valor = item.get(campo)
-                if not isinstance(valor, str) or not valor.strip():
+                if campo == "profissional_nome" and (not isinstance(valor, str) or not valor.strip()):
                     raise ErroAcesso()
-                normalizado[campo] = valor.strip()
+                if valor is not None:
+                    if not isinstance(valor, str) or not valor.strip():
+                        raise ErroAcesso()
+                    normalizado[campo] = valor.strip()
             nomes = []
             for campo in ("procedimento_nome", "procedimento_vinculado_nome"):
                 nome = item.get(campo)
@@ -581,10 +595,24 @@ class ClienteXano:
         if consulta_id is not None:
             params["consulta_id"] = validar_id(consulta_id, "Consulta")
         data = self._request("GET", "/registros-clinicos", token=token, params=params or None)
-        return self._lista_resposta(data, "registros_clinicos", {
+        registros = self._lista_resposta(data, "registros_clinicos", {
             "paciente_id": int, "profissional_id": int, "prontuario_id": int,
             "conteudo": str, "liberado_paciente": bool,
         })
+        originais = data.get("registros_clinicos", [])
+        registrados_em = {item.get("id"): item.get("registrado_em") for item in originais
+                          if isinstance(item, dict) and isinstance(item.get("registrado_em"), str)}
+        for registro in registros:
+            if registro["id"] in registrados_em:
+                registro["registrado_em"] = registrados_em[registro["id"]]
+        for registro, original in zip(registros, originais):
+            retificacoes = original.get("retificacoes", []) if isinstance(original, dict) else []
+            if not isinstance(retificacoes, list):
+                raise ErroAcesso()
+            registro["retificacoes"] = [self._item_resposta({"retificacao": item}, "retificacao", {
+                "profissional_id": int, "conteudo": str, "justificativa": str, "criada_em": str,
+            }) for item in retificacoes]
+        return registros
 
     def retificar_registro_clinico(self, token, registro_id, conteudo, justificativa):
         from .contratos_clinicos import validar_id, validar_texto

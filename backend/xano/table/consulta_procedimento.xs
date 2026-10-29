@@ -1,4 +1,4 @@
-// Relação N:N aditiva; procedimento_id legado da Consulta é preservado.
+// Relação N:N aditiva; campos de criação e profissional_id guardam o planejamento.
 table consulta_procedimento {
   auth = false
   schema {
@@ -13,6 +13,18 @@ table consulta_procedimento {
       table = "profissional"
     }
     timestamp criado_em?=now
+    enum situacao?=planejado {
+      values = [
+        "planejado"
+        "autorizado"
+        "realizado"
+        "cancelado"
+      ]
+    }
+    int? realizado_por_profissional_id? {
+      table = "profissional"
+    }
+    timestamp? realizado_em?
   }
   index = [
     {type: "primary", field: [{name: "id"}]}

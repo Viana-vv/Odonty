@@ -63,7 +63,7 @@ query "disponibilidades/{id}" verb=PATCH {
     db.get profissional {
       field_name = "id"
       field_value = $disponibilidade.profissional_id
-      output = ["id", "conta_acesso_id", "situacao", "agenda_lock_version"]
+      output = ["id", "conta_acesso_id", "situacao"]
     } as $profissional
     conditional {
       if (($solicitante.perfis|intersect:["profissional"]|count) > 0 && $profissional.conta_acesso_id != $auth.id) {
@@ -101,18 +101,41 @@ query "disponibilidades/{id}" verb=PATCH {
       try {
         db.transaction {
           stack {
-            db.edit profissional {
+            // Compartilha a serialização do reagendamento sem exigir campo
+            // adicional na tabela de Profissional.
+            db.query agenda_controle {
+              where = $db.agenda_controle.escopo == "profissional" && $db.agenda_controle.escopo_id == $profissional.id
+              return = {type: "single"}
+              output = ["id", "versao"]
+            } as $controle_profissional
+            conditional {
+              if ($controle_profissional == null) {
+                db.add agenda_controle {
+                  data = {escopo: "profissional", escopo_id: $profissional.id, versao: 1, atualizado_em: now}
+                } as $trava_agenda_nova
+              }
+              else {
+                db.edit agenda_controle {
+                  field_name = "id"
+                  field_value = $controle_profissional.id
+                  data = {versao: ($controle_profissional.versao + 1), atualizado_em: now}
+                } as $trava_agenda
+              }
+            }
+            // Uma reserva pode ter ocorrido enquanto esta edição aguardava a
+            // trava. Nunca sobrescrever a Disponibilidade com o estado antigo.
+            db.get disponibilidade_agenda {
               field_name = "id"
-              field_value = $profissional.id
-              data = {agenda_lock_version: (($profissional.agenda_lock_version|default:0) + 1)}
-            } as $trava_agenda
+              field_value = $disponibilidade.id
+              output = ["id", "profissional_id", "inicio", "fim", "situacao"]
+            } as $disponibilidade_atual
             db.query disponibilidade_agenda {
               where = $db.disponibilidade_agenda.id != $disponibilidade.id && $db.disponibilidade_agenda.profissional_id == $profissional.id && $db.disponibilidade_agenda.inicio < $fim && $db.disponibilidade_agenda.fim > $inicio
               return = {type: "list"}
               output = ["id"]
             } as $sobreposicoes
             conditional {
-              if (($sobreposicoes|count) > 0) {
+              if ($disponibilidade_atual == null || $disponibilidade_atual.profissional_id != $disponibilidade.profissional_id || $disponibilidade_atual.inicio != $disponibilidade.inicio || $disponibilidade_atual.fim != $disponibilidade.fim || $disponibilidade_atual.situacao != $disponibilidade.situacao || $disponibilidade_atual.situacao == "reservado" || $disponibilidade_atual.situacao == "indisponivel" || $disponibilidade_atual.inicio <= now || ($sobreposicoes|count) > 0) {
                 var.update $conflito { value = true }
               }
               else {

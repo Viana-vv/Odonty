@@ -3,10 +3,27 @@
 import streamlit as st
 
 from . import sessao
+from .cache_xano import invalidar_cache
 from .api import ErroAcesso
 
 _CHAVE_CACHE = "prontuario_historico_cache"
 _CHAVE_ABERTO = "prontuario_nova_evolucao_aberta"
+
+
+def _limpar_formulario():
+    for chave in ("nova-evolucao-paciente", "nova-evolucao-consulta", "nova-evolucao-conteudo"):
+        st.session_state.pop(chave, None)
+    st.session_state.pop(_CHAVE_ABERTO, None)
+
+
+def _abrir_formulario():
+    _limpar_formulario()
+    st.session_state[_CHAVE_ABERTO] = True
+
+
+def _trocar_paciente():
+    st.session_state.pop("nova-evolucao-consulta", None)
+    st.session_state.pop("nova-evolucao-conteudo", None)
 
 
 def _consultas_paciente(consultas, paciente_id):
@@ -15,22 +32,21 @@ def _consultas_paciente(consultas, paciente_id):
 
 def renderizar(cliente, conta, consultas):
     """Exibe a ação e coleta os dados aceitos pelo contrato REST existente."""
-    if not st.session_state.get(_CHAVE_ABERTO):
-        if st.button("Nova evolução", type="primary", key="prontuario-nova-evolucao"):
-            st.session_state[_CHAVE_ABERTO] = True
-            st.rerun()
-        return
-
     perfis = set(getattr(conta, "perfis", ()))
     if "profissional" not in perfis:
-        st.session_state.pop(_CHAVE_ABERTO, None)
+        _limpar_formulario()
         st.warning("Somente Profissional autorizado pode registrar uma evolução clínica.")
         return
 
     credencial = st.session_state.get(sessao.CHAVE)
     if not credencial:
-        st.session_state.pop(_CHAVE_ABERTO, None)
+        _limpar_formulario()
         st.error("Sua sessão não está disponível. Entre novamente.")
+        return
+
+    if not st.session_state.get(_CHAVE_ABERTO):
+        st.button("Nova evolução", type="primary", key="prontuario-nova-evolucao",
+                  on_click=_abrir_formulario)
         return
 
     pacientes = {}
@@ -40,11 +56,11 @@ def renderizar(cliente, conta, consultas):
         if isinstance(paciente_id, int) and isinstance(nome, str) and nome.strip():
             pacientes[paciente_id] = nome.strip()
 
-    with st.container(key="modal-nova-evolucao", border=True):
+    formulario = st.empty()
+    with formulario.container(key="modal-nova-evolucao", border=True):
         fechar, titulo = st.columns([0.15, 1], vertical_alignment="center")
-        if fechar.button("×", key="nova-evolucao-fechar", help="Fechar nova evolução"):
-            st.session_state.pop(_CHAVE_ABERTO, None)
-            st.rerun()
+        fechar.button("×", key="nova-evolucao-fechar", help="Fechar nova evolução",
+                      on_click=_limpar_formulario)
         with titulo:
             st.subheader("Nova evolução clínica")
             st.caption("Este Registro Clínico fará parte do Prontuário do Paciente.")
@@ -54,14 +70,22 @@ def renderizar(cliente, conta, consultas):
             return
 
         paciente_ids = list(pacientes)
-        with st.form("nova-evolucao-form", clear_on_submit=False):
-            paciente_id = st.selectbox(
-                "Paciente", paciente_ids,
-                format_func=lambda item: pacientes[item],
-                key="nova-evolucao-paciente",
+        if st.session_state.get("nova-evolucao-paciente") not in paciente_ids:
+            _trocar_paciente()
+            selecionado = st.session_state.get("prontuario_paciente_id")
+            st.session_state["nova-evolucao-paciente"] = (
+                selecionado if selecionado in paciente_ids else paciente_ids[0]
             )
-            consultas_paciente = _consultas_paciente(consultas, paciente_id)
-            consulta_ids = [None] + [item["id"] for item in consultas_paciente]
+        paciente_id = st.selectbox(
+            "Paciente", paciente_ids,
+            format_func=lambda item: pacientes[item],
+            key="nova-evolucao-paciente", on_change=_trocar_paciente,
+        )
+        consultas_paciente = _consultas_paciente(consultas, paciente_id)
+        consulta_ids = [None] + [item["id"] for item in consultas_paciente]
+        if st.session_state.get("nova-evolucao-consulta") not in consulta_ids:
+            st.session_state.pop("nova-evolucao-consulta", None)
+        with st.form("nova-evolucao-form", clear_on_submit=False):
             consulta_id = st.selectbox(
                 "Consulta relacionada (opcional)", consulta_ids,
                 format_func=lambda selecionada: "Sem Consulta" if selecionada is None else next(
@@ -79,9 +103,7 @@ def renderizar(cliente, conta, consultas):
             salvar = st.form_submit_button("Salvar no prontuário", type="primary")
 
         cancelar, _ = st.columns([1, 4])
-        if cancelar.button("Cancelar", key="nova-evolucao-cancelar"):
-            st.session_state.pop(_CHAVE_ABERTO, None)
-            st.rerun()
+        cancelar.button("Cancelar", key="nova-evolucao-cancelar", on_click=_limpar_formulario)
 
         if salvar:
             if not conteudo or not conteudo.strip():
@@ -96,7 +118,7 @@ def renderizar(cliente, conta, consultas):
             except ErroAcesso as error:
                 if error.status == 401:
                     sessao.limpar(st.session_state)
-                    st.error("Sua sessão expirou. Entre novamente.")
+                    formulario.error("Sua sessão expirou. Entre novamente.")
                 elif error.status == 403:
                     st.error("Sua Conta de Acesso não tem permissão para registrar esta evolução.")
                 elif error.status == 404:
@@ -108,7 +130,8 @@ def renderizar(cliente, conta, consultas):
                 st.error("Não foi possível confirmar o Registro Clínico. Atualize o histórico antes de tentar novamente.")
                 return
 
+            invalidar_cache(st.session_state, ("registros-clinicos", "prontuario"))
             st.session_state.pop(_CHAVE_CACHE, None)
-            st.session_state.pop(_CHAVE_ABERTO, None)
+            _limpar_formulario()
             st.session_state["prontuario_aviso"] = "Registro Clínico salvo no Prontuário."
             st.rerun()

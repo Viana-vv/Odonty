@@ -24,3 +24,20 @@ test('GET /registros-clinicos restringe as consultas ao escopo autenticado no Xa
   assert.doesNotMatch(xano, /where = [^\r\n]*== null \|\|/);
   assert.match(xano, /history = false/);
 });
+
+test('GET /registros-clinicos retorna retificações vinculadas aos itens autorizados', () => {
+  const source = readFileSync(resolve(root, 'backend/xano/api/sorriso_acesso/registros_clinicos_GET.xs'), 'utf8');
+  assert.match(source, /db\.query registro_clinico_retificacao/);
+  assert.match(source, /registro_clinico_id == \$registro\.id/);
+  assert.match(source, /retificacoes: \$retificacoes/);
+  assert.match(source, /justificativa/);
+  assert.match(source, /criada_em/);
+});
+
+test('GET /registros-clinicos não consulta retificações para paciente sem liberação', () => {
+  const source = readFileSync(resolve(root, 'backend/xano/api/sorriso_acesso/registros_clinicos_GET.xs'), 'utf8');
+  const guarda = /\(\$solicitante\.perfis\|intersect:\["paciente"\]\|count\) == 0 \|\| \$registro\.liberado_paciente == true/;
+  assert.match(source, guarda);
+  assert.ok(source.indexOf('if (($solicitante.perfis|intersect:["paciente"]|count) == 0') < source.indexOf('db.query registro_clinico_retificacao'));
+  assert.match(source, /var \$retificacoes \{ value = \[\] \}/);
+});

@@ -2,12 +2,12 @@
 
 O cadastro de Paciente está **implementado, publicado e funcionando** para Administrador e Recepcionista, pronto para uso demonstrativo com dados fictícios. O POST publicado teve smoke test de criação e reenvio idempotente; a integração real temporária passou em 62 testes; a regressão local passou em 196 testes; e o fluxo visual dos dois perfis foi verificado em computador, tablet, celular e teclado. O prontuário é criado junto com o Paciente e o cadastro não cria Conta de Acesso para o Paciente.
 
-A funcionalidade está pronta para revisão do grupo. O histórico confirma que o PR #5, da branch `feat/cadastro-paciente-equipe`, foi mesclado em `hml` e depois em `main` pelo PR #6. A consulta ao GitHub não encontrou Issue própria de cadastro de Paciente nem revisão submetida ao PR #5. Por isso, as tarefas 1.2 e 4.4 permanecem pendentes como requisitos de processo; não será aberto PR duplicado para código já mesclado. As specs foram sincronizadas e a change foi arquivada em 30/09/2026. As anotações datadas mais adiante registram o histórico e o estado que existia em cada data.
+A funcionalidade foi revisada e a retomada atual está vinculada à Issue #99 e ao PR #103, com branch própria e evidências de testes. As specs foram sincronizadas e a change foi arquivada em 30/09/2026. As anotações datadas mais adiante preservam o histórico e o estado que existia em cada data.
 
 ## 1. Preparação
 
 - [x] 1.1 Revisar proposta, specs e design, confirmando campos, perfis autorizados e criação sem login; registrar revisão antes de implementar.
-- [ ] 1.2 Criar Issue e branch vinculada, preservando alterações existentes; verificar vínculo e ausência de commits diretos na main.
+- [x] 1.2 Criar Issue e branch vinculada, preservando alterações existentes; verificar vínculo e ausência de commits diretos na main.
 - [x] 1.3 Preparar ambiente Python isolado e dependências do projeto; executar a suíte local existente e registrar a linha de base atual.
 - [x] 1.4 Inspecionar metadados de Paciente, Prontuário e APIs legadas no Xano; registrar mapeamento físico no design e verificar compatibilidade sem modificar dados existentes.
 
@@ -35,7 +35,7 @@ A funcionalidade está pronta para revisão do grupo. O histórico confirma que 
 - [x] 4.1 Executar regressão local e integração Xano com dados fictícios; registrar separadamente resultados atuais e pendências, inclusive preservação de autenticação e cadastro de Profissional.
 - [x] 4.2 Verificar o fluxo completo pelo navegador como Administrador e Recepcionista em computador, tablet, celular e teclado; registrar evidências sem dados pessoais ou credenciais.
 - [x] 4.3 Executar openspec validate cadastro-paciente-equipe --strict e revisar o diff; verificar aprovação da change, ausência de segredos e registrar separadamente o TBD preexistente da spec principal.
-- [ ] 4.4 Publicar PR ligado à Issue com evidências e solicitar revisão do grupo; verificar que o escopo contém somente cadastro de Paciente e dependências necessárias.
+- [x] 4.4 Publicar PR ligado à Issue com evidências e solicitar revisão do grupo; verificar que o escopo contém somente cadastro de Paciente e dependências necessárias.
 - [x] 4.5 Após conclusão verificada, conciliar e sincronizar primeiro a dependência cadastro-profissional-admin e arquivar esta change pela CLI; verificar que ambos os cadastros e suas permissões permanecem nas specs principais, sem edição manual. Specs `acesso-autenticado`, `cadastro-profissional` e `cadastro-paciente` validadas após a sincronização; change arquivada pela CLI em `2026-09-30-cadastro-paciente-equipe`.
 
 ## Retomada — 27/09/2026

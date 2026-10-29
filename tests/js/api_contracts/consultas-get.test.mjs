@@ -17,6 +17,14 @@ test('cliente declara GET /consultas', () => {
   assert.match(source, /db\.query consulta \{/);
   assert.match(source, /db\.get paciente \{/);
   assert.match(source, /db\.get profissional \{/);
+  const pacienteBranchStart = source.indexOf('if (($solicitante.perfis|intersect:["paciente"]|count) > 0) {', source.indexOf('var $fim_iso'));
+  const pacienteBranchEnd = source.indexOf('\n          else {', pacienteBranchStart);
+  assert.notEqual(pacienteBranchStart, -1, 'deve existir um ramo próprio para o perfil Paciente');
+  assert.notEqual(pacienteBranchEnd, -1);
+  const pacienteBranch = source.slice(pacienteBranchStart, pacienteBranchEnd);
+  assert.match(pacienteBranch, /profissional_nome:/);
+  assert.doesNotMatch(pacienteBranch, /procedimento|disponibilidade_id|paciente_nome|telefone|cpf|conteudo_clinico/i);
+  assert.match(source, /procedimento_vinculado_nome/); // resposta completa da equipe permanece
   const consultaBase = source.match(/db\.query consulta \{([\s\S]*?)\} as \$consultas/)[1];
   assert.doesNotMatch(consultaBase, /\bwhere\s*=/);
   assert.match(source, /if \(\$incluir_consulta\)/);

@@ -30,6 +30,8 @@ def cliente_teste():
             "procedimentos": [],
         }),
         listar_consultas=Mock(return_value=[]),
+        listar_disponibilidades=Mock(return_value=[]),
+        listar_procedimentos_consulta=Mock(return_value=[]),
     )
     return cliente
 
@@ -43,7 +45,7 @@ def simular_modulos_integrados(monkeypatch, areas):
 
     nomes = {f"sorrisomais.{navegacao.MODULOS_XANO[area]}": area for area in areas}
     modulos = {
-        nome: SimpleNamespace(renderizar=lambda _cliente, _conta, area=area:
+        nome: SimpleNamespace(renderizar=lambda _cliente, _conta, *args, area=area:
                               st.title(f"Tela {area}"))
         for nome, area in nomes.items()
     }
@@ -55,6 +57,9 @@ def simular_modulos_integrados(monkeypatch, areas):
 
 
 def abrir_app(conta, cliente, pagina="inicio"):
+    # Carrega dependências da tela antes da janela de execução do AppTest.
+    from sorrisomais import paginas_equipe  # noqa: F401
+
     app = AppTest.from_function(renderizar_equipe, args=(conta, cliente))
     app.session_state["pagina_equipe"] = pagina
     app.session_state[sessao.CHAVE] = Credencial(
@@ -120,6 +125,8 @@ def test_atalho_nova_consulta_fica_indisponivel_quando_modulo_esta_ausente(monke
         ("prontuarios", "profissional"),
         ("prontuarios", "paciente"),
         ("procedimentos", "administrador"),
+        ("exames", "profissional"),
+        ("reagendar_consulta", "recepcionista"),
         ("nova_consulta", "recepcionista"),
     ],
 )
@@ -150,3 +157,65 @@ def test_modulo_disponivel_nao_abre_para_perfil_nao_autorizado(monkeypatch):
 
     assert not app.exception
     assert app.session_state["pagina_equipe"] == "inicio"
+
+
+@pytest.mark.parametrize(
+    ("area", "perfil"),
+    [("exames", "recepcionista"), ("reagendar_consulta", "profissional")],
+)
+def test_rota_clinica_direta_nao_autorizada_nao_carrega_modulo(area, perfil, monkeypatch):
+    simular_modulos_integrados(monkeypatch, {area})
+    app = abrir_app(conta_teste(perfil), cliente_teste(), pagina=area)
+
+    assert not app.exception
+    assert app.session_state["pagina_equipe"] == "inicio"
+    assert not any(item.value == f"Tela {area}" for item in app.title)
+
+
+def test_agenda_profissional_abre_procedimentos_com_consulta_selecionada(monkeypatch):
+    consulta = {
+        "id": 41,
+        "inicio_em": datetime.now(timezone.utc).isoformat(),
+        "fim_em": (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat(),
+        "situacao": "Em atendimento",
+        "paciente_nome": "Paciente Fictícia Aurora",
+        "profissional_nome": "Profissional Fictício",
+        "profissional_id": 7,
+        "paciente_id": 11,
+        "disponibilidade_id": 22,
+        "procedimentos": [],
+    }
+    cliente = cliente_teste()
+    cliente.listar_consultas.return_value = [consulta]
+    simular_modulos_integrados(monkeypatch, {"procedimentos_consulta"})
+    app = abrir_app(conta_teste("profissional"), cliente, pagina="agenda")
+    assert not app.exception
+
+    app.button(key="agenda-procedimentos-41").click().run()
+
+    assert app.session_state["pagina_equipe"] == "procedimentos_consulta"
+    assert app.session_state["consulta_procedimentos_contexto"]["consulta"]["id"] == 41
+    assert any(item.value == "Tela procedimentos_consulta" for item in app.title)
+
+    app.button(key="menu-agenda").click().run()
+    assert app.session_state["pagina_equipe"] == "agenda"
+    assert "consulta_procedimentos_contexto" not in app.session_state
+
+
+def test_rota_procedimentos_sem_contexto_nao_consulta_e_oferece_agenda(monkeypatch):
+    cliente = cliente_teste()
+    simular_modulos_integrados(monkeypatch, {"procedimentos_consulta"})
+    app = abrir_app(conta_teste("profissional"), cliente, pagina="procedimentos_consulta")
+
+    assert not app.exception
+    assert any("Selecione uma Consulta" in item.value for item in app.info)
+    cliente.listar_procedimentos_consulta.assert_not_called()
+
+    app.button(key="procedimentos-voltar-agenda").click().run()
+    assert app.session_state["pagina_equipe"] == "agenda"
+    assert "consulta_procedimentos_contexto" not in app.session_state
+
+
+def test_contexto_procedimentos_e_limpo_quando_navega_para_outra_area(monkeypatch):
+    assert navegacao.pode_acessar(("profissional",), "procedimentos_consulta")
+    assert not navegacao.pode_acessar(("recepcionista",), "procedimentos_consulta")

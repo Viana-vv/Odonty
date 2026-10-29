@@ -10,6 +10,8 @@ AREAS = (
     ("profissionais", "Profissionais", {"administrador", "recepcionista"}, False),
     ("prontuarios", "Prontuários", {"profissional", "paciente"}, False),
     ("procedimentos", "Procedimentos", {"administrador"}, False),
+    ("exames", "Exames", {"profissional"}, False),
+    ("reagendar_consulta", "Reagendamento", {"administrador", "recepcionista"}, False),
 )
 
 # Cada tela conectada vive em módulo próprio. As ausentes seguem indisponíveis.
@@ -18,6 +20,9 @@ MODULOS_XANO = {
     "profissionais": "pagina_profissionais_xano",
     "prontuarios": "pagina_prontuario_xano",
     "procedimentos": "pagina_procedimentos_xano",
+    "exames": "pagina_exames_xano",
+    "reagendar_consulta": "pagina_reagendar_consulta_xano",
+    "procedimentos_consulta": "pagina_procedimentos_consulta",
     "nova_consulta": "pagina_nova_consulta_xano",
 }
 AREAS_XANO_BASE_DISPONIVEIS = {"inicio", "agenda"}
@@ -62,5 +67,7 @@ def areas_visiveis(perfis, modo_demonstracao=False, cadastro_paciente_habilitado
 def pode_acessar(perfis, area):
     if area == "nova_consulta":
         return bool(set(perfis).intersection(PERFIS_NOVA_CONSULTA))
+    if area == "procedimentos_consulta":
+        return "profissional" in set(perfis)
     return any(chave == area and set(perfis).intersection(permitidos)
                for chave, _, permitidos, _ in AREAS)

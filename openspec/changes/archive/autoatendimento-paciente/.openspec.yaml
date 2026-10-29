@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-10-26
+goal: Entregar autoatendimento autenticado de Paciente com isolamento no Xano e
+  sessão sem credenciais persistidas.

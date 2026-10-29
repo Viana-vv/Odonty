@@ -42,7 +42,7 @@ def main():
     destino = Path(tempfile.gettempdir()) / "odonty-agenda-ficticia"
     destino.mkdir(exist_ok=True)
     processo = subprocess.Popen([
-        sys.executable, "-m", "streamlit", "run", "app.py",
+        sys.executable, "-B", "-m", "streamlit", "run", "app.py",
         "--server.headless=true", f"--server.port={PORT}",
         "--browser.gatherUsageStats=false",
     ], cwd=ROOT, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -60,6 +60,28 @@ def main():
             page.get_by_text("Paciente Fictícia Aurora", exact=False).wait_for()
             page.wait_for_timeout(2000)
             page.screenshot(path=destino / "agenda-desktop.png", full_page=True)
+            menu = page.locator(".st-key-menu-equipe")
+            coluna_menu = page.get_by_test_id("stColumn").filter(has=menu)
+            assert coluna_menu.evaluate("element => getComputedStyle(element).position") == "sticky"
+            page.locator(".st-key-conteudo-equipe").evaluate(
+                "element => element.style.minHeight = '1800px'"
+            )
+            area_rolagem = page.get_by_test_id("stMain")
+            conteudo_pagina = page.locator(".st-key-conteudo-equipe")
+            menu_antes = menu.bounding_box()["y"]
+            conteudo_antes = conteudo_pagina.bounding_box()["y"]
+            area_rolagem.evaluate("element => element.scrollTo(0, 600)")
+            page.wait_for_function(
+                "document.querySelector('[data-testid=stMain]').scrollTop >= 500"
+            )
+            page.wait_for_timeout(250)
+            assert conteudo_antes - conteudo_pagina.bounding_box()["y"] >= 500
+            menu_depois = menu.bounding_box()["y"]
+            page.screenshot(path=destino / "agenda-desktop-rolagem.png")
+            assert abs(menu_depois - menu_antes) <= 2, (
+                f"O menu acompanhou a rolagem: {menu_antes} -> {menu_depois}."
+            )
+            area_rolagem.evaluate("element => element.scrollTo(0, 0)")
             conteudo = page.locator("body").inner_text()
             assert "Dra. Exemplo Sorriso" in conteudo
             assert "Profilaxia fictícia" in conteudo
@@ -75,6 +97,7 @@ def main():
             page.get_by_role("group", name="Horário inicial").wait_for()
             page.get_by_role("group", name="Horário final").wait_for()
             page.set_viewport_size({"width": 390, "height": 844})
+            assert coluna_menu.evaluate("element => getComputedStyle(element).position") == "static"
             largura = page.evaluate("({viewport: document.documentElement.clientWidth, pagina: document.documentElement.scrollWidth})")
             assert largura["pagina"] <= largura["viewport"], f"Rolagem horizontal no formulário de horário: {largura}"
             page.screenshot(path=destino / "novo-horario-celular.png", full_page=True)
@@ -119,6 +142,30 @@ def main():
             page.screenshot(path=destino / "agenda-celular-conteudo.png")
             largura = page.evaluate("({viewport: document.documentElement.clientWidth, pagina: document.documentElement.scrollWidth})")
             assert largura["pagina"] <= largura["viewport"], f"Rolagem horizontal no celular: {largura}"
+
+            # Usa o cliente REST real e respostas HTTP fictícias para completar
+            # um cadastro antigo, salvar e reabrir a edição como Recepcionista.
+            page.set_viewport_size({"width": 1365, "height": 900})
+            page.get_by_role("button", name="Pacientes", exact=True).click()
+            page.get_by_role("button", name="Editar", exact=True).first.click()
+            dialogo = page.get_by_role("dialog")
+            dialogo.wait_for()
+            for campo in ("CPF *", "Celular *", "E-mail *"):
+                assert dialogo.get_by_label(campo, exact=True).input_value() == ""
+            page.screenshot(path=destino / "paciente-edicao-cadastro-antigo.png")
+            dialogo.get_by_label("Nome completo *").fill("Paciente Fictícia Aurora Atualizada")
+            dialogo.get_by_label("CPF *", exact=True).fill("52998224725")
+            dialogo.get_by_label("Celular *", exact=True).fill("11911112222")
+            dialogo.get_by_label("E-mail *", exact=True).fill("aurora.ficticia@example.invalid")
+            dialogo.get_by_role("button", name="Salvar alterações").click()
+            dialogo.wait_for(state="hidden")
+            page.get_by_text("Os dados cadastrais do Paciente foram atualizados.", exact=True).wait_for()
+            page.get_by_text("Paciente Fictícia Aurora Atualizada", exact=True).wait_for()
+            page.get_by_role("button", name="Editar", exact=True).first.click()
+            dialogo.wait_for()
+            assert dialogo.get_by_label("E-mail *", exact=True).input_value() == "aurora.ficticia@example.invalid"
+            dialogo.get_by_role("button", name="Cancelar", exact=True).click()
+            dialogo.wait_for(state="hidden")
             browser.close()
     finally:
         processo.terminate()

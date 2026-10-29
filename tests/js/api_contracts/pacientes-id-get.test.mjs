@@ -11,6 +11,10 @@ test('GET /pacientes/{id} tem contrato Xano autenticado e sem histórico', () =>
   assert.match(source, /Cache-Control: no-store/);
   assert.match(source, /intersect:\["administrador", "recepcionista"\]/);
   assert.match(source, /output = \["id", "nome", "data_nascimento", "cpf", "telefone", "celular", "email"\]/);
+  assert.match(source, /var \$cpf \{ value = "" \}/);
+  assert.match(source, /var \$celular \{ value = "" \}/);
+  assert.match(source, /var \$email \{ value = "" \}/);
+  assert.doesNotMatch(source, /\|default:/);
   assert.match(source, /history = false/);
   assert.doesNotMatch(source.replace(/^\s*\/\/.*$/gm, ''), /observacoes|prontuario|registro_clinico/i);
 });

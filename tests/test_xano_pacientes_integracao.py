@@ -138,7 +138,7 @@ def cadastro_real():
 
 @pytest.fixture
 def cadastro_publicado():
-    """Smoke opt-in do endpoint no grupo principal, após publicação explícita."""
+    """Smoke opt-in da rota publicada; cadastros fictícios são inativados ao final."""
     a = CadastroReal()
     a.base_teste = a.base
     try:
@@ -146,6 +146,7 @@ def cadastro_publicado():
         a.token = a.entrar(conta)["token"]
         yield a
     finally:
+        # Localiza somente as linhas criadas por respostas 201 deste teste.
         for identificador in a.pacientes_criados:
             a.metadados("PUT", f"/table/{a.tabelas['paciente']}/content/{identificador}",
                         json={"situacao": "inativo"})
@@ -184,9 +185,37 @@ def test_hash_sem_chave_confirma_replay_e_divergencia(cadastro_real, payload):
     assert a.verificar(payload) == {"pacientes": 1, "prontuarios": 1, "operacoes": 1}
 
 
+def verificar_persistencia_publicada(a, paciente_id, dados):
+    paciente = a.metadados("GET", f"/table/{a.tabelas['paciente']}/content/{paciente_id}")
+    assert paciente["id"] == paciente_id
+    assert paciente["situacao"] == "ativo"
+    assert paciente["cpf"] == dados["cpf"]
+    assert paciente["nome"] == dados["nome"]
+
+    # prontuario_paciente guarda apenas vínculo, abertura e situação; não há conteúdo clínico.
+    prontuarios = a.listar(f"/table/{a.tabelas['prontuario_paciente']}/content")
+    correspondentes = [item for item in prontuarios if item.get("paciente_id") == paciente_id]
+    assert len(correspondentes) == 1
+    prontuario_id = correspondentes[0]["id"]
+    prontuario = a.metadados(
+        "GET", f"/table/{a.tabelas['prontuario_paciente']}/content/{prontuario_id}"
+    )
+    assert prontuario["situacao"] == "ativo"
+    assert prontuario["paciente_id"] == paciente_id
+
+
 def test_endpoint_publicado_cria_e_reconhece_replay(cadastro_publicado, payload):
     primeiro = sucesso(cadastro_publicado.enviar(payload), payload)
     assert sucesso(cadastro_publicado.enviar(payload), payload) == primeiro
+    verificar_persistencia_publicada(cadastro_publicado, primeiro["paciente"]["id"], payload)
+
+
+def test_endpoint_publicado_permite_recepcionista(cadastro_publicado, payload):
+    a = cadastro_publicado
+    recepcionista = a.criar(["recepcionista"])
+    token = a.entrar(recepcionista)["token"]
+    criado = sucesso(a.enviar(payload, token=token), payload)
+    verificar_persistencia_publicada(a, criado["paciente"]["id"], payload)
 
 
 def test_criacao_replay_e_payload_divergente(cadastro_real, payload):

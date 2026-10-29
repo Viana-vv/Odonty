@@ -41,7 +41,25 @@ query "pacientes/{id}" verb=GET {
         return { value = {codigo: "RECURSO_NAO_ENCONTRADO", mensagem: "Paciente nÃ£o encontrado."} }
       }
     }
+    var $cpf { value = "" }
+    var $celular { value = "" }
+    var $email { value = "" }
+    conditional {
+      if ($paciente.cpf != null) {
+        var.update $cpf { value = $paciente.cpf }
+      }
+    }
+    conditional {
+      if ($paciente.celular != null) {
+        var.update $celular { value = $paciente.celular }
+      }
+    }
+    conditional {
+      if ($paciente.email != null) {
+        var.update $email { value = $paciente.email }
+      }
+    }
   }
-  response = {paciente: {id: $paciente.id, nome: $paciente.nome, data_nascimento: $paciente.data_nascimento, cpf: ($paciente.cpf|default:""), telefone: $paciente.telefone, celular: ($paciente.celular|default:""), email: ($paciente.email|default:"")}}
+  response = {paciente: {id: $paciente.id, nome: $paciente.nome, data_nascimento: $paciente.data_nascimento, cpf: $cpf, telefone: $paciente.telefone, celular: $celular, email: $email}}
   history = false
 }
