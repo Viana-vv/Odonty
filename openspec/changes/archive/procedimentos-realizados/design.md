@@ -23,6 +23,7 @@ A tabela `consulta_procedimento` representa os vínculos N:N e já guarda `profi
 - Para registros existentes, a migration deve aplicar `situacao=planejado`, preservando todos os outros valores. A migration só será considerada segura depois de verificada em grupo Xano temporário; nenhuma mutação será feita no grupo de produção.
 - A interface usa Streamlit e segue a hierarquia da referência 13 (histórico em cartões) e os controles da referência 08 (campos e botões claros), dentro de uma nova página/módulo. Não há dependência nova.
 - Testes de contrato são isolados e simulam a camada HTTP, com um arquivo Python e um JavaScript por rota; os testes não acessam rede. Os testes de tela também simulam os retornos do cliente.
+- A confirmação do PATCH exige identificador inteiro igual ao vínculo solicitado e situação `realizado`. Resposta incompatível não confirma sucesso nem dispara nova tentativa automática. A interface substitui imediatamente o indicador de situação e remove o botão após sucesso; falhas sem expiração da sessão mantêm os demais itens visíveis.
 
 ## Risks / Trade-offs
 

@@ -44,14 +44,15 @@ def _renderizar_lista(cliente, token, consulta, procedimentos):
                 elif criado_em:
                     st.caption(f"Planejado em {_data_legivel(criado_em)}")
             with coluna_situacao:
+                indicador = st.empty()
                 if situacao == "realizado":
-                    st.success("Realizado")
+                    indicador.success("Realizado")
                 elif situacao == "planejado":
-                    st.info("Planejado")
+                    indicador.info("Planejado")
                 elif situacao in {"autorizado", "cancelado"}:
-                    st.caption(situacao.capitalize())
+                    indicador.caption(situacao.capitalize())
                 else:
-                    st.warning("Situação indisponível")
+                    indicador.warning("Situação indisponível")
 
             if situacao == "realizado":
                 responsavel = procedimento.get("realizado_por_nome")
@@ -62,7 +63,8 @@ def _renderizar_lista(cliente, token, consulta, procedimentos):
                     st.caption(f"Realizado em {_data_legivel(data)}")
             elif situacao == "planejado":
                 chave = f"marcar-procedimento-realizado-{identificador}"
-                if st.button("Marcar como realizado", key=chave, type="primary"):
+                acao = st.empty()
+                if acao.button("Marcar como realizado", key=chave, type="primary"):
                     try:
                         with st.spinner("Registrando realização…"):
                             realizado = cliente.marcar_procedimento_realizado(
@@ -70,6 +72,8 @@ def _renderizar_lista(cliente, token, consulta, procedimentos):
                             )
                         invalidar_cache(st.session_state, (f"procedimentos-consulta:{consulta['id']}", "consultas", "prontuario"))
                         procedimento.update(realizado)
+                        acao.empty()
+                        indicador.success("Realizado")
                         st.success("Procedimento marcado como realizado.")
                         responsavel = procedimento.get("realizado_por_nome")
                         data = procedimento.get("realizado_em")
@@ -79,14 +83,14 @@ def _renderizar_lista(cliente, token, consulta, procedimentos):
                             st.caption(f"Realizado em {_data_legivel(data)}")
                     except ErroAcesso as erro:
                         if erro.status == 401:
+                            acao.empty()
                             sessao.limpar(st.session_state)
                             st.error("Sua sessão expirou. Entre novamente.")
+                            return
                         else:
                             st.error(str(erro))
-                        return
                     except Exception:
                         st.error("Não foi possível registrar a realização. Tente novamente.")
-                        return
 
 
 def renderizar(cliente, conta, consulta):
@@ -94,7 +98,6 @@ def renderizar(cliente, conta, consulta):
     st.caption("ATENDIMENTO")
     st.title("Procedimentos da Consulta")
     st.markdown("Acompanhe o planejamento e registre os Procedimentos realizados.")
-    atualizar = st.button("Atualizar Procedimentos", key="procedimentos-consulta-atualizar")
 
     perfis = set(getattr(conta, "perfis", ()))
     if "profissional" not in perfis:
@@ -107,6 +110,8 @@ def renderizar(cliente, conta, consulta):
     if not isinstance(consulta, dict) or not isinstance(consulta.get("id"), int):
         st.info("Selecione uma Consulta para acompanhar seus Procedimentos.")
         return
+
+    atualizar = False
 
     titulo = consulta.get("paciente_nome")
     if isinstance(titulo, str) and titulo.strip():
@@ -133,3 +138,6 @@ def renderizar(cliente, conta, consulta):
         return
 
     _renderizar_lista(cliente, credencial.token, consulta, procedimentos)
+    if st.button("Atualizar Procedimentos", key="procedimentos-consulta-atualizar"):
+        invalidar_cache(st.session_state, (f"procedimentos-consulta:{consulta['id']}",))
+        st.rerun()
