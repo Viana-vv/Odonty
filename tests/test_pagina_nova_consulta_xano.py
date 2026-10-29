@@ -6,7 +6,8 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 
-def _abrir_tela(*, perfil="recepcionista", falha=None):
+def _abrir_tela(*, perfil="recepcionista", falha=None, dia_agenda=None,
+               chave_data_agenda="agenda_data"):
     falha_codigo = {
         "conflito": "raise ErroAcesso('Este horário acabou de ser reservado. Escolha outro.', 409)",
         "opcoes": "raise ErroAcesso('Aguarde alguns segundos.', 429)",
@@ -45,9 +46,36 @@ class ClienteFicticio:
 
 st.session_state[sessao.CHAVE] = SimpleNamespace(token='token-ficticio')
 st.session_state[sessao.CHAVE_CONTA] = SimpleNamespace(perfis=({perfil!r},))
-renderizar(ClienteFicticio(), SimpleNamespace(perfis=({perfil!r},)))
+if {dia_agenda is not None}:
+    st.session_state.setdefault({chave_data_agenda!r}, date.fromisoformat({str(dia_agenda)!r}))
+if st.session_state.get('pagina_equipe') == 'agenda':
+    st.title('Agenda')
+else:
+    renderizar(ClienteFicticio(), SimpleNamespace(perfis=({perfil!r},)))
 '''
     return AppTest.from_string(fonte, default_timeout=10).run()
+
+
+@pytest.mark.parametrize("chave", ["agenda_data", "agenda_data_input"])
+def test_nova_consulta_inicia_na_data_selecionada_da_agenda(chave):
+    dia = date.today() + timedelta(days=3)
+    app = _abrir_tela(dia_agenda=dia, chave_data_agenda=chave)
+    assert not app.exception
+    assert app.date_input(key="nova-consulta-data").value == dia
+    nova_data = dia + timedelta(days=1)
+    app.date_input(key="nova-consulta-data").set_value(nova_data).run()
+    assert app.session_state[chave] == dia
+    assert app.date_input(key="nova-consulta-data").value == nova_data
+
+
+def test_cancelar_retorna_imediatamente_a_agenda_sem_agendar():
+    app = _abrir_tela()
+    app.selectbox(key="nova-consulta-paciente").select(1).run()
+    next(button for button in app.button if button.label == "Cancelar").click().run()
+    assert not app.exception
+    assert any(item.value == "Agenda" for item in app.title)
+    assert not app.selectbox
+    assert "teste_criacao_confirmada" not in app.session_state
 
 
 def test_recepcionista_agenda_com_contratos_existentes_sem_rede():

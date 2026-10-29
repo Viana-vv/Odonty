@@ -107,8 +107,21 @@ query "registros-clinicos" verb=GET {
         }
         conditional {
           if ($incluir_registro) {
+            var $retificacoes { value = [] }
+            // Pacientes só recebem retificações se o Registro Clínico estiver liberado.
+            conditional {
+              if (($solicitante.perfis|intersect:["paciente"]|count) == 0 || $registro.liberado_paciente == true) {
+                // Consulta por registro autorizado; filtro em lote depende de sintaxe Xano ainda não confirmada.
+                db.query registro_clinico_retificacao {
+                  where = $db.registro_clinico_retificacao.registro_clinico_id == $registro.id
+                  sort = {registro_clinico_retificacao.criada_em: "asc", registro_clinico_retificacao.id: "asc"}
+                  return = {type: "list"}
+                  output = ["id", "profissional_id", "conteudo", "justificativa", "criada_em"]
+                } as $retificacoes
+              }
+            }
             var $registro_formatado {
-              value = {id: $registro.id, paciente_id: $registro.paciente_id, profissional_id: $registro.profissional_id, prontuario_id: $registro.prontuario_id, conteudo: $registro.conteudo, liberado_paciente: $registro.liberado_paciente, consulta_id: $registro.consulta_id, registrado_em: $registro.registrado_em}
+              value = {id: $registro.id, paciente_id: $registro.paciente_id, profissional_id: $registro.profissional_id, prontuario_id: $registro.prontuario_id, conteudo: $registro.conteudo, liberado_paciente: $registro.liberado_paciente, consulta_id: $registro.consulta_id, registrado_em: $registro.registrado_em, retificacoes: $retificacoes}
             }
             var.update $registros_clinicos {
               value = $registros_clinicos|push:$registro_formatado

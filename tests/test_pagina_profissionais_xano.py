@@ -84,6 +84,19 @@ def test_recepcionista_consulta_sem_controles_de_alteracao(tela):
     pagina.renderizar(cliente, SimpleNamespace(perfis=("recepcionista",)))
     assert cliente.listar_profissionais.call_count == 1
     assert not any("Confirmar " in texto for texto, _ in interface.botoes)
+    assert any("1 profissional(is)" in texto for texto in interface.textos)
+    assert not any("Dr. Nome Fictício" in texto for texto in interface.textos)
+
+
+def test_recepcionista_renderiza_todos_os_profissionais_ativos(tela):
+    interface, cliente, _ = tela
+    cliente.listar_profissionais.return_value = [
+        {**PROFISSIONAIS[0], "id": 301, "nome": "Dra. Primeira Ativa"},
+        {**PROFISSIONAIS[0], "id": 302, "nome": "Dr. Segundo Ativo"},
+    ]
+    pagina.renderizar(cliente, SimpleNamespace(perfis=("recepcionista",)))
+    assert any("Dra. Primeira Ativa" in texto for texto in interface.textos)
+    assert any("Dr. Segundo Ativo" in texto for texto in interface.textos)
 
 
 def test_perfil_nao_autorizado_nao_consulta(tela):
@@ -151,7 +164,7 @@ def test_cache_reutiliza_lista_na_mesma_sessao(tela, monkeypatch):
     cliente.listar_profissionais.assert_called_once_with("token-ficticio")
 
 
-def test_cache_expira_e_troca_de_token_invalida_lista(tela, monkeypatch):
+def test_cache_persiste_apos_tempo_e_troca_de_token_invalida_lista(tela, monkeypatch):
     interface, cliente, conta = tela
     agora = [100.0]
     monkeypatch.setattr(pagina.time, "monotonic", lambda: agora[0])
@@ -161,7 +174,7 @@ def test_cache_expira_e_troca_de_token_invalida_lista(tela, monkeypatch):
     interface.session_state["credencial"] = Credencial(
         "outro-token", datetime.now(timezone.utc) + timedelta(hours=1))
     pagina.renderizar(cliente, conta)
-    assert cliente.listar_profissionais.call_count == 3
+    assert cliente.listar_profissionais.call_count == 2
 
 
 def test_atualizacao_manual_forca_consulta(tela):
@@ -179,7 +192,7 @@ def test_falha_na_atualizacao_nao_preserva_cache_antigo(tela):
     interface.cliques["profissionais-xano-atualizar"] = True
     cliente.listar_profissionais.side_effect = ErroAcesso("Falha fictícia.", 503)
     pagina.renderizar(cliente, conta)
-    assert pagina._CHAVE_CACHE_PROFISSIONAIS not in interface.session_state
+    assert not interface.session_state.get("xano_get_cache")
     assert "Dra. Exemplo Sorriso" not in interface.textos
 
 

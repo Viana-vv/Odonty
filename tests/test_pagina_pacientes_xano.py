@@ -7,7 +7,7 @@ from unittest.mock import Mock
 import pytest
 from streamlit.testing.v1 import AppTest
 
-from sorrisomais import pagina_pacientes_xano, sessao
+from sorrisomais import cache_xano, pagina_pacientes_xano, sessao, sessao
 from sorrisomais.api import Credencial, ErroAcesso
 
 
@@ -115,6 +115,30 @@ def test_falha_ao_carregar_edicao_nao_exibe_dados_pessoais(cliente_pacientes):
     assert not any(item.key.startswith("pacientes_xano_edicao_") for item in app.text_input)
 
 
+def test_404_na_edicao_atualiza_lista_antes_de_exibir_falha(cliente_pacientes):
+    paciente = {
+        "id": 11, "nome": "Paciente Fictícia Aurora", "data_nascimento": "2000-02-29",
+        "cpf": "52998224725", "telefone": "11900000000", "celular": "11911112222",
+        "email": "pessoa@example.com",
+    }
+    cliente_pacientes.obter_paciente.side_effect = [
+        ErroAcesso("não encontrado", 404), paciente,
+    ]
+    cliente_pacientes.listar_opcoes_agenda.side_effect = [
+        {"pacientes": [item.copy() for item in PACIENTES], "profissionais": [], "procedimentos": []},
+        {"pacientes": [item.copy() for item in PACIENTES], "profissionais": [], "procedimentos": []},
+    ]
+    app = abrir_tela(cliente_pacientes)
+
+    app.button(key="pacientes-xano-editar-11").click().run()
+    assert not app.exception
+    app.button(key="pacientes-xano-editar-11").click().run()
+
+    assert not app.exception
+    assert cliente_pacientes.obter_paciente.call_count == 2
+    assert app.text_input(key="pacientes_xano_edicao_nome").value == paciente["nome"]
+
+
 def test_salvar_edicao_envia_campos_cadastrais_e_mostra_confirmacao(cliente_pacientes):
     cliente_pacientes.obter_paciente.return_value = {
         "id": 11, "nome": "Paciente Fictícia Aurora", "data_nascimento": "2000-02-29",
@@ -192,15 +216,18 @@ def test_atualizacao_manual_busca_novamente_na_api(cliente_pacientes):
     assert cliente_pacientes.listar_opcoes_agenda.call_count == 2
 
 
-def test_cache_expira_apos_vinte_segundos(cliente_pacientes, monkeypatch):
-    tempo = [100.0]
-    monkeypatch.setattr(pagina_pacientes_xano, "monotonic", lambda: tempo[0])
+def test_atualizar_forca_novo_get_e_substitui_cache(cliente_pacientes):
+    atualizado = [{"id": 13, "nome": "Paciente Fictício Atualizado"}]
+    cliente_pacientes.listar_opcoes_agenda.side_effect = [
+        {"pacientes": [item.copy() for item in PACIENTES], "profissionais": [], "procedimentos": []},
+        {"pacientes": atualizado, "profissionais": [], "procedimentos": []},
+    ]
     app = abrir_tela(cliente_pacientes)
-
-    tempo[0] += pagina_pacientes_xano.CACHE_TTL_SEGUNDOS + 1
-    app.run()
+    app.button(key="pacientes-xano-atualizar").click().run()
 
     assert cliente_pacientes.listar_opcoes_agenda.call_count == 2
+    assert any(atualizado[0]["nome"] in item.value for item in app.markdown)
+    assert not any(PACIENTES[0]["nome"] in item.value for item in app.markdown)
 
 
 def test_troca_de_token_nao_reutiliza_cache_anterior(cliente_pacientes):
@@ -248,7 +275,7 @@ def test_sessao_expirada_limpa_credencial_e_dados_cacheados(cliente_pacientes):
 
     assert any("Sua sessão expirou" in item.value for item in app.error)
     assert sessao.CHAVE not in app.session_state
-    assert "pacientes_xano_cache" not in app.session_state
+    assert "xano_get_cache" not in app.session_state
 
 
 def test_falha_de_api_apresenta_mensagem_sem_dados(cliente_pacientes):
@@ -282,3 +309,33 @@ def test_sessao_ausente_nao_chama_api(cliente_pacientes):
 
     assert any("Sua sessão expirou" in item.value for item in app.info)
     cliente_pacientes.listar_opcoes_agenda.assert_not_called()
+
+
+def renderizar_lista_e_opcoes_compartilhadas(cliente, conta):
+    import streamlit as st
+
+    from sorrisomais import cache_xano, pagina_pacientes_xano, sessao
+
+    pagina_pacientes_xano.renderizar(cliente, conta)
+    credencial = st.session_state[sessao.CHAVE]
+    cache_xano.carregar_cache(
+        st.session_state,
+        credencial.token,
+        "agenda/opcoes",
+        lambda: cliente.listar_opcoes_agenda(credencial.token),
+    )
+
+
+def test_opcoes_da_lista_sao_reutilizadas_pela_nova_consulta(cliente_pacientes):
+    conta = SimpleNamespace(nome="Conta Fictícia", perfis=("recepcionista",))
+    app = AppTest.from_function(
+        renderizar_lista_e_opcoes_compartilhadas,
+        args=(cliente_pacientes, conta),
+    ).run()
+    app.session_state[sessao.CHAVE] = Credencial(
+        "token-ficticio", datetime.now(timezone.utc) + timedelta(minutes=5),
+    )
+    app.run()
+
+    assert not app.exception
+    assert cliente_pacientes.listar_opcoes_agenda.call_count == 1

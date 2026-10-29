@@ -57,6 +57,38 @@ Prontuários e Registros Clínicos ainda não têm integração Xano confirmada;
 essas áreas aparecem somente na demonstração fictícia até aprovação de uma
 change própria baseada no contrato real.
 
+O export local de `GET /registros-clinicos` também inclui retificações
+append-only com conteúdo, justificativa, autoria e data. Essa alteração ainda
+não foi publicada nem validada no grupo Xano; o fluxo clínico continua
+desabilitado no modo Xano até essa validação.
+
+### Prontuário e Nova Evolução — finalização local
+
+Na branch `prontuario-registros-clinicos-xano`, Nova Evolução inicia com o
+Paciente filtrado no Prontuário quando ele está no escopo das Consultas.
+Trocar o Paciente atualiza as opções de Consulta e descarta o texto anterior,
+evitando associá-lo ao Prontuário errado. Cancelar, fechar, salvar com sucesso
+ou encerrar a sessão limpa o rascunho. Falhas recuperáveis preservam o texto
+e não repetem o POST automaticamente. HTTP 401 remove o formulário e impede
+que o histórico já carregado seja reapresentado. O formulário usa a largura
+da área principal, sem ficar restrito à coluna estreita de ações.
+
+Verificação local em 29/10/2026: **286 testes Python e 7 subtestes passaram**,
+incluindo AppTests das duas telas, autenticação/sessão, interface, cache,
+roteamento e contratos REST. **7 testes JavaScript dos contratos clínicos
+passaram**, e `openspec validate prontuario-registros-clinicos-xano --strict`
+validou a change. Os cenários novos foram reproduzidos com falha antes da
+correção. Os testes usam dados fictícios e substituem a rede.
+
+**Validação real pendente:** nenhuma chamada ao Xano foi executada nesta
+finalização. Há configuração da Metadata API, mas não há sessões clínicas
+fictícias autenticadas de Profissional, Paciente e Recepcionista disponíveis
+para validar autorização, criação, histórico e retificação no grupo publicado.
+O token administrativo não substitui a autenticação desses perfis. A tarefa
+2.3 permanece aberta; a change não está pronta para aprovação clínica ou
+arquivamento. A inspeção visual em navegador e em celular também não foi
+executada nesta finalização; os estados foram verificados com AppTest.
+
 Na branch `feat/3-retomada-cadastro-profissional`, os métodos clientes e os
 testes unitários locais dos contratos propostos para Disponibilidades, Consultas
 e Registros Clínicos foram iniciados conforme a change
@@ -86,12 +118,18 @@ aguarda 20 segundos. Nenhum desses caches é compartilhado entre sessões.
 | `POST /auth/logout` | Bearer token | 204 sem corpo |
 | `GET /especialidades` | Bearer token de Administrador | 200 com especialidades ativas |
 | `POST /profissionais` | Bearer token de Administrador e JSON estrito | 201 com Profissional e Conta de Acesso vinculados |
+| `GET /disponibilidades` | Bearer token e filtros opcionais de Profissional/período | 200 com Disponibilidades livres autorizadas |
+| `POST /disponibilidades` | Bearer token e dados de Profissional/início/fim | 201 com Disponibilidade criada |
+| `PATCH /disponibilidades/{id}` | Bearer token e intervalo ou situação | 200 com Disponibilidade atualizada |
+| `POST /consultas` | Bearer token, Paciente, Disponibilidade e Procedimentos opcionais | 201 com Consulta agendada |
+| `GET /consultas` | Bearer token e filtros opcionais por Paciente/Profissional/período/situação | 200 com Consultas no escopo autorizado |
+| `PATCH /consultas/{id}/situacao` | Bearer token, nova situação e motivo quando exigido | 200 com Consulta atualizada |
 
 O cadastro de Profissional exige `nome`, `email`, `senha`, `cro` e `especialidade_id`. A confirmação da senha é validada somente na interface e não é enviada. O backend normaliza e-mail e CRO, exige uma especialidade ativa e define o único perfil da nova Conta de Acesso como `profissional`. A resposta não contém senha, e-mail, hash ou token. A autorização é verificada no Xano em cada chamada.
 
 Erros esperados no cadastro: 400 para dados inválidos, 401 para sessão inválida, 403 para acesso não autorizado, 409 para e-mail ou CRO duplicado e 429 para limite de requisições. Timeout, erro 5xx ou resposta incompatível são tratados como resultado não confirmado; o cliente não repete automaticamente a operação. Consulte a [especificação de cadastro de Profissional](openspec/specs/cadastro-profissional/spec.md) para os requisitos e cenários do fluxo.
 
-Na auditoria local de 02/10/2026, passaram 156 testes Python de contratos, cadastro, autenticação e interface. Os cinco testes JavaScript de login, identidade, logout, especialidades e cadastro de Profissional também passaram. Esses testes substituem a rede por respostas simuladas e não fazem parte de uma validação do Xano publicado; não comprovam permissões, transações ou concorrência no backend.
+Na verificação local das rotas de Consultas e Disponibilidades, passaram 28 testes Python (`PYTHONPATH=. pytest tests/api_contracts/test_consultas_get.py tests/api_contracts/test_consultas_post.py tests/api_contracts/test_disponibilidades_get.py tests/api_contracts/test_disponibilidades_post.py tests/api_contracts/test_disponibilidades_patch.py tests/api_contracts/test_consultas_situacao_patch.py`) e 7 testes JavaScript (`node --test tests/js/api_contracts/consultas-get.test.mjs tests/js/api_contracts/consultas-post.test.mjs tests/js/api_contracts/disponibilidades-get.test.mjs tests/js/api_contracts/disponibilidades-post.test.mjs tests/js/api_contracts/disponibilidades-patch.test.mjs tests/js/api_contracts/consultas-situacao-patch.test.mjs`). Os testes unitários usam clientes simulados e não acessam a rede. O smoke público autenticado de `GET /consultas` e `GET /disponibilidades` retornou 200; sem credencial, ambas responderam 401. Não foi feita inspeção via Metadata API, portanto esses resultados não confirmam a configuração interna completa do Xano.
 
 O [design](openspec/changes/archive/2026-09-25-login-streamlit-xano/design.md) detalha o contrato e as permissões. As tabelas legadas e APIs de outras funcionalidades foram preservadas.
 
@@ -213,3 +251,17 @@ No macOS, execute `.venv/bin/python -B -m pytest tests/test_acesso.py tests/test
 - [Verificações e tarefas](openspec/changes/archive/2026-09-25-login-streamlit-xano/tasks.md)
 
 O MVP utiliza somente dados fictícios e não é destinado ao uso clínico real.
+## Verificação publicada do autoatendimento do Paciente
+
+A integração somente leitura usa uma Conta de Acesso de Paciente fictícia já provisionada no Xano publicado. Configure `XANO_AUTOATENDIMENTO_EMAIL` e `XANO_AUTOATENDIMENTO_SENHA` diretamente no ambiente local ou no gerenciador de segredos; não registre esses valores em arquivos, argumentos, capturas ou logs. A URL continua sendo `XANO_API_BASE_URL`.
+
+No PowerShell, habilite a suíte apenas no terminal atual:
+
+```powershell
+$env:XANO_TESTAR_AUTOATENDIMENTO_PUBLICADO = "1"
+.venv\Scripts\python.exe -B -m pytest tests/test_xano_autoatendimento_publicado.py -q --tb=short
+```
+
+A jornada confirma `/auth/me` sem sessão (401), login e perfil Paciente ativo, leituras de Consultas, Registros Clínicos e Exames sem enviar `paciente_id`, liberação de Registros Clínicos, resultado liberado, ausência de referências públicas de arquivos e logout em `finally`. Não imprime nem persiste os corpos das respostas. Sem a flag, o teste é ignorado sem rede; com a flag e pré-requisitos ausentes, falha claramente sem iniciar chamadas.
+
+A Conta de Acesso deve conter exclusivamente dados fictícios e estar vinculada a dados igualmente fictícios. Esta worktree possui URL Xano, mas não possui credenciais de Paciente para teste; portanto, a confirmação contra o grupo publicado permanece pendente até que o responsável forneça uma Conta de Acesso de teste por canal seguro.

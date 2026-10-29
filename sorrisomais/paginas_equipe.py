@@ -9,15 +9,15 @@ import streamlit as st
 
 from .api import ErroAcesso, ROTULOS
 from . import sessao, pagina_paciente, navegacao
+from .cache_xano import carregar_cache, invalidar_cache
 
 ESPECIALIDADES_CACHE_TTL_SEGUNDOS = 300
 ESPECIALIDADES_RETRY_SEGUNDOS = 20
-CACHE_PAINEL_RECEPCAO = "painel_recepcao_xano_cache"
 PAINEL_RECEPCAO_CACHE_TTL_SEGUNDOS = 20
 PAINEL_RECEPCAO_RETRY_SEGUNDOS = 20
 PAINEL_ADMIN_CACHE_TTL_SEGUNDOS = 20
 PAINEL_ADMIN_RETRY_SEGUNDOS = 20
-CACHE_PAINEL_ADMIN = "painel_administrativo_xano_cache"
+CHAVE_CONSULTA_PROCEDIMENTOS = "consulta_procedimentos_contexto"
 RAIZ = Path(__file__).resolve().parents[1]
 
 
@@ -29,24 +29,22 @@ def renderizar_marca_menu():
                       unsafe_allow_html=True)
 
 
-def listar_especialidades_sessao(cliente, token):
-    agora = monotonic()
-    carregadas = st.session_state.get("cad_especialidades_cache")
-    carregadas_em = st.session_state.get("cad_especialidades_cache_em", 0)
-    if isinstance(carregadas, list) and agora - carregadas_em < ESPECIALIDADES_CACHE_TTL_SEGUNDOS:
-        return carregadas
-    erro_em = st.session_state.get("cad_especialidades_erro_em", 0)
-    if agora - erro_em < ESPECIALIDADES_RETRY_SEGUNDOS:
-        raise ErroAcesso("Aguarde alguns segundos antes de tentar carregar as especialidades novamente.", 429)
+def listar_especialidades_sessao(cliente, token, *, force=False):
+    chave_erro = "cad_especialidades_erro_em"
+    ultimo_erro = st.session_state.get(chave_erro)
+    if ultimo_erro is not None and 0 <= monotonic() - ultimo_erro < ESPECIALIDADES_RETRY_SEGUNDOS:
+        raise ErroAcesso("Muitas tentativas. Aguarde alguns segundos antes de tentar novamente.", 429)
     try:
-        carregadas = cliente.listar_especialidades(token)
-    except ErroAcesso:
-        st.session_state["cad_especialidades_erro_em"] = agora
+        especialidades = carregar_cache(
+            st.session_state, token, "especialidades",
+            lambda: cliente.listar_especialidades(token), force=force,
+        )
+    except ErroAcesso as error:
+        if error.status == 429:
+            st.session_state[chave_erro] = monotonic()
         raise
-    st.session_state["cad_especialidades_cache"] = carregadas
-    st.session_state["cad_especialidades_cache_em"] = agora
-    st.session_state.pop("cad_especialidades_erro_em", None)
-    return carregadas
+    st.session_state.pop(chave_erro, None)
+    return especialidades
 
 
 def limpar_formulario():
@@ -58,46 +56,29 @@ def limpar_formulario():
 
 
 def _carregar_consultas_painel(cliente, credencial, dia, *, atualizar=False):
-    """Cacheia somente o resumo administrativo desta sessão e deste dia."""
     if credencial.expira_em <= datetime.now(ZoneInfo("UTC")):
-        st.session_state.pop(CACHE_PAINEL_RECEPCAO, None)
-        raise ErroAcesso("Sua sessão expirou. Entre novamente para consultar o painel.", 401)
-    identidade = hashlib.sha256(credencial.token.encode("utf-8")).hexdigest()
-    erro_em = st.session_state.get("painel_recepcao_xano_erro_em", 0)
-    decorrido = monotonic() - erro_em if erro_em else PAINEL_RECEPCAO_RETRY_SEGUNDOS
-    if 0 <= decorrido < PAINEL_RECEPCAO_RETRY_SEGUNDOS:
+        raise ErroAcesso("Sua sessao expirou. Entre novamente para consultar o painel.", 401)
+    erro_em = st.session_state.get("painel_recepcao_xano_erro_em")
+    if erro_em is not None and 0 <= monotonic() - erro_em < 20:
         raise ErroAcesso("Muitas tentativas. Aguarde alguns segundos antes de tentar novamente.", 429)
-    cache = st.session_state.get(CACHE_PAINEL_RECEPCAO)
-    idade = monotonic() - cache.get("carregado_em", 0) if isinstance(cache, dict) else PAINEL_RECEPCAO_CACHE_TTL_SEGUNDOS
-    if (not atualizar and isinstance(cache, dict)
-            and cache.get("sessao") == identidade
-            and cache.get("dia") == dia
-            and 0 <= idade < PAINEL_RECEPCAO_CACHE_TTL_SEGUNDOS
-            and isinstance(cache.get("consultas"), list)):
-        return cache["consultas"], cache["carregado_em"]
-
-    st.session_state.pop(CACHE_PAINEL_RECEPCAO, None)
     token = credencial.token
-    resposta = cliente.listar_consultas(
-        token, inicio=_data_api(dia), fim=_data_api(dia, True)
-    )
-    campos_resumo = ("id", "situacao", "inicio_em", "fim_em", "paciente_nome", "profissional_nome")
-    consultas = []
-    for consulta in resposta:
-        resumo = {campo: consulta[campo] for campo in campos_resumo}
-        # A tabela Xano mantém o valor legado "Concluída" para a situação do domínio "Realizada".
-        if resumo["situacao"] == "Concluída":
-            resumo["situacao"] = "Realizada"
-        consultas.append(resumo)
-    carregado_em = monotonic()
+    inicio, fim = _data_api(dia), _data_api(dia, True)
+    namespace = f"consultas:inicio={inicio}:fim={fim}"
+    def carregar_resumo():
+        resposta = cliente.listar_consultas(token, inicio=inicio, fim=fim)
+        campos = ("id", "situacao", "inicio_em", "fim_em", "paciente_nome", "profissional_nome")
+        resumo = [{campo: consulta[campo] for campo in campos} for consulta in resposta]
+        for consulta in resumo:
+            if consulta["situacao"] == "Conclu\u00edda":
+                consulta["situacao"] = "Realizada"
+        return resumo
+    try:
+        consultas = carregar_cache(st.session_state, token, namespace, carregar_resumo, force=atualizar)
+    except ErroAcesso:
+        st.session_state["painel_recepcao_xano_erro_em"] = monotonic()
+        raise
     st.session_state.pop("painel_recepcao_xano_erro_em", None)
-    st.session_state[CACHE_PAINEL_RECEPCAO] = {
-        "sessao": identidade,
-        "dia": dia,
-        "consultas": consultas,
-        "carregado_em": carregado_em,
-    }
-    return consultas, carregado_em
+    return consultas, monotonic()
 
 
 def _horario_consulta(consulta):
@@ -134,7 +115,6 @@ def _renderizar_painel_recepcao(cliente, conta, pode_cadastrar_paciente, pode_ag
     erro_carregamento = None
     atualizar = st.button("Atualizar resumo", key="inicio-painel-atualizar")
     if not credencial:
-        st.session_state.pop(CACHE_PAINEL_RECEPCAO, None)
         st.session_state.pop("painel_recepcao_xano_erro_em", None)
         erro_carregamento = "Sua sessão expirou. Entre novamente para consultar o painel."
     else:
@@ -144,7 +124,6 @@ def _renderizar_painel_recepcao(cliente, conta, pode_cadastrar_paciente, pode_ag
                     cliente, credencial, dia, atualizar=atualizar
                 )
         except ErroAcesso as error:
-            st.session_state.pop(CACHE_PAINEL_RECEPCAO, None)
             if error.status == 401:
                 st.session_state.pop("painel_recepcao_xano_erro_em", None)
                 sessao.limpar(st.session_state)
@@ -249,16 +228,39 @@ def voltar():
 
 
 def abrir_inicio():
+    st.session_state.pop(CHAVE_CONSULTA_PROCEDIMENTOS, None)
     limpar_formulario()
     pagina_paciente.limpar()
     st.session_state["pagina_equipe"] = "inicio"
 
 
 def abrir_agenda():
+    st.session_state.pop(CHAVE_CONSULTA_PROCEDIMENTOS, None)
     st.session_state["pagina_equipe"] = "agenda"
 
 
+def abrir_procedimentos_consulta(consulta):
+    """Abre Procedimentos somente com o contexto da Consulta escolhida."""
+    if not isinstance(consulta, dict) or not isinstance(consulta.get("id"), int):
+        st.session_state.pop(CHAVE_CONSULTA_PROCEDIMENTOS, None)
+        st.session_state["pagina_equipe"] = "agenda"
+        return
+    credencial = st.session_state.get(sessao.CHAVE)
+    token = getattr(credencial, "token", None)
+    if not token:
+        st.session_state.pop(CHAVE_CONSULTA_PROCEDIMENTOS, None)
+        st.session_state["pagina_equipe"] = "agenda"
+        return
+    campos = ("id", "paciente_nome", "inicio_em")
+    st.session_state[CHAVE_CONSULTA_PROCEDIMENTOS] = {
+        "sessao": hashlib.sha256(token.encode("utf-8")).hexdigest(),
+        "consulta": {campo: consulta[campo] for campo in campos if campo in consulta},
+    }
+    st.session_state["pagina_equipe"] = "procedimentos_consulta"
+
+
 def abrir_area_conectada(area):
+    st.session_state.pop(CHAVE_CONSULTA_PROCEDIMENTOS, None)
     limpar_formulario()
     pagina_paciente.limpar()
     st.session_state["pagina_equipe"] = area
@@ -317,95 +319,25 @@ def _atualizar_situacao_agenda(cliente, token, consulta_id):
     except ErroAcesso as error:
         st.session_state["agenda_aviso"] = ("error", str(error))
     else:
-        st.session_state.pop(CACHE_AGENDA_XANO, None)
-        st.session_state.pop(CACHE_DISPONIBILIDADES_AGENDA, None)
+        invalidar_cache(st.session_state)
         st.session_state.pop("agenda_xano_erro_em", None)
         st.session_state["agenda_aviso"] = ("success", "Situação da consulta atualizada.")
 
 
 AGENDA_CACHE_TTL_SEGUNDOS = 20
 AGENDA_RETRY_SEGUNDOS = 20
-CACHE_AGENDA_XANO = "agenda_xano_cache"
-CACHE_DISPONIBILIDADES_AGENDA = "agenda_disponibilidades_cache"
 
 
-def _carregar_consultas_agenda(cliente, token, dia):
-    """Reutiliza a leitura da data atual por sessão durante vinte segundos."""
-    agora = monotonic()
-    identidade = hashlib.sha256(token.encode("utf-8")).hexdigest()
-    cache = st.session_state.get(CACHE_AGENDA_XANO)
-    if not isinstance(cache, dict) or cache.get("sessao") != identidade:
-        st.session_state.pop(CACHE_AGENDA_XANO, None)
-        st.session_state.pop(CACHE_DISPONIBILIDADES_AGENDA, None)
-        cache = {"sessao": identidade, "dias": {}}
-
-    chave_dia = dia.isoformat()
-    dias_cache = cache.get("dias")
-    if not isinstance(dias_cache, dict):
-        dias_cache = {}
-    entrada = dias_cache.get(chave_dia)
-    idade = agora - entrada.get("carregado_em", 0) if isinstance(entrada, dict) else AGENDA_CACHE_TTL_SEGUNDOS
-    if (isinstance(entrada, dict) and isinstance(entrada.get("consultas"), list)
-            and 0 <= idade < AGENDA_CACHE_TTL_SEGUNDOS):
-        return entrada["consultas"]
-
-    erro_em = st.session_state.get("agenda_xano_erro_em")
-    if erro_em is not None and 0 <= agora - erro_em < AGENDA_RETRY_SEGUNDOS:
-        raise ErroAcesso("Muitas tentativas. Aguarde alguns segundos antes de tentar novamente.", 429)
-
-    dias_cache.pop(chave_dia, None)
-    st.session_state[CACHE_AGENDA_XANO] = {"sessao": identidade, "dias": dias_cache}
-    try:
-        consultas = cliente.listar_consultas(
-            token, inicio=_data_api(dia), fim=_data_api(dia, True)
-        )
-    except ErroAcesso:
-        st.session_state["agenda_xano_erro_em"] = monotonic()
-        raise
-
-    carregado_em = monotonic()
-    dias_cache[chave_dia] = {"consultas": consultas, "carregado_em": carregado_em}
-    for chave, item in list(dias_cache.items()):
-        if carregado_em - item.get("carregado_em", 0) >= AGENDA_CACHE_TTL_SEGUNDOS:
-            dias_cache.pop(chave, None)
-    while len(dias_cache) > 7:
-        dias_cache.pop(next(iter(dias_cache)))
-    st.session_state[CACHE_AGENDA_XANO] = {"sessao": identidade, "dias": dias_cache}
-    st.session_state.pop("agenda_xano_erro_em", None)
-    return consultas
+def _carregar_consultas_agenda(cliente, token, dia, *, force=False):
+    inicio, fim = _data_api(dia), _data_api(dia, True)
+    return carregar_cache(st.session_state, token, f"consultas:inicio={inicio}:fim={fim}",
+                          lambda: cliente.listar_consultas(token, inicio=inicio, fim=fim), force=force)
 
 
-def _carregar_disponibilidades_agenda(cliente, token, dia):
-    agora = monotonic()
-    identidade = hashlib.sha256(token.encode("utf-8")).hexdigest()
-    cache = st.session_state.get(CACHE_DISPONIBILIDADES_AGENDA)
-    if not isinstance(cache, dict) or cache.get("sessao") != identidade:
-        cache = {"sessao": identidade, "dias": {}}
-    dias_cache = cache.get("dias", {})
-    chave_dia = dia.isoformat()
-    entrada = dias_cache.get(chave_dia)
-    if (isinstance(entrada, dict) and isinstance(entrada.get("disponibilidades"), list)
-            and 0 <= agora - entrada.get("carregado_em", 0) < AGENDA_CACHE_TTL_SEGUNDOS):
-        return entrada["disponibilidades"]
-    erro_em = st.session_state.get("agenda_disponibilidades_erro_em")
-    if erro_em is not None and 0 <= agora - erro_em < AGENDA_RETRY_SEGUNDOS:
-        raise ErroAcesso("Muitas tentativas. Aguarde alguns segundos antes de tentar novamente.", 429)
-    try:
-        disponibilidades = cliente.listar_disponibilidades(
-            token, inicio=_data_api(dia), fim=_data_api(dia, True)
-        )
-    except ErroAcesso:
-        st.session_state["agenda_disponibilidades_erro_em"] = monotonic()
-        raise
-    dias_cache[chave_dia] = {"disponibilidades": disponibilidades, "carregado_em": monotonic()}
-    for chave, item in list(dias_cache.items()):
-        if monotonic() - item.get("carregado_em", 0) >= AGENDA_CACHE_TTL_SEGUNDOS:
-            dias_cache.pop(chave, None)
-    while len(dias_cache) > 7:
-        dias_cache.pop(next(iter(dias_cache)))
-    st.session_state[CACHE_DISPONIBILIDADES_AGENDA] = {"sessao": identidade, "dias": dias_cache}
-    st.session_state.pop("agenda_disponibilidades_erro_em", None)
-    return disponibilidades
+def _carregar_disponibilidades_agenda(cliente, token, dia, *, force=False):
+    inicio, fim = _data_api(dia), _data_api(dia, True)
+    return carregar_cache(st.session_state, token, f"disponibilidades:inicio={inicio}:fim={fim}",
+                          lambda: cliente.listar_disponibilidades(token, inicio=inicio, fim=fim), force=force)
 
 
 def _renderizar_agenda(cliente, conta):
@@ -415,6 +347,7 @@ def _renderizar_agenda(cliente, conta):
         st.session_state["agenda_data_input"] = dia_pendente
     st.caption("ORGANIZAÇÃO DO DIA")
     st.title("Agenda")
+    atualizar_agenda = st.button("Atualizar Agenda", key="agenda-atualizar-listas")
     st.caption("Acompanhe consultas, horários e situação dos atendimentos.")
     aviso_agenda = st.session_state.pop("agenda_aviso", None)
     if aviso_agenda:
@@ -438,21 +371,14 @@ def _renderizar_agenda(cliente, conta):
                    on_click=_navegar_data_agenda, args=(1,))
     pode_agendar = bool(perfis.intersection({"administrador", "recepcionista"}))
     if pode_agendar:
-        nova_consulta, nova_consulta_pagina, novo_horario = st.columns(3, gap="small")
+        nova_consulta, novo_horario = st.columns(2, gap="small")
         nova_consulta.button("＋ Nova consulta", key="agenda-nova", type="primary", width="stretch",
                     on_click=_alternar_formulario_agenda, args=("agenda_nova",))
-        consulta_integrada = navegacao.modulo_xano_disponivel("nova_consulta")
-        nova_consulta_pagina.button(
-            "Abrir Nova Consulta", key="agenda-abrir-nova-consulta",
-            on_click=abrir_nova_consulta if consulta_integrada else None,
-            disabled=not consulta_integrada, width="stretch",
-            help=None if consulta_integrada else "A tela Nova Consulta ainda não está integrada ao Xano.",
-        )
         novo_horario.button("＋ Novo horário", key="agenda-novo-horario", width="stretch",
                     on_click=_alternar_formulario_agenda, args=("agenda_nova_disponibilidade",))
 
     try:
-        consultas = _carregar_consultas_agenda(cliente, token, dia)
+        consultas = _carregar_consultas_agenda(cliente, token, dia, force=atualizar_agenda)
     except ErroAcesso as error:
         if error.status in (401, 403):
             sessao.limpar(st.session_state)
@@ -474,9 +400,9 @@ def _renderizar_agenda(cliente, conta):
     st.markdown(f"**{dia.strftime('%d/%m/%Y')}** · {len(consultas)} consulta(s)")
 
     if st.session_state.get("agenda_nova") and pode_agendar:
-        _renderizar_formulario_agenda(cliente, token, dia)
+        _renderizar_formulario_agenda(cliente, token, dia, force=atualizar_agenda)
     if st.session_state.get("agenda_nova_disponibilidade") and pode_agendar:
-        _renderizar_formulario_disponibilidade(cliente, token, dia)
+        _renderizar_formulario_disponibilidade(cliente, token, dia, force=atualizar_agenda)
     if not consultas:
         with st.container(key="agenda-estado-vazio", border=True):
             if busca or situacao != "Todas":
@@ -497,6 +423,13 @@ def _renderizar_agenda(cliente, conta):
             col_paciente.caption(", ".join(consulta["procedimentos"]) or "Procedimento não informado")
             col_prof.write(consulta["profissional_nome"])
             col_situacao.write(consulta["situacao"])
+            if "profissional" in perfis:
+                acao_procedimentos = st.columns([3, 1])[1]
+                acao_procedimentos.button(
+                    "Procedimentos", key=f"agenda-procedimentos-{consulta['id']}",
+                    on_click=abrir_procedimentos_consulta, args=(consulta,),
+                    width="stretch",
+                )
             permitidas = transicoes.get(consulta["situacao"], [])
             if "profissional" not in perfis:
                 permitidas = [s for s in permitidas if s in {"Confirmada", "Cancelada"}]
@@ -512,14 +445,14 @@ def _renderizar_agenda(cliente, conta):
                 enviar_col.button("Atualizar", key=f"agenda-atualizar-{consulta['id']}", width="stretch",
                     on_click=_atualizar_situacao_agenda, args=(cliente, token, consulta["id"]))
 
-    _renderizar_disponibilidades_agenda(cliente, token, dia, perfis)
+    _renderizar_disponibilidades_agenda(cliente, token, dia, perfis, force=atualizar_agenda)
 
 
-def _renderizar_disponibilidades_agenda(cliente, token, dia, perfis):
+def _renderizar_disponibilidades_agenda(cliente, token, dia, perfis, *, force=False):
     pode_gerenciar = bool(perfis.intersection({"profissional", "administrador", "recepcionista"}))
     st.subheader("Horários da agenda")
     try:
-        disponibilidades = _carregar_disponibilidades_agenda(cliente, token, dia)
+        disponibilidades = _carregar_disponibilidades_agenda(cliente, token, dia, force=force)
     except ErroAcesso as error:
         if error.status in (401, 403):
             sessao.limpar(st.session_state)
@@ -555,8 +488,7 @@ def _renderizar_disponibilidades_agenda(cliente, token, dia, perfis):
                     cliente.atualizar_disponibilidade(
                         token, disponibilidade["id"], situacao=novo_estado
                     )
-                    st.session_state.pop(CACHE_AGENDA_XANO, None)
-                    st.session_state.pop(CACHE_DISPONIBILIDADES_AGENDA, None)
+                    invalidar_cache(st.session_state)
                     mensagem = "Horário desbloqueado." if novo_estado == "disponivel" else "Horário bloqueado."
                     st.session_state["agenda_aviso"] = ("success", mensagem)
                     st.rerun()
@@ -586,8 +518,7 @@ def _renderizar_disponibilidades_agenda(cliente, token, dia, perfis):
                                 inicio=inicio_novo.isoformat(timespec="seconds"),
                                 fim=fim_novo.isoformat(timespec="seconds"),
                             )
-                            st.session_state.pop(CACHE_AGENDA_XANO, None)
-                            st.session_state.pop(CACHE_DISPONIBILIDADES_AGENDA, None)
+                            invalidar_cache(st.session_state)
                             st.session_state[f"agenda-editar-{disponibilidade['id']}"] = False
                             st.session_state["agenda_aviso"] = ("success", "Horário atualizado.")
                             st.rerun()
@@ -595,9 +526,9 @@ def _renderizar_disponibilidades_agenda(cliente, token, dia, perfis):
                             st.error(str(error))
 
 
-def _renderizar_formulario_agenda(cliente, token, dia):
+def _renderizar_formulario_agenda(cliente, token, dia, *, force=False):
     try:
-        opcoes = cliente.listar_opcoes_agenda(token)
+        opcoes = carregar_cache(st.session_state, token, "agenda/opcoes", lambda: cliente.listar_opcoes_agenda(token), force=force)
     except ErroAcesso as error:
         st.error(str(error) if error.status in (401, 403, 429) else "Não foi possível carregar as opções de agendamento.")
         return
@@ -614,7 +545,7 @@ def _renderizar_formulario_agenda(cliente, token, dia):
                                       key="agenda-consulta-data")
         inicio, fim = _data_api(data_consulta), _data_api(data_consulta, True)
         try:
-            disponibilidades = cliente.listar_disponibilidades(token, profissional_id, inicio, fim)
+            disponibilidades = carregar_cache(st.session_state, token, f"disponibilidades:profissional={profissional_id}:inicio={inicio}:fim={fim}", lambda: cliente.listar_disponibilidades(token, profissional_id, inicio, fim), force=force)
         except ErroAcesso as error:
             st.error("Não foi possível carregar os horários disponíveis." if error.status not in (401, 403) else str(error))
             disponibilidades = []
@@ -641,8 +572,7 @@ def _renderizar_formulario_agenda(cliente, token, dia):
         try:
             cliente.agendar_consulta(token, paciente_id, disponibilidade_id, procedimento_ids,
                                      motivo=motivo.strip() or None)
-            st.session_state.pop(CACHE_AGENDA_XANO, None)
-            st.session_state.pop(CACHE_DISPONIBILIDADES_AGENDA, None)
+            invalidar_cache(st.session_state)
             st.session_state["agenda_nova"] = False
             st.session_state["agenda_data_pendente"] = data_consulta
             st.session_state["agenda_aviso"] = ("success", "Consulta agendada.")
@@ -651,9 +581,9 @@ def _renderizar_formulario_agenda(cliente, token, dia):
             st.error(str(error))
 
 
-def _renderizar_formulario_disponibilidade(cliente, token, dia):
+def _renderizar_formulario_disponibilidade(cliente, token, dia, *, force=False):
     try:
-        opcoes = cliente.listar_opcoes_agenda(token)
+        opcoes = carregar_cache(st.session_state, token, "agenda/opcoes", lambda: cliente.listar_opcoes_agenda(token), force=force)
     except ErroAcesso as error:
         st.error(str(error) if error.status in (401, 403, 429)
                  else "Não foi possível carregar os Profissionais.")
@@ -729,8 +659,7 @@ def _renderizar_formulario_disponibilidade(cliente, token, dia):
             token, profissional_id, inicio.isoformat(timespec="seconds"),
             fim.isoformat(timespec="seconds"),
         )
-        st.session_state.pop(CACHE_AGENDA_XANO, None)
-        st.session_state.pop(CACHE_DISPONIBILIDADES_AGENDA, None)
+        invalidar_cache(st.session_state)
         st.session_state["agenda_nova_disponibilidade"] = False
         st.session_state["agenda_disponibilidade_padroes_iniciados"] = False
         st.session_state["agenda_aviso"] = (
@@ -770,15 +699,19 @@ def renderizar_cadastro(cliente):
         st.success("Profissional cadastrado. Ele já pode entrar pelo login da equipe.")
     token = st.session_state[sessao.CHAVE].token
     try:
-        especialidades = listar_especialidades_sessao(cliente, token)
+        atualizar_especialidades = st.button("Atualizar especialidades", key="cad-especialidades-atualizar")
+        especialidades = listar_especialidades_sessao(cliente, token, force=atualizar_especialidades)
     except ErroAcesso as error:
-        limpar_formulario()
         if error.status in (401, 403):
+            limpar_formulario()
             sessao.limpar(st.session_state)
             st.session_state["aviso"] = ("error", str(error))
             st.rerun()
-        st.error("Não foi possível carregar as especialidades. Tente novamente em instantes.")
-        st.button("Tentar novamente", on_click=limpar_formulario)
+        if error.status == 429:
+            st.error("Muitas tentativas. Aguarde 20 segundos antes de tentar novamente.")
+        else:
+            st.error("Não foi possível carregar as especialidades. Tente novamente em instantes.")
+        st.button("Tentar novamente", key="cad-especialidades-retry")
         return
     opcoes = {item["id"]: item["nome"] for item in especialidades}
     if not opcoes:
@@ -816,6 +749,7 @@ def renderizar_cadastro(cliente):
             if dados:
                 with st.spinner("Cadastrando profissional…"):
                     cliente.cadastrar_profissional(token, **dados)
+                invalidar_cache(st.session_state)
                 st.session_state["cad_limpar"] = True
         except ErroAcesso as error:
             if error.status in (401, 403):
@@ -848,48 +782,16 @@ def renderizar_cadastro_modal(cliente):
         renderizar_cadastro(cliente)
 
 
-def _carregar_resumo_painel_administrador(cliente, credencial, dia):
-    """Cacheia as duas leituras administrativas por sessao, dia e vinte segundos."""
-    agora = monotonic()
+def _carregar_resumo_painel_administrador(cliente, credencial, dia, *, force=False):
     if credencial.expira_em <= datetime.now(ZoneInfo("UTC")):
-        st.session_state.pop(CACHE_PAINEL_ADMIN, None)
-        raise ErroAcesso("Sua sessão expirou. Entre novamente para consultar o resumo.", 401)
-
-    identidade = hashlib.sha256(credencial.token.encode("utf-8")).hexdigest()
-    erro_em = st.session_state.get("painel_administrativo_xano_erro_em")
-    if erro_em is not None and 0 <= agora - erro_em < PAINEL_ADMIN_RETRY_SEGUNDOS:
-        raise ErroAcesso("Muitas tentativas. Aguarde alguns segundos antes de tentar novamente.", 429)
-
-    cache = st.session_state.get(CACHE_PAINEL_ADMIN)
-    idade = agora - cache.get("carregado_em", 0) if isinstance(cache, dict) else PAINEL_ADMIN_CACHE_TTL_SEGUNDOS
-    if (isinstance(cache, dict) and cache.get("sessao") == identidade
-            and cache.get("dia") == dia
-            and 0 <= idade < PAINEL_ADMIN_CACHE_TTL_SEGUNDOS
-            and isinstance(cache.get("consultas"), list)
-            and type(cache.get("pacientes_ativos")) is int):
-        return cache["consultas"], cache["pacientes_ativos"]
-
-    st.session_state.pop(CACHE_PAINEL_ADMIN, None)
-    try:
-        consultas = cliente.listar_consultas(
-            credencial.token, inicio=_data_api(dia), fim=_data_api(dia, True)
-        )
-        opcoes = cliente.listar_opcoes_agenda(credencial.token)
-        pacientes_ativos = len(opcoes["pacientes"])
-    except (ErroAcesso, KeyError, TypeError, ValueError):
-        st.session_state["painel_administrativo_xano_erro_em"] = monotonic()
-        raise
-
-    carregado_em = monotonic()
-    st.session_state.pop("painel_administrativo_xano_erro_em", None)
-    st.session_state[CACHE_PAINEL_ADMIN] = {
-        "sessao": identidade,
-        "dia": dia,
-        "consultas": consultas,
-        "pacientes_ativos": pacientes_ativos,
-        "carregado_em": carregado_em,
-    }
-    return consultas, pacientes_ativos
+        raise ErroAcesso("Sua sessao expirou. Entre novamente para consultar o resumo.", 401)
+    token = credencial.token
+    inicio, fim = _data_api(dia), _data_api(dia, True)
+    consultas = carregar_cache(st.session_state, token, f"consultas:inicio={inicio}:fim={fim}",
+                               lambda: cliente.listar_consultas(token, inicio=inicio, fim=fim), force=force)
+    opcoes = carregar_cache(st.session_state, token, "agenda/opcoes",
+                            lambda: cliente.listar_opcoes_agenda(token), force=force)
+    return consultas, len(opcoes["pacientes"])
 
 
 def _renderizar_painel_administrador(cliente, conta, pode_cadastrar_paciente, pode_agendar):
@@ -915,6 +817,7 @@ def _renderizar_painel_administrador(cliente, conta, pode_cadastrar_paciente, po
             help=None if consulta_integrada else "A tela Nova Consulta ainda não está integrada ao Xano.",
         )
 
+    atualizar = st.button("Atualizar resumo", key="inicio-admin-atualizar")
     credencial = st.session_state.get(sessao.CHAVE)
     consultas = pacientes_ativos = None
     erro = None
@@ -924,7 +827,7 @@ def _renderizar_painel_administrador(cliente, conta, pode_cadastrar_paciente, po
         try:
             with st.spinner("Carregando o resumo da clínica…"):
                 consultas, pacientes_ativos = _carregar_resumo_painel_administrador(
-                    cliente, credencial, dia
+                    cliente, credencial, dia, force=atualizar
                 )
         except ErroAcesso as error:
             consultas = pacientes_ativos = None
@@ -1120,6 +1023,17 @@ def renderizar(conta, cliente):
         return
 
     perfis = set(conta.perfis)
+    contexto = st.session_state.get(CHAVE_CONSULTA_PROCEDIMENTOS)
+    pagina_anterior = st.session_state.get("pagina_equipe")
+    credencial_atual = st.session_state.get(sessao.CHAVE)
+    token_atual = getattr(credencial_atual, "token", None)
+    identidade_atual = (hashlib.sha256(token_atual.encode("utf-8")).hexdigest()
+                        if token_atual else None)
+    if (pagina_anterior != "procedimentos_consulta" and contexto is not None
+            or isinstance(contexto, dict) and contexto.get("sessao") != identidade_atual):
+        st.session_state.pop(CHAVE_CONSULTA_PROCEDIMENTOS, None)
+    if st.session_state.pop("pac_sucesso", False):
+        st.success("Paciente cadastrado com prontuÃ¡rio vazio. Este cadastro nÃ£o cria login.")
     paciente_exclusivo = perfis == {"paciente"}
     administrador = "administrador" in perfis
     pode_cadastrar_paciente = (cliente.configuracao.cadastro_paciente_habilitado
@@ -1140,6 +1054,7 @@ def renderizar(conta, cliente):
     elif pagina not in {"inicio", "agenda", "cadastro", "paciente"} and (
             not navegacao.pode_acessar(conta.perfis, pagina)
             or not navegacao.modulo_xano_disponivel(pagina)):
+        st.session_state.pop(CHAVE_CONSULTA_PROCEDIMENTOS, None)
         pagina = pagina_padrao
         st.session_state["pagina_equipe"] = pagina
     ocupado = (st.session_state.get("cad_processando", False)
@@ -1193,6 +1108,24 @@ def renderizar(conta, cliente):
                 if pagina == "agenda":
                     renderizar_topbar(conta, "agenda")
                     _renderizar_agenda(cliente, conta)
+                elif pagina == "procedimentos_consulta":
+                    renderizar_topbar(conta, pagina)
+                    contexto = st.session_state.get(CHAVE_CONSULTA_PROCEDIMENTOS)
+                    consulta = contexto.get("consulta") if isinstance(contexto, dict) else None
+                    modulo = navegacao.carregar_modulo_xano(pagina)
+                    if (not isinstance(consulta, dict)
+                            or not isinstance(consulta.get("id"), int)):
+                        st.info("Selecione uma Consulta na Agenda para acompanhar seus Procedimentos.")
+                        st.button("Voltar à Agenda", key="procedimentos-voltar-agenda",
+                                  on_click=abrir_agenda)
+                    elif modulo and callable(getattr(modulo, "renderizar", None)):
+                        modulo.renderizar(cliente, conta, consulta)
+                    else:
+                        st.error("A área de Procedimentos da Consulta está indisponível no momento.")
+                        st.button("Voltar à Agenda", key="procedimentos-indisponivel-agenda",
+                                  on_click=abrir_agenda)
+                elif pagina in {"paciente", "cadastro"}:
+                    renderizar_topbar(conta, pagina)
                 elif pagina == "inicio":
                     renderizar_topbar(conta, "inicio")
                     renderizar_inicio(cliente, conta, administrador, pode_cadastrar_paciente,
@@ -1203,7 +1136,8 @@ def renderizar(conta, cliente):
                     if modulo and callable(getattr(modulo, "renderizar", None)):
                         modulo.renderizar(cliente, conta)
                     else:
-                        st.info("A integração desta área com o Xano ainda não está disponível.")
+                        st.error("Esta área está indisponível no momento.")
+                        st.session_state["pagina_equipe"] = "inicio"
     if administrador and pagina == "cadastro":
         renderizar_cadastro_modal(cliente)
     elif pode_cadastrar_paciente and pagina == "paciente":
@@ -1216,6 +1150,8 @@ def renderizar_topbar(conta, pagina):
         "inicio": "Visão geral", "agenda": "Agenda", "pacientes": "Pacientes",
         "profissionais": "Profissionais", "prontuarios": "Prontuários",
         "procedimentos": "Procedimentos", "paciente": "Novo paciente",
+        "exames": "Exames", "reagendar_consulta": "Reagendamento",
+        "procedimentos_consulta": "Procedimentos da Consulta",
         "cadastro": "Novo profissional", "nova_consulta": "Nova consulta",
     }
     with st.container(key="topbar-equipe"):

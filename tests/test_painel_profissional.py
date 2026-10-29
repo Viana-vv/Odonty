@@ -1,6 +1,7 @@
 """Testes do painel do Profissional sem chamadas reais de rede."""
 
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 from zoneinfo import ZoneInfo
@@ -12,6 +13,18 @@ from sorrisomais import painel_profissional, sessao
 from sorrisomais.api import Credencial, ErroAcesso
 
 FUSO = ZoneInfo("America/Sao_Paulo")
+ESTILOS = Path(__file__).parents[1] / "assets" / "estilos.css"
+
+
+def test_estilo_responsivo_alcanca_colunas_do_painel_apos_wrapper_streamlit():
+    estilos = ESTILOS.read_text(encoding="utf-8")
+    seletor = (
+        '.st-key-painel-profissional-conteudo > [data-testid="stLayoutWrapper"] '
+        '> [data-testid="stHorizontalBlock"]'
+    )
+
+    assert f"{seletor} {{ flex-direction:column; }}" in estilos
+    assert f"{seletor} > [data-testid=\"stColumn\"]" in estilos
 
 
 def renderizar(cliente, conta):

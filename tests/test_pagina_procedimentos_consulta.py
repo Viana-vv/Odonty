@@ -52,7 +52,7 @@ def test_tela_exibe_planejamento_e_permite_realizacao():
     assert any(botao.label == "Marcar como realizado" for botao in app.button)
     assert any("Planejado por Dra. Planejadora" in bloco.value for bloco in app.caption)
 
-    app.button[0].click().run()
+    app.button(key="marcar-procedimento-realizado-31").click().run()
 
     assert not app.exception
     assert any("Procedimento marcado como realizado." in bloco.value for bloco in app.success)

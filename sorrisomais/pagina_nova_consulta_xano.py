@@ -1,8 +1,5 @@
 """Tela isolada para agendamento conectado de Consulta."""
-import copy
-import hashlib
-import time as relogio
-from datetime import date, datetime, time, timedelta
+from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 import streamlit as st
@@ -11,32 +8,39 @@ from .api import ErroAcesso
 from . import sessao
 
 FUSO_CLINICA = ZoneInfo("America/Sao_Paulo")
-TTL_CACHE_LEITURAS_SEGUNDOS = 20
-
-
 def _limpar_cache_leituras():
     st.session_state.pop("nova-consulta-cache-leituras", None)
+    from .cache_xano import invalidar_cache
+    invalidar_cache(st.session_state)
 
 
-def _leitura_com_cache(token, chave, carregar):
-    """Evita repetir GETs em cada rerun sem compartilhar dados entre sessões."""
-    cache = st.session_state.setdefault("nova-consulta-cache-leituras", {})
-    token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
-    chave_cache = (token_hash, *chave)
-    agora = relogio.monotonic()
-    entrada = cache.get(chave_cache)
-    if entrada and entrada[0] > agora:
-        return copy.deepcopy(entrada[1])
-    cache.pop(chave_cache, None)
+def _normalizar_namespace_cache(chave):
+    partes = tuple(chave)
+    recurso = str(partes[0])
+    parametros = partes[1:]
+    if recurso in {"agenda/opcoes", "exames-solicitacao-opcoes"}:
+        return "agenda/opcoes"
+    if recurso in {"consultas", "exames-solicitacao-consultas"}:
+        namespace = "consultas"
+        if parametros:
+            namespace += f":paciente={parametros[0]}"
+        return namespace
+    if recurso in {"reagendamento-consultas", "consultas:paciente"}:
+        return f"consultas:paciente={parametros[0]}"
+    if "disponibilidades" in recurso:
+        profissional, inicio, fim = parametros
+        return f"disponibilidades:profissional={profissional}:inicio={inicio}:fim={fim}"
+    if parametros:
+        return recurso + ":" + ":".join(str(parte) for parte in parametros)
+    return recurso
 
-    # Só respostas bem-sucedidas são guardadas; ErroAcesso não deixa dados
-    # antigos serem apresentados como se fossem resultado da leitura atual.
-    resposta = carregar()
-    cache[chave_cache] = (
-        relogio.monotonic() + TTL_CACHE_LEITURAS_SEGUNDOS,
-        copy.deepcopy(resposta),
+
+def _leitura_com_cache(token, chave, carregar, *, force=False):
+    """Normaliza o namespace e delega ao cache privado central."""
+    from .cache_xano import carregar_cache
+    return carregar_cache(
+        st.session_state, token, _normalizar_namespace_cache(chave), carregar, force=force
     )
-    return resposta
 
 
 def _limites_data(dia):
@@ -89,7 +93,11 @@ def _renderizar_formulario(cliente, token, pacientes, profissionais, procediment
 
     data_coluna, profissional_coluna = st.columns(2, gap="medium")
     data_consulta = data_coluna.date_input(
-        "Data", value=date.today(), format="DD/MM/YYYY",
+        "Data", value=st.session_state.get(
+            "agenda_data_input",
+            st.session_state.get("agenda_data", datetime.now(FUSO_CLINICA).date()),
+        ),
+        format="DD/MM/YYYY",
         key="nova-consulta-data",
     )
     profissional_id = profissional_coluna.selectbox(
@@ -149,7 +157,7 @@ def _renderizar_formulario(cliente, token, pacientes, profissionais, procediment
 
     if cancelar_envio:
         st.session_state["pagina_equipe"] = "agenda"
-        return
+        st.rerun()
     if not enviar:
         return
     if paciente_id is None:

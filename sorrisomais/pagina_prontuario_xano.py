@@ -1,7 +1,5 @@
 """Histórico individual do Prontuário integrado aos contratos existentes do Xano."""
 
-import hashlib
-import time
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -10,30 +8,19 @@ import streamlit as st
 from . import sessao
 from .api import ErroAcesso
 from . import pagina_nova_evolucao_xano
+from .cache_xano import carregar_cache
 
-_CHAVE_CACHE_HISTORICO = "prontuario_historico_cache"
-_CACHE_HISTORICO_SEGUNDOS = 20
+_CHAVE_PENDENTE = "prontuario_paciente_pendente"
 
 
-def _carregar_dados(cliente, token):
-    """Reutiliza respostas bem-sucedidas durante reruns da mesma sessão."""
-    identificador_token = hashlib.sha256(token.encode("utf-8")).hexdigest()
-    agora = time.monotonic()
-    cache = st.session_state.get(_CHAVE_CACHE_HISTORICO)
-    if (isinstance(cache, dict)
-            and cache.get("token") == identificador_token
-            and agora - cache.get("instante", 0) < _CACHE_HISTORICO_SEGUNDOS):
-        return cache["consultas"], cache["registros"]
+def _selecionar_paciente(paciente_id):
+    """Agenda a seleção para o próximo rerun, antes do selectbox ser criado."""
+    st.session_state[_CHAVE_PENDENTE] = paciente_id
 
-    st.session_state.pop(_CHAVE_CACHE_HISTORICO, None)
-    consultas = cliente.listar_consultas(token)
-    registros = cliente.listar_registros_clinicos(token)
-    st.session_state[_CHAVE_CACHE_HISTORICO] = {
-        "token": identificador_token,
-        "instante": time.monotonic(),
-        "consultas": consultas,
-        "registros": registros,
-    }
+
+def _carregar_dados(cliente, token, *, force=False):
+    consultas = carregar_cache(st.session_state, token, "consultas", lambda: cliente.listar_consultas(token), force=force)
+    registros = carregar_cache(st.session_state, token, "registros-clinicos", lambda: cliente.listar_registros_clinicos(token), force=force)
     return consultas, registros
 
 
@@ -88,15 +75,25 @@ def _renderizar_historico(registros):
                 with st.container(key=f"conteudo-registro-clinico-{registro.get('id', 'sem-id')}"):
                     st.write(conteudo)
             st.caption(f"Registro #{registro.get('id', '—')}")
+            for retificacao in registro.get("retificacoes", []):
+                with st.container(key=f"retificacao-registro-{retificacao.get('id', 'sem-id')}", border=True):
+                    st.caption(
+                        f"Retificação #{retificacao.get('id', '—')} · "
+                        f"{_data_legivel(retificacao.get('criada_em'))} · "
+                        f"Profissional ID {retificacao.get('profissional_id', '—')}"
+                    )
+                    if isinstance(retificacao.get("justificativa"), str):
+                        st.caption(f"Justificativa: {retificacao['justificativa']}")
+                    if isinstance(retificacao.get("conteudo"), str) and retificacao["conteudo"].strip():
+                        st.write(retificacao["conteudo"])
 
 
 def renderizar(cliente, conta):
     """Renderiza histórico somente para perfis clínicos reconhecidos."""
-    titulo, acao = st.columns([1, 0.34], vertical_alignment="center")
-    with titulo:
-        st.caption("HISTÓRICO CLÍNICO")
-        st.title("Prontuários")
-        st.markdown("Registre evoluções e consulte os atendimentos realizados.")
+    st.caption("HISTÓRICO CLÍNICO")
+    st.title("Prontuários")
+    atualizar = st.button("Atualizar Prontuário", key="prontuario-atualizar")
+    st.markdown("Registre evoluções e consulte os atendimentos realizados.")
 
     aviso = st.session_state.pop("prontuario_aviso", None)
     if aviso:
@@ -114,7 +111,7 @@ def renderizar(cliente, conta):
 
     try:
         with st.spinner("Carregando histórico clínico…"):
-            consultas, registros = _carregar_dados(cliente, credencial.token)
+            consultas, registros = _carregar_dados(cliente, credencial.token, force=atualizar)
     except ErroAcesso as error:
         if error.status == 401:
             sessao.limpar(st.session_state)
@@ -133,13 +130,17 @@ def renderizar(cliente, conta):
 
     ids = list(pacientes)
     opcoes = [None, *ids]
+    pendente = st.session_state.pop(_CHAVE_PENDENTE, None)
+    if pendente is not None and pendente in opcoes:
+        st.session_state["prontuario_paciente_id"] = pendente
     if st.session_state.get("prontuario_paciente_id") not in opcoes:
         st.session_state["prontuario_paciente_id"] = None
     nomes = {paciente_id: pacientes[paciente_id] for paciente_id in ids}
 
-    with acao:
-        if "profissional" in perfis:
-            pagina_nova_evolucao_xano.renderizar(cliente, conta, consultas)
+    if "profissional" in perfis:
+        pagina_nova_evolucao_xano.renderizar(cliente, conta, consultas)
+        if not st.session_state.get(sessao.CHAVE):
+            return
 
     seletor, aviso = st.columns([1, 1], vertical_alignment="bottom")
     with seletor:
@@ -162,9 +163,10 @@ def renderizar(cliente, conta):
                     key=f"prontuario-paciente-{paciente_id}",
                     type="primary" if paciente_id == selecionado else "secondary",
                     width="stretch",
+                    on_click=_selecionar_paciente,
+                    args=(paciente_id,),
                 ):
-                    st.session_state["prontuario_paciente_id"] = paciente_id
-                    st.rerun()
+                    pass
     with linha_tempo:
         registros_paciente = [
             registro for registro in registros

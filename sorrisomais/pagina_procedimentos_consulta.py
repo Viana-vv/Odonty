@@ -7,6 +7,7 @@ import streamlit as st
 
 from . import sessao
 from .api import ErroAcesso
+from .cache_xano import carregar_cache, invalidar_cache
 
 _FUSO_LOCAL = ZoneInfo("America/Sao_Paulo")
 
@@ -69,6 +70,7 @@ def _renderizar_lista(cliente, token, consulta, procedimentos):
                             realizado = cliente.marcar_procedimento_realizado(
                                 token, consulta["id"], identificador
                             )
+                        invalidar_cache(st.session_state, (f"procedimentos-consulta:{consulta['id']}", "consultas", "prontuario"))
                         procedimento.update(realizado)
                         acao.empty()
                         indicador.success("Realizado")
@@ -96,6 +98,7 @@ def renderizar(cliente, conta, consulta):
     st.caption("ATENDIMENTO")
     st.title("Procedimentos da Consulta")
     st.markdown("Acompanhe o planejamento e registre os Procedimentos realizados.")
+    atualizar = st.button("Atualizar Procedimentos", key="procedimentos-consulta-atualizar")
 
     perfis = set(getattr(conta, "perfis", ()))
     if "profissional" not in perfis:
@@ -118,8 +121,9 @@ def renderizar(cliente, conta, consulta):
 
     try:
         with st.spinner("Carregando Procedimentos…"):
-            procedimentos = cliente.listar_procedimentos_consulta(
-                credencial.token, consulta["id"]
+            procedimentos = carregar_cache(
+                st.session_state, credencial.token, f"procedimentos-consulta:{consulta['id']}",
+                lambda: cliente.listar_procedimentos_consulta(credencial.token, consulta["id"]), force=atualizar,
             )
     except ErroAcesso as erro:
         if erro.status == 401:

@@ -6,7 +6,7 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 
-def abrir(consultas, registros, *, perfis=("profissional",), erro=None):
+def abrir(consultas, registros, *, perfis=("profissional",), erro=None, erro_gravacao=None):
     script = f'''\
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -18,7 +18,9 @@ from sorrisomais.api import Credencial, ErroAcesso
 from sorrisomais import sessao
 from sorrisomais.pagina_prontuario_xano import renderizar
 
-st.session_state[sessao.CHAVE] = Credencial("token-ficticio", datetime.now(timezone.utc) + timedelta(hours=1))
+if "_iniciado" not in st.session_state:
+    st.session_state["_iniciado"] = True
+    st.session_state[sessao.CHAVE] = Credencial("token-ficticio", datetime.now(timezone.utc) + timedelta(hours=1))
 class ClienteFalso:
     def listar_consultas(self, token):
         st.session_state["_chamadas_api_prontuario"] = st.session_state.get("_chamadas_api_prontuario", 0) + 1
@@ -26,7 +28,9 @@ class ClienteFalso:
     def listar_registros_clinicos(self, token):
         st.session_state["_chamadas_api_prontuario"] = st.session_state.get("_chamadas_api_prontuario", 0) + 1
         {f'raise ErroAcesso("Falha segura.", {erro})' if erro else f'return {registros!r}'}
-renderizar(ClienteFalso(), SimpleNamespace(perfis={perfis!r}))
+    def registrar_clinico(self, *args, **kwargs):
+        {f'raise ErroAcesso("Falha segura.", {erro_gravacao})' if erro_gravacao else 'return {"id": 42}'}
+renderizar(ClienteFalso(), SimpleNamespace(nome="Dra. Fictícia", perfis={perfis!r}))
 '''
     return AppTest.from_string(script, default_timeout=20).run()
 
@@ -68,6 +72,19 @@ def test_visao_geral_mostra_todos_os_registros_e_permite_abrir_prontuario_indivi
     assert not app.exception
     assert any("Evolução fictícia Bruno" in item.value for item in app.markdown)
     assert not any("Evolução fictícia Aurora" in item.value for item in app.markdown)
+
+
+def test_clicar_no_paciente_nao_altera_widget_instanciado():
+    consultas = [
+        {"paciente_id": 12, "paciente_nome": "Paciente Fictícia Aurora"},
+        {"paciente_id": 13, "paciente_nome": "Paciente Fictício Bruno"},
+    ]
+    app = abrir(consultas, [])
+
+    app.button(key="prontuario-paciente-13").click().run()
+
+    assert not app.exception
+    assert app.selectbox[0].value == 13
 
 
 def test_paciente_nao_recebe_acao_para_criar_registro_clinico():
@@ -131,3 +148,32 @@ def test_falha_na_api_nao_e_cacheada_e_pode_ser_tentada_novamente():
 
     assert not app.exception
     assert app.session_state["_chamadas_api_prontuario"] == 2
+
+
+def test_historico_apresenta_original_e_trilha_de_retificacao():
+    registros = [{
+        "id": 8, "paciente_id": 12, "conteudo": "Conteúdo original fictício",
+        "registrado_em": "2026-10-10T12:00:00Z",
+        "retificacoes": [{"id": 4, "profissional_id": 8, "conteudo": "Conteúdo corrigido fictício",
+                         "justificativa": "Correção de digitação", "criada_em": "2026-10-11T12:00:00Z"}],
+    }]
+    app = abrir([{"paciente_id": 12, "paciente_nome": "Paciente Aurora"}], registros)
+    textos = [item.value for item in app.markdown]
+    assert any("Conteúdo original fictício" in texto for texto in textos)
+    assert any("Conteúdo corrigido fictício" in texto for texto in textos)
+    assert any("Correção de digitação" in item.value for item in app.caption)
+
+
+def test_expiracao_ao_salvar_nao_reapresenta_historico_carregado():
+    consultas = [{
+        "id": 17, "paciente_id": 12, "paciente_nome": "Paciente Fictícia Aurora",
+        "inicio_em": "2026-10-10T12:00:00Z", "situacao": "Realizada",
+    }]
+    registros = [{"id": 8, "paciente_id": 12, "conteudo": "Histórico fictício restrito"}]
+    app = abrir(consultas, registros, erro_gravacao=401)
+    app.button(key="prontuario-nova-evolucao").click().run()
+    app.text_area[0].set_value("Nova evolução fictícia")
+    next(botao for botao in app.button if botao.label == "Salvar no prontuário").click().run()
+    assert not app.exception
+    assert "credencial" not in app.session_state
+    assert not any("Histórico fictício restrito" in item.value for item in app.markdown)

@@ -152,7 +152,7 @@ def test_filtros_da_agenda_reutilizam_leitura_da_mesma_data(agenda_simulada):
     assert agenda_simulada["listagens"] == chamadas_antes
 
 
-def test_cache_da_agenda_expira_apos_vinte_segundos(agenda_simulada, monkeypatch):
+def test_cache_da_agenda_persiste_apos_vinte_segundos(agenda_simulada, monkeypatch):
     from sorrisomais import paginas_equipe
 
     relogio = {"agora": 100.0}
@@ -163,7 +163,7 @@ def test_cache_da_agenda_expira_apos_vinte_segundos(agenda_simulada, monkeypatch
     relogio["agora"] = 121.0
     app.run()
 
-    assert agenda_simulada["listagens"] == chamadas_antes + 1
+    assert agenda_simulada["listagens"] == chamadas_antes
 
 
 def test_profissional_consulta_agenda_sem_acao_de_criar(agenda_simulada):
@@ -205,8 +205,8 @@ def test_painel_profissional_lida_com_sessao_expirada(agenda_simulada):
 
     app = abrir_agenda(agenda_simulada, "profissional")
     app.button(key="menu-inicio").click().run()
-    del app.session_state["agenda_xano_cache"]
     agenda_simulada["erro_consultas"] = ErroAcesso("mensagem interna", 401)
+    app.session_state["xano_get_cache"] = {}
     app.button(key="menu-inicio").click().run()
 
     assert not app.exception
@@ -241,10 +241,8 @@ def test_agenda_oferece_atalho_a_nova_consulta_somente_para_perfis_autorizados(
     monkeypatch.setattr(navegacao, "import_module", importar)
 
     recepcao = abrir_agenda(agenda_simulada, "recepcionista")
-    atalho = recepcao.button(key="agenda-abrir-nova-consulta")
-    assert not atalho.disabled
-    recepcao.button(key="agenda-abrir-nova-consulta").click().run()
-    assert any(item.value == "Nova Consulta simulada" for item in recepcao.title)
+    assert not any(button.key == "agenda-abrir-nova-consulta" for button in recepcao.button)
+    assert recepcao.button(key="agenda-nova")
 
     profissional = abrir_agenda(agenda_simulada, "profissional")
     assert not any(button.key == "agenda-abrir-nova-consulta"
@@ -257,7 +255,7 @@ def test_atalho_agenda_nova_consulta_desabilitado_quando_modulo_ausente(
 
     monkeypatch.setattr(navegacao, "find_spec", lambda _nome: None)
     administrador = abrir_agenda(agenda_simulada, "administrador")
-    assert administrador.button(key="agenda-abrir-nova-consulta").disabled
+    assert not any(button.key == "agenda-abrir-nova-consulta" for button in administrador.button)
 
 
 def test_formularios_agenda_sao_exclusivos_ao_alternar(agenda_simulada):

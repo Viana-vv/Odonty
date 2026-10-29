@@ -80,8 +80,9 @@ def test_painel_mostra_metricas_e_cinco_consultas_ordenadas_sem_procedimentos(cl
     assert "Paciente Fictício 5" in texto_ui(app)
     assert "Paciente Fictício 6" not in texto_ui(app)
     assert "Procedimento Fictício Confidencial" not in texto_ui(app)
-    assert all("procedimentos" not in consulta for consulta in
-               app.session_state[paginas_equipe.CACHE_PAINEL_RECEPCAO]["consultas"])
+    cache = app.session_state["xano_get_cache"]
+    resposta_cache = next(valor for (_, namespace), valor in cache.items() if namespace.startswith("consultas:"))
+    assert all("procedimentos" not in consulta for consulta in resposta_cache)
     assert any("Realizada" in item.value for item in app.caption)
     assert any(item.value == "6 consultas" for item in app.caption)
     assert any("inicio-nova-consulta" == botao.key for botao in app.button)
@@ -122,7 +123,7 @@ def test_atalhos_abrem_somente_as_areas_operacionais_disponiveis(cliente_painel)
     assert not any(botao.key == "inicio-cadastrar-paciente" for botao in sem_cadastro.button)
 
 
-def test_cache_expira_e_refaz_consulta(cliente_painel, monkeypatch):
+def test_cache_persiste_apos_janela_anterior(cliente_painel, monkeypatch):
     tempo = [100.0]
     monkeypatch.setattr(paginas_equipe, "monotonic", lambda: tempo[0])
     app = abrir_painel(cliente_painel)
@@ -130,7 +131,7 @@ def test_cache_expira_e_refaz_consulta(cliente_painel, monkeypatch):
     tempo[0] += paginas_equipe.PAINEL_RECEPCAO_CACHE_TTL_SEGUNDOS + 1
     app.run()
 
-    assert cliente_painel.listar_consultas.call_count == 2
+    assert cliente_painel.listar_consultas.call_count == 1
 
 
 def test_dia_vazio_mostra_estado_vazio_e_indicadores_zero(cliente_painel):
@@ -158,7 +159,7 @@ def test_falhas_removem_dados_e_nao_exibem_detalhes(cliente_painel, status, mens
     assert any(mensagem in item.value for item in app.error)
     assert "erro técnico privado" not in texto_ui(app)
     assert "Paciente Fictício" not in texto_ui(app)
-    assert paginas_equipe.CACHE_PAINEL_RECEPCAO not in app.session_state
+    assert not any(namespace.startswith("consultas:") for (_, namespace) in app.session_state.get("xano_get_cache", {}))
     if status == 401:
         assert sessao.CHAVE not in app.session_state
 
@@ -173,7 +174,7 @@ def test_atualizacao_com_falha_nao_reutiliza_resposta_antiga(cliente_painel):
 
     assert any("Não foi possível carregar o resumo" in item.value for item in app.error)
     assert "Paciente Fictício 1" not in texto_ui(app)
-    assert paginas_equipe.CACHE_PAINEL_RECEPCAO not in app.session_state
+    assert not any(namespace.startswith("consultas:") for (_, namespace) in app.session_state.get("xano_get_cache", {}))
 
 
 def test_limite_de_requisicoes_aguarda_antes_de_tentar_novamente(cliente_painel, monkeypatch):
@@ -197,15 +198,12 @@ def test_limite_de_requisicoes_aguarda_antes_de_tentar_novamente(cliente_painel,
 
 def test_expiracao_e_logout_limpa_cache_do_painel(cliente_painel):
     app = abrir_painel(cliente_painel)
-    assert paginas_equipe.CACHE_PAINEL_RECEPCAO in app.session_state
+    assert "xano_get_cache" in app.session_state
 
-    estado = {
-        sessao.CHAVE: app.session_state[sessao.CHAVE],
-        paginas_equipe.CACHE_PAINEL_RECEPCAO: app.session_state[paginas_equipe.CACHE_PAINEL_RECEPCAO],
-    }
+    estado = {sessao.CHAVE: app.session_state[sessao.CHAVE], "xano_get_cache": app.session_state["xano_get_cache"]}
     sessao.limpar(estado)
 
-    assert paginas_equipe.CACHE_PAINEL_RECEPCAO not in estado
+    assert "xano_get_cache" not in estado
 
 
 def test_credencial_expirada_nao_usa_cache_nem_consulta_api(cliente_painel):
@@ -214,16 +212,12 @@ def test_credencial_expirada_nao_usa_cache_nem_consulta_api(cliente_painel):
     app.session_state[sessao.CHAVE] = Credencial(
         "token-expirado-ficticio", datetime.now(timezone.utc) - timedelta(seconds=1)
     )
-    app.session_state[paginas_equipe.CACHE_PAINEL_RECEPCAO] = {
-        "sessao": "identificador-ficticio",
-        "dia": datetime.now(ZoneInfo("America/Sao_Paulo")).date(),
-        "consultas": consultas_ficticias(),
-        "carregado_em": 100.0,
-    }
+    app.session_state["xano_get_escopo"] = "hash-ficticio"
+    app.session_state["xano_get_cache"] = {("hash-ficticio", "consultas:expirada"): consultas_ficticias()}
 
     app.run()
 
     assert any("Sua sessão expirou" in item.value for item in app.error)
     assert "Paciente Fictício" not in texto_ui(app)
-    assert paginas_equipe.CACHE_PAINEL_RECEPCAO not in app.session_state
+    assert not any(namespace.startswith("consultas:") for (_, namespace) in app.session_state.get("xano_get_cache", {}))
     cliente_painel.listar_consultas.assert_not_called()

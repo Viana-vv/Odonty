@@ -1,11 +1,13 @@
 """Contrato e interface com dados sintéticos; não substituem testes no Xano."""
 
 from datetime import date, timedelta
+from hashlib import sha256
 from uuid import uuid4
 from unittest.mock import Mock
 
 import pytest
 import requests
+from streamlit.testing.v1 import AppTest
 
 from sorrisomais import sessao
 from sorrisomais.api import ClienteXano, ContaAcesso, ErroAcesso
@@ -156,13 +158,23 @@ def paciente_api(api, monkeypatch):
     cadastrar = Mock(return_value=12)
     monkeypatch.setattr(ClienteXano, "cadastrar_paciente", cadastrar)
     api["cadastrar_paciente"] = cadastrar
+    consultas = Mock(return_value=[])
+    opcoes = Mock(return_value={"pacientes": [], "profissionais": [], "procedimentos": []})
+    monkeypatch.setattr(ClienteXano, "listar_consultas", consultas)
+    monkeypatch.setattr(ClienteXano, "listar_opcoes_agenda", opcoes)
+    api["listar_consultas"] = consultas
+    api["listar_opcoes_agenda"] = opcoes
     return api
 
 
 def formulario(api):
     app = abrir_admin(api)
-    botao(app, "Cadastrar paciente").click().run()
+    app.session_state["pagina_equipe"] = "pacientes"
+    app.run()
     assert not app.exception
+    app.button(key="pacientes-xano-novo").click().run()
+    assert not app.exception
+    assert app.session_state["pagina_equipe"] == "paciente"
     return app
 
 
@@ -195,12 +207,8 @@ def test_sucesso_limpa_preserva_equipe(paciente_api):
     assert not app.exception
     paciente_api["cadastrar_paciente"].assert_called_once()
     assert app.success
-    assert app.text_input(key="pac_nome").value == ""
-    assert app.date_input(key="pac_data_nascimento").value is None
-    assert app.number_input(key="pac_telefone").value is None
-    assert app.text_input(key="pac_cpf").value == ""
-    assert app.text_input(key="pac_email").value == ""
-    assert app.number_input(key="pac_celular").value is None
+    assert not any(c.key.startswith("pac_") for c in app.text_input)
+    assert app.session_state["pagina_equipe"] == "pacientes"
     assert app.session_state["pac_operacao_id"] != operacao
     assert app.session_state[sessao.CHAVE].token == "token-adm"
 
@@ -274,6 +282,8 @@ def test_saida_limpa_dados(paciente_api, acao):
             seconds=sessao.INTERVALO_REVALIDACAO_SEGUNDOS + 1)
         app.run()
     else:
+        if acao == "Voltar":
+            botao(app, "Cadastrar paciente").click().run()
         botao(app, acao).click().run()
     assert not app.exception
     assert not any(k.startswith("pac_") for k in app.session_state)
@@ -357,3 +367,90 @@ def test_callback_duplo_nao_sobrescreve_operacao(monkeypatch):
     estado["pac_nome"] = "Outro Paciente Fictício"
     pagina_paciente.solicitar()
     assert estado["pac_pendente"] == primeira
+
+
+def renderizar_pagina_paciente_isolada(cliente):
+    from sorrisomais.pagina_paciente import renderizar
+    renderizar(cliente)
+
+
+def cache_opcoes_ficticias(token):
+    return {
+        (sha256(token.encode("utf-8")).hexdigest(), "agenda/opcoes"):
+            {"pacientes": [{"id": 1}], "profissionais": [], "procedimentos": []},
+    }
+
+
+def test_cache_pacientes_so_invalida_apos_sucesso_confirmado():
+    cliente = Mock()
+    cliente.cadastrar_paciente.return_value = 12
+    app = AppTest.from_function(renderizar_pagina_paciente_isolada, args=(cliente,)).run()
+    app.session_state[sessao.CHAVE] = type("CredencialTeste", (), {"token": "token-ficticio"})()
+    dados = payload()
+    app.session_state["pac_pendente"] = dados
+    app.session_state["pac_processando"] = True
+    app.session_state["pac_operacao_id"] = dados["operacao_id"]
+    app.session_state["xano_get_cache"] = cache_opcoes_ficticias("token-ficticio")
+    app.run()
+    assert not app.exception
+    cliente.cadastrar_paciente.assert_called_once()
+    assert "xano_get_cache" not in app.session_state
+
+
+def test_resultado_incerto_preserva_cache_e_chave_idempotente():
+    cliente = Mock()
+    cliente.cadastrar_paciente.side_effect = ErroAcesso("Sem confirmação", 503)
+    app = AppTest.from_function(renderizar_pagina_paciente_isolada, args=(cliente,)).run()
+    app.session_state[sessao.CHAVE] = type("CredencialTeste", (), {"token": "token-ficticio"})()
+    dados = payload()
+    app.session_state["pac_pendente"] = dados
+    app.session_state["pac_processando"] = True
+    app.session_state["pac_operacao_id"] = dados["operacao_id"]
+    app.session_state["xano_get_cache"] = cache_opcoes_ficticias("token-ficticio")
+    app.run()
+    assert not app.exception
+    assert app.session_state["pac_pendente"] == dados
+    assert "agenda/opcoes" in {key[1] for key in app.session_state["xano_get_cache"]}
+    assert app.session_state["pac_operacao_id"] == dados["operacao_id"]
+    cliente.cadastrar_paciente.assert_called_once()
+
+
+def test_rejeicao_de_cadastro_nao_invalida_cache():
+    cliente = Mock()
+    cliente.cadastrar_paciente.side_effect = ErroAcesso("Corrija os dados", 400)
+    app = AppTest.from_function(renderizar_pagina_paciente_isolada, args=(cliente,)).run()
+    app.session_state[sessao.CHAVE] = type("CredencialTeste", (), {"token": "token-ficticio"})()
+    dados = payload()
+    app.session_state["pac_pendente"] = dados
+    app.session_state["pac_processando"] = True
+    app.session_state["pac_operacao_id"] = dados["operacao_id"]
+    app.session_state["xano_get_cache"] = cache_opcoes_ficticias("token-ficticio")
+    app.run()
+    assert not app.exception
+    assert "agenda/opcoes" in {key[1] for key in app.session_state["xano_get_cache"]}
+    assert "pac_pendente" not in app.session_state
+    assert app.session_state["pac_operacao_id"] != dados["operacao_id"]
+    cliente.cadastrar_paciente.assert_called_once()
+
+
+def test_sucesso_volta_a_lista_faz_um_get_e_exibe_paciente_novo(paciente_api):
+    pacientes = [{"id": 11, "nome": "Paciente Fictício Existente"}]
+    paciente_api["listar_opcoes_agenda"].side_effect = lambda _token: {
+        "pacientes": [item.copy() for item in pacientes], "profissionais": [], "procedimentos": [],
+    }
+
+    def cadastrar(_token, **_dados):
+        pacientes.append({"id": 12, "nome": DADOS["nome"]})
+        return 12
+
+    paciente_api["cadastrar_paciente"].side_effect = cadastrar
+    app = formulario(paciente_api)
+    chamadas_antes_do_post = paciente_api["listar_opcoes_agenda"].call_count
+    preencher(app)
+    botao(app, "Cadastrar").click().run()
+
+    assert not app.exception
+    assert app.session_state["pagina_equipe"] == "pacientes"
+    assert paciente_api["cadastrar_paciente"].call_count == 1
+    assert paciente_api["listar_opcoes_agenda"].call_count == chamadas_antes_do_post + 1
+    assert any(DADOS["nome"] in item.value for item in app.markdown)
