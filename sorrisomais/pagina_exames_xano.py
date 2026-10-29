@@ -162,6 +162,8 @@ def renderizar(cliente, conta):
 
     if "profissional" in perfis:
         with st.expander("Solicitar exame", expanded=False):
+            opcoes = None
+            consultas_disponiveis = None
             try:
                 opcoes, consultas_disponiveis = _opcoes_solicitacao(
                     cliente, credencial.token, force=atualizar
@@ -172,10 +174,8 @@ def renderizar(cliente, conta):
                     st.error("Sua sessão expirou. Entre novamente.")
                 else:
                     st.error("Não foi possível carregar Pacientes e Consultas. Tente novamente.")
-                return
             except Exception:
                 st.error("Não foi possível carregar Pacientes e Consultas. Tente novamente.")
-                return
 
             pacientes_lista = opcoes.get("pacientes", []) if isinstance(opcoes, dict) else []
             pacientes = {
@@ -186,50 +186,50 @@ def renderizar(cliente, conta):
             }
             if not pacientes:
                 st.info("Cadastre Pacientes ativos antes de solicitar um Exame.")
-                return
-            paciente_id = st.selectbox(
-                "Paciente *", list(pacientes), format_func=pacientes.get,
-                key="exame-paciente",
-            )
-            consultas = {
-                item["id"]: item for item in consultas_disponiveis
-                if isinstance(item, dict) and type(item.get("id")) is int
-                and item.get("paciente_id") == paciente_id
-                and item["id"] > 0
-            } if isinstance(consultas_disponiveis, list) else {}
-            if not consultas:
-                st.info("Este Paciente ainda não possui Consultas disponíveis para vincular ao Exame.")
-                return
-            with st.form("form-solicitar-exame", border=True):
-                consulta_id = st.selectbox(
-                    "Consulta *", list(consultas),
-                    format_func=lambda identificador: _rotulo_consulta(
-                        consultas[identificador], pacientes
-                    ),
-                    key="exame-consulta",
+            else:
+                paciente_id = st.selectbox(
+                    "Paciente *", list(pacientes), format_func=pacientes.get,
+                    key="exame-paciente",
                 )
-                tipo = st.text_input("Tipo do exame *", max_chars=160)
-                solicitado_em = st.date_input("Data da solicitação", value=date.today())
-                observacoes = st.text_area("Observações", max_chars=1000)
-                if st.form_submit_button("Solicitar exame", type="primary"):
-                    try:
-                        api.solicitar(
-                            credencial.token,
-                            paciente_id=int(paciente_id),
-                            consulta_id=int(consulta_id),
-                            tipo=tipo,
-                            solicitado_em=solicitado_em.isoformat(),
-                            observacoes=observacoes,
+                consultas = {
+                    item["id"]: item for item in consultas_disponiveis
+                    if isinstance(item, dict) and type(item.get("id")) is int
+                    and item.get("paciente_id") == paciente_id
+                    and item["id"] > 0
+                } if isinstance(consultas_disponiveis, list) else {}
+                if not consultas:
+                    st.info("Este Paciente ainda não possui Consultas disponíveis para vincular ao Exame.")
+                else:
+                    with st.form("form-solicitar-exame", border=True):
+                        consulta_id = st.selectbox(
+                            "Consulta *", list(consultas),
+                            format_func=lambda identificador: _rotulo_consulta(
+                                consultas[identificador], pacientes
+                            ),
+                            key="exame-consulta",
                         )
-                        invalidar_cache(st.session_state, ("exames", "prontuario"))
-                        st.session_state[_FEEDBACK_CHAVE] = "Exame solicitado."
-                        st.rerun()
-                    except ErroAcesso as error:
-                        if error.status == 401:
-                            sessao.limpar(st.session_state)
-                            st.error("Sua sessão expirou. Entre novamente.")
-                        else:
-                            st.error("Não foi possível solicitar o Exame. Confira os dados e tente novamente.")
+                        tipo = st.text_input("Tipo do exame *", max_chars=160)
+                        solicitado_em = st.date_input("Data da solicitação", value=date.today())
+                        observacoes = st.text_area("Observações", max_chars=1000)
+                        if st.form_submit_button("Solicitar exame", type="primary"):
+                            try:
+                                api.solicitar(
+                                    credencial.token,
+                                    paciente_id=int(paciente_id),
+                                    consulta_id=int(consulta_id),
+                                    tipo=tipo,
+                                    solicitado_em=solicitado_em.isoformat(),
+                                    observacoes=observacoes,
+                                )
+                                invalidar_cache(st.session_state, ("exames", "prontuario"))
+                                st.session_state[_FEEDBACK_CHAVE] = "Exame solicitado."
+                                st.rerun()
+                            except ErroAcesso as error:
+                                if error.status == 401:
+                                    sessao.limpar(st.session_state)
+                                    st.error("Sua sessão expirou. Entre novamente.")
+                                else:
+                                    st.error("Não foi possível solicitar o Exame. Confira os dados e tente novamente.")
 
     if not exames:
         st.info("Nenhum Exame encontrado neste escopo.")

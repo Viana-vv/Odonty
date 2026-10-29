@@ -98,7 +98,6 @@ def renderizar(cliente, conta, consulta):
     st.caption("ATENDIMENTO")
     st.title("Procedimentos da Consulta")
     st.markdown("Acompanhe o planejamento e registre os Procedimentos realizados.")
-    atualizar = st.button("Atualizar Procedimentos", key="procedimentos-consulta-atualizar")
 
     perfis = set(getattr(conta, "perfis", ()))
     if "profissional" not in perfis:
@@ -111,6 +110,8 @@ def renderizar(cliente, conta, consulta):
     if not isinstance(consulta, dict) or not isinstance(consulta.get("id"), int):
         st.info("Selecione uma Consulta para acompanhar seus Procedimentos.")
         return
+
+    atualizar = False
 
     titulo = consulta.get("paciente_nome")
     if isinstance(titulo, str) and titulo.strip():
@@ -137,3 +138,6 @@ def renderizar(cliente, conta, consulta):
         return
 
     _renderizar_lista(cliente, credencial.token, consulta, procedimentos)
+    if st.button("Atualizar Procedimentos", key="procedimentos-consulta-atualizar"):
+        invalidar_cache(st.session_state, (f"procedimentos-consulta:{consulta['id']}",))
+        st.rerun()
