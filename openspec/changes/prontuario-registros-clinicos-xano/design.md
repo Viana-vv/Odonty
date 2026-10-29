@@ -13,6 +13,9 @@ Ver `proposal.md`. A rota GET existente autoriza a Conta de Acesso e retorna os 
 - Anexar `retificacoes` no item da resposta de `GET /registros-clinicos`, consultando pelo ID do registro já filtrado por escopo. Isso mantém a autorização centralizada no GET e reduz chamadas externas.
 - Ordenar por `criada_em` ascendente e retornar `id`, `profissional_id`, `conteudo`, `justificativa` e `criada_em`; não inferir o nome do profissional.
 - Exibir a trilha abaixo do conteúdo original usando apenas campos retornados. O filtro visual não altera o escopo do Xano.
+- Manter a seleção de Paciente fora do formulário de envio para que o Streamlit atualize imediatamente as Consultas dependentes. Na troca de Paciente, limpar Consulta e conteúdo anteriores para evitar associar texto ao Prontuário incorreto.
+- Inicializar a seleção com o filtro do Prontuário, limpar o rascunho em callbacks de fechar/cancelar e após confirmação, e remover os estados clínicos na limpeza da sessão. Após expiração no POST, interromper também a apresentação do histórico na tela chamadora.
+- Renderizar o formulário na área principal, preservando o contêiner e a hierarquia visual existentes; a coluna estreita de ações não deve conter o formulário inteiro. Um contêiner substituível permite remover imediatamente os campos clínicos quando o POST retorna HTTP 401.
 - Alternativas: rota separada exigiria outra chamada e nova superfície de autorização; substituir o original pela última versão destruiria a trilha, portanto ambas foram descartadas.
 
 ## Risks / Trade-offs
