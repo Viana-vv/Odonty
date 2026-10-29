@@ -90,12 +90,10 @@ def _renderizar_historico(registros):
 
 def renderizar(cliente, conta):
     """Renderiza histórico somente para perfis clínicos reconhecidos."""
-    titulo, acao = st.columns([1, 0.34], vertical_alignment="center")
-    with titulo:
-        st.caption("HISTÓRICO CLÍNICO")
-        st.title("Prontuários")
-        atualizar = st.button("Atualizar Prontuario", key="prontuario-atualizar")
-        st.markdown("Registre evoluções e consulte os atendimentos realizados.")
+    st.caption("HISTÓRICO CLÍNICO")
+    st.title("Prontuários")
+    atualizar = st.button("Atualizar Prontuário", key="prontuario-atualizar")
+    st.markdown("Registre evoluções e consulte os atendimentos realizados.")
 
     aviso = st.session_state.pop("prontuario_aviso", None)
     if aviso:
@@ -139,9 +137,10 @@ def renderizar(cliente, conta):
         st.session_state["prontuario_paciente_id"] = None
     nomes = {paciente_id: pacientes[paciente_id] for paciente_id in ids}
 
-    with acao:
-        if "profissional" in perfis:
-            pagina_nova_evolucao_xano.renderizar(cliente, conta, consultas)
+    if "profissional" in perfis:
+        pagina_nova_evolucao_xano.renderizar(cliente, conta, consultas)
+        if not st.session_state.get(sessao.CHAVE):
+            return
 
     seletor, aviso = st.columns([1, 1], vertical_alignment="bottom")
     with seletor:

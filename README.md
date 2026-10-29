@@ -62,6 +62,33 @@ append-only com conteúdo, justificativa, autoria e data. Essa alteração ainda
 não foi publicada nem validada no grupo Xano; o fluxo clínico continua
 desabilitado no modo Xano até essa validação.
 
+### Prontuário e Nova Evolução — finalização local
+
+Na branch `prontuario-registros-clinicos-xano`, Nova Evolução inicia com o
+Paciente filtrado no Prontuário quando ele está no escopo das Consultas.
+Trocar o Paciente atualiza as opções de Consulta e descarta o texto anterior,
+evitando associá-lo ao Prontuário errado. Cancelar, fechar, salvar com sucesso
+ou encerrar a sessão limpa o rascunho. Falhas recuperáveis preservam o texto
+e não repetem o POST automaticamente. HTTP 401 remove o formulário e impede
+que o histórico já carregado seja reapresentado. O formulário usa a largura
+da área principal, sem ficar restrito à coluna estreita de ações.
+
+Verificação local em 29/10/2026: **286 testes Python e 7 subtestes passaram**,
+incluindo AppTests das duas telas, autenticação/sessão, interface, cache,
+roteamento e contratos REST. **7 testes JavaScript dos contratos clínicos
+passaram**, e `openspec validate prontuario-registros-clinicos-xano --strict`
+validou a change. Os cenários novos foram reproduzidos com falha antes da
+correção. Os testes usam dados fictícios e substituem a rede.
+
+**Validação real pendente:** nenhuma chamada ao Xano foi executada nesta
+finalização. Há configuração da Metadata API, mas não há sessões clínicas
+fictícias autenticadas de Profissional, Paciente e Recepcionista disponíveis
+para validar autorização, criação, histórico e retificação no grupo publicado.
+O token administrativo não substitui a autenticação desses perfis. A tarefa
+2.3 permanece aberta; a change não está pronta para aprovação clínica ou
+arquivamento. A inspeção visual em navegador e em celular também não foi
+executada nesta finalização; os estados foram verificados com AppTest.
+
 Na branch `feat/3-retomada-cadastro-profissional`, os métodos clientes e os
 testes unitários locais dos contratos propostos para Disponibilidades, Consultas
 e Registros Clínicos foram iniciados conforme a change
