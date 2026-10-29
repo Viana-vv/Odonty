@@ -1,6 +1,6 @@
 """Tela de Exames seguindo a composição Sorriso Mais e autorização do Xano."""
 
-from datetime import date, datetime
+from datetime import date, datetime, time, timezone
 from zoneinfo import ZoneInfo
 
 import streamlit as st
@@ -40,15 +40,74 @@ def _opcoes_solicitacao(cliente, token, *, force=False):
     return opcoes, consultas
 
 
-def _cartao(exame, *, profissional=False, cliente=None, token=None):
+_FEEDBACK_CHAVE = "exames_feedback"
+
+
+def _cartao(exame, *, profissional, api, token):
+    identificador = exame.get("id")
+    situacao = exame.get("situacao", "Solicitado")
     with st.container(border=True):
         st.subheader(exame.get("tipo") or "Exame")
-        st.caption(f"Situação · {exame.get('situacao', 'Solicitado')}")
+        st.caption(f"Situação · {situacao}")
         if exame.get("solicitado_em"):
             st.caption(f"Solicitado em {exame['solicitado_em'][:10]}")
-        if profissional and exame.get("resultado"):
-            st.write(exame["resultado"])
-        elif exame.get("situacao") == "Resultado disponível":
+
+        if profissional:
+            if exame.get("resultado"):
+                st.write(exame["resultado"])
+            transicoes = {
+                "Solicitado": ("Realizado", "Cancelado", "Não realizado"),
+                "Realizado": ("Resultado disponível",),
+            }
+            opcoes = transicoes.get(situacao, ())
+            if opcoes:
+                with st.expander("Atualizar situação", expanded=False):
+                    with st.form(f"form-atualizar-exame-{identificador}", border=True):
+                        nova_situacao = st.selectbox(
+                            "Nova situação", opcoes, key=f"exame-situacao-{identificador}"
+                        )
+                        realizado_em = None
+                        resultado = None
+                        if nova_situacao in ("Realizado", "Resultado disponível"):
+                            data_realizacao = st.date_input(
+                                "Data da realização *",
+                                value=date.today(),
+                                key=f"exame-data-realizacao-{identificador}",
+                            )
+                            realizado_em = datetime.combine(
+                                data_realizacao, time.min, tzinfo=timezone.utc
+                            ).isoformat()
+                        if nova_situacao == "Resultado disponível":
+                            resultado = st.text_area(
+                                "Resultado *", max_chars=4000,
+                                key=f"exame-resultado-{identificador}",
+                            )
+                        observacoes = st.text_area(
+                            "Observações", max_chars=1000,
+                            key=f"exame-observacoes-{identificador}",
+                        )
+                        if st.form_submit_button("Salvar atualização", type="primary"):
+                            if nova_situacao == "Resultado disponível" and not (resultado or "").strip():
+                                st.error("Informe o resultado antes de disponibilizá-lo ao Paciente.")
+                                return
+                            try:
+                                api.atualizar_situacao(
+                                    token,
+                                    identificador,
+                                    situacao=nova_situacao,
+                                    resultado=resultado,
+                                    realizado_em=realizado_em,
+                                    observacoes=observacoes,
+                                )
+                                st.session_state[_FEEDBACK_CHAVE] = "Situação do Exame atualizada."
+                                st.rerun()
+                            except ErroAcesso as error:
+                                if error.status == 401:
+                                    sessao.limpar(st.session_state)
+                                    st.error("Sua sessão expirou. Entre novamente.")
+                                else:
+                                    st.error("Não foi possível atualizar o Exame. Confira os dados e tente novamente.")
+        elif situacao == "Resultado disponível":
             st.write(exame.get("resultado") or "Resultado sem texto informado.")
         else:
             st.info("Resultado ainda não liberado para este Paciente.")
@@ -67,19 +126,40 @@ def renderizar(cliente, conta):
     if not credencial:
         st.error("Sua sessão não está disponível. Entre novamente.")
         return
+
     api = ClienteExames(cliente)
     try:
-        exames = carregar_cache(st.session_state, credencial.token, "exames", lambda: api.listar(credencial.token), force=atualizar)
+        with st.spinner("Carregando Exames…"):
+            exames = carregar_cache(
+                st.session_state,
+                credencial.token,
+                "exames",
+                lambda: api.listar(credencial.token),
+                force=atualizar,
+            )
     except ErroAcesso as error:
         if error.status == 401:
             sessao.limpar(st.session_state)
             st.error("Sua sessão expirou. Entre novamente.")
+        elif error.status == 403:
+            st.error("Seu perfil não possui autorização para consultar Exames.")
         else:
             st.error("Não foi possível carregar os Exames. Tente novamente em instantes.")
+            if st.button("Tentar novamente", key="exames-tentar-novamente"):
+                st.rerun()
         return
     except Exception:
         st.error("Não foi possível carregar os Exames. Tente novamente em instantes.")
+        if st.button("Tentar novamente", key="exames-tentar-novamente"):
+            st.rerun()
         return
+
+    feedback = st.session_state.pop(_FEEDBACK_CHAVE, None)
+    if feedback:
+        st.success(feedback)
+    if st.button("Atualizar exames", key="exames-atualizar-lista"):
+        st.rerun()
+
     if "profissional" in perfis:
         with st.expander("Solicitar exame", expanded=False):
             try:
@@ -134,17 +214,30 @@ def renderizar(cliente, conta):
                 if st.form_submit_button("Solicitar exame", type="primary"):
                     try:
                         api.solicitar(
-                            credencial.token, paciente_id=paciente_id,
-                            consulta_id=consulta_id, tipo=tipo,
+                            credencial.token,
+                            paciente_id=int(paciente_id),
+                            consulta_id=int(consulta_id),
+                            tipo=tipo,
                             solicitado_em=solicitado_em.isoformat(),
                             observacoes=observacoes,
                         )
                         invalidar_cache(st.session_state, ("exames", "prontuario"))
-                        st.success("Exame solicitado.")
+                        st.session_state[_FEEDBACK_CHAVE] = "Exame solicitado."
+                        st.rerun()
                     except ErroAcesso as error:
-                        st.error(str(error))
+                        if error.status == 401:
+                            sessao.limpar(st.session_state)
+                            st.error("Sua sessão expirou. Entre novamente.")
+                        else:
+                            st.error("Não foi possível solicitar o Exame. Confira os dados e tente novamente.")
+
     if not exames:
         st.info("Nenhum Exame encontrado neste escopo.")
         return
     for exame in exames:
-        _cartao(exame, profissional="profissional" in perfis)
+        _cartao(
+            exame,
+            profissional="profissional" in perfis,
+            api=api,
+            token=credencial.token,
+        )
