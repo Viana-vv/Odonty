@@ -1,5 +1,5 @@
 """Tela isolada para agendamento conectado de Consulta."""
-from datetime import date, datetime, time, timedelta
+from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 import streamlit as st
@@ -93,7 +93,11 @@ def _renderizar_formulario(cliente, token, pacientes, profissionais, procediment
 
     data_coluna, profissional_coluna = st.columns(2, gap="medium")
     data_consulta = data_coluna.date_input(
-        "Data", value=date.today(), format="DD/MM/YYYY",
+        "Data", value=st.session_state.get(
+            "agenda_data_input",
+            st.session_state.get("agenda_data", datetime.now(FUSO_CLINICA).date()),
+        ),
+        format="DD/MM/YYYY",
         key="nova-consulta-data",
     )
     profissional_id = profissional_coluna.selectbox(
@@ -153,7 +157,7 @@ def _renderizar_formulario(cliente, token, pacientes, profissionais, procediment
 
     if cancelar_envio:
         st.session_state["pagina_equipe"] = "agenda"
-        return
+        st.rerun()
     if not enviar:
         return
     if paciente_id is None:
