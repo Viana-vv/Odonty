@@ -14,6 +14,11 @@ def _renderizar_tela(cliente):
     renderizar(cliente, "token-ficticio")
 
 
+def _renderizar_sem_sessao(cliente):
+    from sorrisomais.pagina_consultas_paciente import renderizar
+    renderizar(cliente, None)
+
+
 def _abrir(cliente):
     return AppTest.from_function(_renderizar_tela, args=(cliente,)).run()
 
@@ -57,6 +62,15 @@ def test_lista_vazia_e_falha_tem_mensagem_compreensivel():
     cliente.listar_consultas.side_effect = ErroAcesso("erro técnico", 503)
     app = _abrir(cliente)
     assert any("Tente novamente" in x.value for x in app.error)
+
+
+def test_sessao_ausente_exibe_mensagem_legivel():
+    cliente = Mock()
+    app = AppTest.from_function(_renderizar_sem_sessao, args=(cliente,)).run()
+
+    assert not app.exception
+    assert any("Sua sessão não está disponível. Entre novamente." == x.value for x in app.error)
+    cliente.listar_consultas.assert_not_called()
 
 
 def test_requisicao_nao_recebe_identificador_de_paciente():

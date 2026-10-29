@@ -39,7 +39,7 @@ def renderizar(cliente, conta_ou_token):
         credencial = st.session_state.get(sessao.CHAVE)
         token = getattr(credencial, "token", None)
     if not token:
-        st.error("Sua sessÃ£o nÃ£o estÃ¡ disponÃ­vel. Entre novamente.")
+        st.error("Sua sessão não está disponível. Entre novamente.")
         return
     try:
         consultas = carregar_cache(st.session_state, token, "consultas", lambda: cliente.listar_consultas(token), force=atualizar)
