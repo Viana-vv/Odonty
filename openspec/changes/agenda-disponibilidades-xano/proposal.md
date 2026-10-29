@@ -7,12 +7,13 @@ Os contratos de Agenda e Disponibilidades já estão representados no código-fo
 - Publicar no grupo Xano `Sorriso Acesso` os contratos versionados de listagem da Agenda e das Disponibilidades, cadastro e atualização de Disponibilidade.
 - Confirmar no workspace publicado autenticação, autorização, serialização e tratamento de conflito usando somente dados fictícios e dentro do limite de requisições.
 - Registrar a evidência da publicação e os resultados da verificação sem incluir credenciais nem dados pessoais.
+- Na finalização de Agenda e Nova Consulta autorizada em 29/10/2026, corrigir a data inicial da tela própria para usar a seleção da Agenda e o retorno imediato à Agenda ao cancelar, conforme o kit visual. Preservar a data do filtro enquanto o formulário é editado.
 
-Fora do escopo: alteração funcional da interface Streamlit, mudanças de domínio ou criação de novos contratos REST.
+Fora do escopo: outras alterações funcionais da interface Streamlit, mudanças de domínio ou criação de novos contratos REST.
 
 ## Capabilities
 
-Esta mudança publica contratos já especificados. Não altera requisitos observáveis das capacidades existentes; portanto, usa `skip_specs: true`.
+Esta mudança publica contratos já especificados e corrige comportamentos já documentados de navegação e data inicial do formulário. Não introduz novos requisitos nas capacidades existentes; portanto, usa `skip_specs: true`.
 
 ## Impact
 
