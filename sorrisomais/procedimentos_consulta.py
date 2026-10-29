@@ -72,6 +72,13 @@ class ClienteProcedimentosConsulta:
         )
         corpo = self._solicitar("PATCH", rota, token)
         procedimento = corpo.get("procedimento")
-        if not isinstance(procedimento, dict):
-            raise ErroAcesso(_MENSAGEM_INDISPONIVEL)
+        if (
+            not isinstance(procedimento, dict)
+            or type(procedimento.get("id")) is not int
+            or procedimento["id"] != consulta_procedimento_id
+            or procedimento.get("situacao") != "realizado"
+        ):
+            raise ErroAcesso(
+                "Não foi possível confirmar a realização. Atualize a lista antes de tentar novamente."
+            )
         return procedimento

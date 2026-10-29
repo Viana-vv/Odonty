@@ -62,3 +62,20 @@ def test_patch_realizacao_rejeita_identificadores_invalidos_sem_rede(monkeypatch
     with pytest.raises(ErroAcesso):
         cliente().marcar_procedimento_realizado("token-ficticio", 12, -1)
     requisicao.assert_not_called()
+
+
+@pytest.mark.parametrize("procedimento", [
+    {},
+    {"id": 32, "situacao": "realizado"},
+    {"id": 31, "situacao": "planejado"},
+    {"id": True, "situacao": "realizado"},
+    {"id": 31.0, "situacao": "realizado"},
+])
+def test_patch_nao_confirma_realizacao_com_resposta_incompativel(monkeypatch, procedimento):
+    requisicao = Mock(return_value=Resposta(200, {"procedimento": procedimento}))
+    monkeypatch.setattr("sorrisomais.procedimentos_consulta.requests.request", requisicao)
+
+    with pytest.raises(ErroAcesso):
+        cliente().marcar_procedimento_realizado("token-ficticio", 12, 31)
+
+    requisicao.assert_called_once()

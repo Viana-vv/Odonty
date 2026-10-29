@@ -17,3 +17,12 @@
 - [x] 3.2 Criar teste unitário Python e JavaScript separados para o PATCH, sem rede real.
 - [x] 3.3 Criar testes de tela para lista vazia, transição bem-sucedida, erro de API, sessão expirada e ausência da ação em itens realizados.
 - [x] 3.4 Executar os testes relevantes e validar os artefatos OpenSpec; revisar diff e confirmar ausência de credenciais e dados reais.
+
+## 4. Finalização dos estados da tela
+
+- [x] 4.1 Reproduzir em AppTest e corrigir a permanência do botão e do indicador planejado imediatamente após realização confirmada, sem PATCH adicional em rerun.
+- [x] 4.2 Reproduzir e corrigir a ocultação dos demais itens após erro de realização; verificar 403, 404, 409, 429 e 503, além da limpeza de sessão e remoção da ação após 401.
+- [x] 4.3 Rejeitar respostas PATCH vazias, de outro vínculo, com tipo inválido de identificador ou situação diferente de realizado; verificar ausência de repetição automática.
+- [x] 4.4 Executar os testes Python e JavaScript relacionados e validar esta change. Em 29/10/2026, passaram 34 testes Python de tela/contratos e regressão do catálogo, oito testes JavaScript de contratos e `openspec validate procedimentos-realizados --strict`.
+
+Esta finalização executou somente testes locais com rede simulada. A evidência Xano da seção 1 é histórica e não representa reteste desta revisão. A aprovação técnica final permanece dependente do reteste real coordenado, respeitando o limite global de dez requisições por vinte segundos. Nenhum endpoint ou schema Xano foi alterado nesta revisão.

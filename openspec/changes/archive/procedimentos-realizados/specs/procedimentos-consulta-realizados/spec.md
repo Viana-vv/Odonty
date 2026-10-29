@@ -59,12 +59,22 @@ A tela profissional MUST listar os Procedimentos de uma Consulta com indicação
 #### Scenario: Profissional conclui uma realização
 
 - **WHEN** o Profissional confirma a ação em um item planejado e a API conclui a operação
-- **THEN** a tela atualiza o item como realizado sem remover ou recriar o vínculo
+- **THEN** a tela atualiza imediatamente o indicador para realizado e remove a ação desse item, sem remover ou recriar o vínculo e sem repetir o PATCH em um novo rerun
+
+#### Scenario: Resposta de realização incompatível
+
+- **WHEN** o PATCH retorna sucesso HTTP com um objeto vazio, identificador diferente do vínculo solicitado ou situação diferente de `realizado`
+- **THEN** o cliente não confirma a realização, orienta atualizar a lista antes de tentar novamente e não repete a requisição automaticamente
 
 #### Scenario: Falha ao consultar ou realizar
 
 - **WHEN** a API retorna erro, indisponibilidade ou sessão expirada
 - **THEN** a tela apresenta mensagem compreensível e segura, preserva os dados apresentados e não simula uma realização
+
+#### Scenario: Falha na realização de um item da lista
+
+- **WHEN** a realização de um item falha sem expiração da sessão
+- **THEN** a tela mantém o item planejado e continua exibindo os demais Procedimentos, sem ocultar o restante da lista
 
 #### Scenario: Lista sem Procedimentos
 
