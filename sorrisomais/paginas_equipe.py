@@ -1033,7 +1033,7 @@ def renderizar(conta, cliente):
             or isinstance(contexto, dict) and contexto.get("sessao") != identidade_atual):
         st.session_state.pop(CHAVE_CONSULTA_PROCEDIMENTOS, None)
     if st.session_state.pop("pac_sucesso", False):
-        st.success("Paciente cadastrado com prontuÃ¡rio vazio. Este cadastro nÃ£o cria login.")
+        st.success("Paciente cadastrado com prontuário vazio. Este cadastro não cria login.")
     paciente_exclusivo = perfis == {"paciente"}
     administrador = "administrador" in perfis
     pode_cadastrar_paciente = (cliente.configuracao.cadastro_paciente_habilitado
