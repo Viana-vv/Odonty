@@ -111,7 +111,8 @@ def renderizar(cliente):
         try:
             with st.spinner("Cadastrando paciente…"):
                 cliente.cadastrar_paciente(st.session_state[sessao.CHAVE].token, **dados)
-            cache_xano.invalidar_cache(st.session_state, namespaces=["pacientes", "agenda/opcoes"])
+            # A contagem do painel e as opções de Pacientes vêm deste GET.
+            cache_xano.invalidar_cache(st.session_state, namespaces="agenda/opcoes")
             st.session_state["pac_sucesso"] = True
             st.session_state["pac_operacao_id"] = str(uuid4())
             st.session_state.pop("pac_pendente", None)
