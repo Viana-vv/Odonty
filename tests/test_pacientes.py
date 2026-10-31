@@ -454,3 +454,29 @@ def test_sucesso_volta_a_lista_faz_um_get_e_exibe_paciente_novo(paciente_api):
     assert paciente_api["cadastrar_paciente"].call_count == 1
     assert paciente_api["listar_opcoes_agenda"].call_count == chamadas_antes_do_post + 1
     assert any(DADOS["nome"] in item.value for item in app.markdown)
+
+
+def test_painel_atualiza_contagem_apos_cadastro_bem_sucedido(paciente_api):
+    pacientes = [{"id": identificador, "nome": f"Paciente Fictício {identificador}"}
+                 for identificador in range(1, 15)]
+    paciente_api["listar_opcoes_agenda"].side_effect = lambda _token: {
+        "pacientes": [item.copy() for item in pacientes], "profissionais": [], "procedimentos": [],
+    }
+
+    def cadastrar(_token, **_dados):
+        pacientes.append({"id": 15, "nome": DADOS["nome"]})
+        return 15
+
+    paciente_api["cadastrar_paciente"].side_effect = cadastrar
+    app = abrir_admin(paciente_api)
+    assert any(">14</strong>" in item.value for item in app.markdown)
+    assert paciente_api["listar_opcoes_agenda"].call_count == 1
+
+    app.button(key="menu-cadastrar-paciente").click().run()
+    preencher(app)
+    botao(app, "Cadastrar").click().run()
+
+    assert not app.exception
+    assert app.session_state["pagina_equipe"] == "inicio"
+    assert paciente_api["listar_opcoes_agenda"].call_count == 2
+    assert any(">15</strong>" in item.value for item in app.markdown)
