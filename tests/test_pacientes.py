@@ -207,6 +207,7 @@ def test_sucesso_limpa_preserva_equipe(paciente_api):
     assert not app.exception
     paciente_api["cadastrar_paciente"].assert_called_once()
     assert app.success
+    assert any("Paciente cadastrado" in item.value for item in app.success)
     assert not any(c.key.startswith("pac_") for c in app.text_input)
     assert app.session_state["pagina_equipe"] == "pacientes"
     assert app.session_state["pac_operacao_id"] != operacao
