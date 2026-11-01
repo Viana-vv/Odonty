@@ -90,10 +90,10 @@ def _renderizar_historico(registros):
 
 def renderizar(cliente, conta):
     """Renderiza histórico somente para perfis clínicos reconhecidos."""
-    st.caption("HISTÓRICO CLÍNICO")
-    st.title("Prontuários")
-    atualizar = st.button("Atualizar Prontuário", key="prontuario-atualizar")
-    st.markdown("Registre evoluções e consulte os atendimentos realizados.")
+    cabecalho, acao = st.columns([3,1], vertical_alignment="center")
+    cabecalho.title("Prontuários")
+    cabecalho.markdown("Registre evoluções e consulte os atendimentos realizados.")
+    atualizar = acao.button("Atualizar Prontuário", key="prontuario-atualizar")
 
     aviso = st.session_state.pop("prontuario_aviso", None)
     if aviso:

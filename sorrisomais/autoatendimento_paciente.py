@@ -1,7 +1,6 @@
 """Renderização do portal pessoal do Paciente."""
 
 from datetime import datetime
-from base64 import b64encode
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -12,6 +11,7 @@ from .exames_api import ClienteExames
 from .pagina_consultas_paciente import renderizar as renderizar_consultas
 from . import sessao_paciente
 from .cache_xano import carregar_cache
+from .ilustracoes import marca_html
 
 FUSO_CLINICA = ZoneInfo("America/Sao_Paulo")
 RAIZ_PROJETO = Path(__file__).resolve().parent.parent
@@ -97,12 +97,11 @@ def solicitar_entrada():
 def renderizar(cliente):
     conta = sessao_paciente.identificar(st.session_state, cliente)
     if conta is None:
-        logo = b64encode((RAIZ_PROJETO / "assets" / "mascote-sorriso.png").read_bytes()).decode("ascii")
         with st.container(key="portal-paciente-entrada"):
             ilustracao, formulario = st.columns([1.05, 1], gap="large", vertical_alignment="center")
             with ilustracao:
                 st.html(f'''<section class="portal-paciente-boas-vindas">
-                  <div class="portal-paciente-marca"><span class="portal-paciente-icone"><img src="data:image/png;base64,{logo}" alt="Mascote Sorriso Mais"></span><span>Sorriso<span>+</span></span></div>
+                  {marca_html()}
                   <span class="portal-paciente-etiqueta">ÁREA DO PACIENTE</span>
                   <h1>Seu cuidado,<br>sempre por perto.</h1>
                   <p>Acompanhe suas Consultas e consulte as informações que a clínica compartilhou com você.</p>

@@ -107,9 +107,6 @@ def _renderizar_edicao(cliente, credencial, edicao):
 
 def renderizar(cliente, conta):
     """Renderiza a listagem usando exclusivamente as opções da Agenda no Xano."""
-    st.caption("BASE DE PACIENTES")
-    st.title("Pacientes")
-    st.markdown("Consulte os dados cadastrais dos Pacientes.")
 
     mensagem = st.session_state.pop(CHAVE_MENSAGEM, None)
     if mensagem:
@@ -132,6 +129,8 @@ def renderizar(cliente, conta):
         edicao = None
 
     cabecalho, acao_cadastro = st.columns([5, 1], vertical_alignment="center")
+    cabecalho.title("Pacientes")
+    cabecalho.markdown("Consulte os dados cadastrais dos Pacientes.")
     with acao_cadastro:
         if pode_editar and st.button("＋ Novo Paciente", type="primary", key="pacientes-xano-novo"):
             pagina_paciente.abrir()
@@ -177,10 +176,11 @@ def renderizar(cliente, conta):
         return
 
     with st.container(key="pacientes-xano-tabela", border=True):
-        identificador, paciente_coluna, acao = st.columns([1, 6, 1])
-        identificador.caption("ID")
-        paciente_coluna.caption("Paciente")
-        acao.caption("Ações")
+        with st.container(key="pacientes-tabela-cabecalho"):
+            identificador, paciente_coluna, acao = st.columns([1, 6, 1])
+            identificador.caption("ID")
+            paciente_coluna.caption("Paciente")
+            acao.caption("Ações")
         for paciente in filtrados:
             with st.container(key=f"pacientes-xano-linha-{paciente['id']}"):
                 identificador, detalhes, acao = st.columns([1, 6, 1], vertical_alignment="center")
@@ -221,8 +221,6 @@ def renderizar(cliente, conta):
                             return
                         st.error(_mensagem_edicao(error))
                         return
-                st.divider()
-
     edicao = st.session_state.get(CHAVE_EDICAO)
     if edicao:
         _renderizar_edicao(cliente, credencial, edicao)

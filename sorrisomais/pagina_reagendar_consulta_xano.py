@@ -155,7 +155,7 @@ def _formulario(cliente, token, opcoes):
 def renderizar(cliente, conta):
     """Renderiza a ação administrativa; a autorização efetiva permanece no Xano."""
     titulo, atualizar = st.columns([3, 1], vertical_alignment="center")
-    titulo.subheader("Reagendar consulta")
+    titulo.title("Reagendar consulta")
     titulo.caption("Selecione a Consulta original e escolha um novo horário.")
     if not _perfis(conta).intersection({"administrador", "recepcionista"}):
         st.error("Seu perfil não tem permissão para reagendar Consultas.")

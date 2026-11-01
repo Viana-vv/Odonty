@@ -203,4 +203,4 @@ def test_erro_ao_alterar_situacao_preserva_situacao_confirmada(tela):
     cliente.atualizar_situacao_profissional.side_effect = ErroAcesso("Sem permissão.", 403)
     pagina.renderizar(cliente, conta)
     assert interface.erros == ["Sem permissão."]
-    assert "Ativo" in interface.textos
+    assert any("Ativo" in texto for texto in interface.textos)

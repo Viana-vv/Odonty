@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 
 import streamlit as st
 
-from . import navegacao, sessao
+from . import navegacao, sessao, ilustracoes
 from .api import ErroAcesso
 
 FUSO_CLINICA = ZoneInfo("America/Sao_Paulo")
@@ -147,6 +147,7 @@ def renderizar(cliente, conta):
     nome = conta.nome.split()[0] if conta.nome.strip() else "Profissional"
     st.title(f"Olá, {nome}! 👋")
     st.caption("Aqui está sua agenda de hoje.")
+    ilustracoes.banner_contextual("16-acompanhamento.png", "", "Seus atendimentos", "Acompanhe sua agenda, consulte Prontuários e registre evoluções.")
 
     try:
         if credencial is None:

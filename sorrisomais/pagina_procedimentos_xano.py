@@ -19,7 +19,6 @@ def _filtrar_procedimentos(procedimentos, busca):
 def renderizar(cliente, conta):
     """Exibe os Procedimentos autorizados pelo Xano sem dados adicionais."""
     st.title("Procedimentos")
-    st.caption("Catálogo da clínica")
     st.write("Consulte os Procedimentos disponíveis.")
 
     if "administrador" not in set(getattr(conta, "perfis", ())):
@@ -58,8 +57,9 @@ def renderizar(cliente, conta):
             st.info("Nenhum Procedimento disponível no momento.")
         return
 
-    colunas = st.columns(2, gap="medium")
-    for indice, procedimento in enumerate(encontrados):
-        with colunas[indice % 2]:
-            with st.container(key=f"procedimento-xano-{procedimento['id']}", border=True):
-                st.markdown(f"◇  **{procedimento['nome']}**")
+    with st.container(key="catalogo-procedimentos", border=True):
+        for procedimento in encontrados:
+            with st.container(key=f"procedimento-xano-{procedimento['id']}"):
+                simbolo, nome = st.columns([.4, 6], vertical_alignment="center")
+                simbolo.markdown('<span class="icone-procedimento"><svg viewBox="0 0 32 32" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M16 6C11 2 4 5 5 12c1 5 2 14 5 15 3 1 2-10 6-10s3 11 6 10c3-1 4-10 5-15 1-7-6-10-11-6Z"/></svg></span>', unsafe_allow_html=True)
+                nome.markdown(f"**{procedimento['nome']}**")

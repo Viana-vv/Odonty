@@ -83,9 +83,8 @@ def _cartao(exame, *, profissional, api, token):
 
 
 def renderizar(cliente, conta):
-    st.caption("ATENDIMENTO CLÍNICO  /  EXAMES")
     st.title("Exames")
-    st.markdown("Acompanhe solicitações e resultados com acesso controlado pelo Xano.")
+    st.markdown("Acompanhe solicitações e resultados dos Exames.")
     perfis = set(getattr(conta, "perfis", ()))
     if not perfis.intersection({"profissional", "paciente"}):
         st.warning("O acesso a Exames não está disponível para este perfil.")
