@@ -2,13 +2,14 @@
 import hashlib
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
+from html import escape
 from time import monotonic
 from zoneinfo import ZoneInfo
 
 import streamlit as st
 
 from .api import ErroAcesso, ROTULOS
-from . import sessao, pagina_paciente, navegacao
+from . import sessao, pagina_paciente, navegacao, ilustracoes
 from .cache_xano import carregar_cache, invalidar_cache
 
 ESPECIALIDADES_CACHE_TTL_SEGUNDOS = 300
@@ -23,10 +24,7 @@ RAIZ = Path(__file__).resolve().parents[1]
 
 def renderizar_marca_menu():
     with st.container(key="marca-menu"):
-        imagem, nome = st.columns([0.42, 1], gap="small", vertical_alignment="center")
-        imagem.image(str(RAIZ / "assets" / "mascote-sorriso.png"), width=56)
-        nome.markdown("<div class='marca-menu-nome'>Sorriso<em>+</em></div>",
-                      unsafe_allow_html=True)
+        st.html(ilustracoes.marca_html())
 
 
 def listar_especialidades_sessao(cliente, token, *, force=False):
@@ -95,7 +93,6 @@ def _renderizar_painel_recepcao(cliente, conta, pode_cadastrar_paciente, pode_ag
             "SEXTA-FEIRA", "SÁBADO", "DOMINGO")
     meses = ("JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO",
              "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO")
-    st.caption(f"{dias[dia.weekday()]}, {dia.day} DE {meses[dia.month - 1]}")
     titulo, acao = st.columns([3, 1], vertical_alignment="center")
     primeiro_nome = conta.nome.split()[0] if conta.nome.strip() else "equipe"
     titulo.title(f"Olá, {primeiro_nome}! 👋")
@@ -109,6 +106,7 @@ def _renderizar_painel_recepcao(cliente, conta, pode_cadastrar_paciente, pode_ag
             help=None if consulta_integrada else "A tela Nova Consulta ainda não está integrada ao Xano.",
         )
 
+    ilustracoes.banner_contextual("02-agenda.png", "", "Atendimentos e agenda", "Gerencie consultas, cadastros e acompanhe o dia da clínica.")
     credencial = st.session_state.get(sessao.CHAVE)
     consultas = None
     carregado_em = None
@@ -345,37 +343,35 @@ def _renderizar_agenda(cliente, conta):
     if isinstance(dia_pendente, date):
         st.session_state["agenda_data"] = dia_pendente
         st.session_state["agenda_data_input"] = dia_pendente
-    st.caption("ORGANIZAÇÃO DO DIA")
-    st.title("Agenda")
-    atualizar_agenda = st.button("Atualizar Agenda", key="agenda-atualizar-listas")
-    st.caption("Acompanhe consultas, horários e situação dos atendimentos.")
+    perfis = set(conta.perfis)
+    pode_agendar = bool(perfis.intersection({"administrador", "recepcionista"}))
+    cabecalho, nova_consulta, opcoes_coluna = st.columns([3, 1, .6], vertical_alignment="center")
+    cabecalho.title("Agenda")
+    cabecalho.caption("Acompanhe consultas, horários e situação dos atendimentos.")
+    if pode_agendar:
+        nova_consulta.button("＋ Nova consulta", key="agenda-nova", type="primary", width="stretch",
+                            on_click=_alternar_formulario_agenda, args=("agenda_nova",))
+    with opcoes_coluna.popover("Opções", icon=":material/tune:"):
+        st.caption("Navegar entre datas")
+        anterior, hoje, proximo = st.columns([1,2,1])
+        anterior.button("‹", key="agenda-anterior", width="stretch", help="Dia anterior", on_click=_navegar_data_agenda, args=(-1,))
+        hoje.button("Hoje", key="agenda-hoje", width="stretch", on_click=_ir_para_hoje_na_agenda)
+        proximo.button("›", key="agenda-proximo", width="stretch", help="Próximo dia", on_click=_navegar_data_agenda, args=(1,))
+        atualizar_agenda = st.button("Atualizar Agenda", key="agenda-atualizar-listas", width="stretch")
+        if pode_agendar:
+            st.button("＋ Novo horário", key="agenda-novo-horario", width="stretch", on_click=_alternar_formulario_agenda, args=("agenda_nova_disponibilidade",))
     aviso_agenda = st.session_state.pop("agenda_aviso", None)
     if aviso_agenda:
+        ilustracoes.ilustracao_contextual("09-sucesso.png" if aviso_agenda[0] == "success" else "10-aviso.png")
         getattr(st, aviso_agenda[0])(aviso_agenda[1])
     perfis = set(conta.perfis)
     token = st.session_state[sessao.CHAVE].token
-    busca_col, data_col, status_col = st.columns([2.2, 1, 1], gap="medium")
+    busca_col, data_col, status_col = st.columns([2.2, 1, 1], gap="medium", vertical_alignment="bottom")
     dia = data_col.date_input("Data", value=st.session_state.get("agenda_data", date.today()),
                               format="DD/MM/YYYY", key="agenda_data_input")
     situacao = status_col.selectbox("Situação", ["Todas", "Agendada", "Confirmada",
         "Em atendimento", "Realizada", "Cancelada", "Falta"], key="agenda_situacao")
-    busca = busca_col.text_input("Buscar Paciente ou Procedimento", key="agenda_busca").strip().casefold()
-    anterior, hoje, proximo = st.columns(3, vertical_alignment="center")
-    anterior.button("‹", key="agenda-anterior", width="stretch",
-                    help="Dia anterior",
-                    on_click=_navegar_data_agenda, args=(-1,))
-    hoje.button("Hoje", key="agenda-hoje", width="stretch",
-                on_click=_ir_para_hoje_na_agenda)
-    proximo.button("›", key="agenda-proximo", width="stretch",
-                   help="Próximo dia",
-                   on_click=_navegar_data_agenda, args=(1,))
-    pode_agendar = bool(perfis.intersection({"administrador", "recepcionista"}))
-    if pode_agendar:
-        nova_consulta, novo_horario = st.columns(2, gap="small")
-        nova_consulta.button("＋ Nova consulta", key="agenda-nova", type="primary", width="stretch",
-                    on_click=_alternar_formulario_agenda, args=("agenda_nova",))
-        novo_horario.button("＋ Novo horário", key="agenda-novo-horario", width="stretch",
-                    on_click=_alternar_formulario_agenda, args=("agenda_nova_disponibilidade",))
+    busca = busca_col.text_input("Buscar Paciente ou Procedimento", key="agenda_busca", placeholder="Buscar paciente ou procedimento…", label_visibility="collapsed").strip().casefold()
 
     try:
         consultas = _carregar_consultas_agenda(cliente, token, dia, force=atualizar_agenda)
@@ -385,10 +381,11 @@ def _renderizar_agenda(cliente, conta):
             st.error(str(error))
             return
         with st.container(key="agenda-estado-erro", border=True):
+            ilustracoes.ilustracao_contextual("12-erro.png")
             st.error(str(error) if error.status == 429
                      else "Não foi possível carregar a Agenda. Tente novamente.")
-        if st.button("Tentar novamente", key="agenda-retry"):
-            st.rerun()
+            if st.button("Tentar novamente", key="agenda-retry"):
+                st.rerun()
         return
 
     if situacao != "Todas":
@@ -397,7 +394,6 @@ def _renderizar_agenda(cliente, conta):
         consultas = [c for c in consultas if busca in c["paciente_nome"].casefold()
                      or any(busca in p.casefold() for p in c["procedimentos"])]
     consultas.sort(key=lambda c: (c["inicio_em"], c["id"]))
-    st.markdown(f"**{dia.strftime('%d/%m/%Y')}** · {len(consultas)} consulta(s)")
 
     if st.session_state.get("agenda_nova") and pode_agendar:
         _renderizar_formulario_agenda(cliente, token, dia, force=atualizar_agenda)
@@ -405,6 +401,7 @@ def _renderizar_agenda(cliente, conta):
         _renderizar_formulario_disponibilidade(cliente, token, dia, force=atualizar_agenda)
     if not consultas:
         with st.container(key="agenda-estado-vazio", border=True):
+            ilustracoes.ilustracao_contextual("11-sem-agendamentos.png")
             if busca or situacao != "Todas":
                 st.info("Nenhuma consulta corresponde à busca e aos filtros. Ajuste os critérios e tente novamente.")
             else:
@@ -414,15 +411,31 @@ def _renderizar_agenda(cliente, conta):
         "Confirmada": ["Em atendimento", "Cancelada", "Falta"],
         "Em atendimento": ["Realizada"],
     }
-    for consulta in consultas:
-        with st.container(key=f"agenda-consulta-{consulta['id']}", border=True):
+    if consultas:
+        linhas = []
+        for consulta in consultas:
             horario = datetime.fromisoformat(consulta["inicio_em"].replace("Z", "+00:00")).astimezone(ZoneInfo("America/Sao_Paulo"))
-            col_hora, col_paciente, col_prof, col_situacao = st.columns([0.8, 1.8, 1.4, 1])
-            col_hora.markdown(f"**{horario:%H:%M}**")
-            col_paciente.markdown(f"**{consulta['paciente_nome']}**")
-            col_paciente.caption(", ".join(consulta["procedimentos"]) or "Procedimento não informado")
-            col_prof.write(consulta["profissional_nome"])
-            col_situacao.write(consulta["situacao"])
+            classe = {"Confirmada":"confirmada", "Agendada":"agendada", "Em atendimento":"atendimento", "Realizada":"realizada"}.get(consulta["situacao"], "cancelada")
+            linhas.append(f'<tr><td data-campo="Horário"><strong>{horario:%H:%M}</strong></td>'
+                          f'<td data-campo="Paciente"><strong>{escape(consulta["paciente_nome"])}</strong></td>'
+                          f'<td data-campo="Procedimento" class="agenda-procedimento">{escape(", ".join(consulta["procedimentos"]) or "Não informado")}</td>'
+                          f'<td data-campo="Profissional">{escape(consulta["profissional_nome"])}</td>'
+                          f'<td data-campo="Situação"><span class="situacao-consulta {classe}">{escape(consulta["situacao"])}</span></td></tr>')
+        st.markdown('<div class="agenda-tabela"><table><caption class="somente-leitor">Consultas da Agenda</caption><thead><tr>'
+                    + ''.join(f'<th scope="col">{rotulo}</th>' for rotulo in ("Horário","Paciente","Procedimento","Profissional","Situação"))
+                    + '</tr></thead><tbody>' + ''.join(linhas) + '</tbody></table></div>', unsafe_allow_html=True)
+    with st.expander("Gerenciar consultas e horários"):
+        st.caption(f"{dia.strftime('%d/%m/%Y')} · {len(consultas)} consulta(s)")
+        _renderizar_acoes_agenda(cliente, conta, consultas, token, transicoes)
+        _renderizar_disponibilidades_agenda(cliente, token, dia, perfis, force=atualizar_agenda)
+
+
+def _renderizar_acoes_agenda(cliente, conta, consultas, token, transicoes):
+    perfis = set(conta.perfis)
+    for consulta in consultas:
+        with st.container(key=f"agenda-gestao-{consulta['id']}", border=True):
+            st.text(f"{consulta['paciente_nome']} · {consulta['situacao']}")
+            st.caption(", ".join(consulta["procedimentos"]) or "Procedimento não informado")
             if "profissional" in perfis:
                 acao_procedimentos = st.columns([3, 1])[1]
                 acao_procedimentos.button(
@@ -435,18 +448,16 @@ def _renderizar_agenda(cliente, conta):
                 permitidas = [s for s in permitidas if s in {"Confirmada", "Cancelada"}]
             pode_atualizar = bool(perfis.intersection({"profissional", "administrador", "recepcionista"}))
             if permitidas and pode_atualizar:
-                acao_col, motivo_col, enviar_col = st.columns([1, 2, 1])
-                proxima = acao_col.selectbox("Alterar situação", permitidas,
-                                             key=f"agenda-proxima-{consulta['id']}")
-                motivo_col.text_input("Motivo do cancelamento", max_chars=1000,
-                    key=f"agenda-motivo-{consulta['id']}", disabled=proxima != "Cancelada")
-                motivo_col.checkbox("Confirmo o cancelamento", key=f"agenda-confirmar-{consulta['id']}",
-                    disabled=proxima != "Cancelada")
-                enviar_col.button("Atualizar", key=f"agenda-atualizar-{consulta['id']}", width="stretch",
-                    on_click=_atualizar_situacao_agenda, args=(cliente, token, consulta["id"]))
-
-    _renderizar_disponibilidades_agenda(cliente, token, dia, perfis, force=atualizar_agenda)
-
+                with st.expander("Gerenciar consulta"):
+                    acao_col, motivo_col, enviar_col = st.columns([1, 2, 1])
+                    proxima = acao_col.selectbox("Alterar situação", permitidas,
+                                                 key=f"agenda-proxima-{consulta['id']}")
+                    motivo_col.text_input("Motivo do cancelamento", max_chars=1000,
+                        key=f"agenda-motivo-{consulta['id']}", disabled=proxima != "Cancelada")
+                    motivo_col.checkbox("Confirmo o cancelamento", key=f"agenda-confirmar-{consulta['id']}",
+                        disabled=proxima != "Cancelada")
+                    enviar_col.button("Atualizar", key=f"agenda-atualizar-{consulta['id']}", width="stretch",
+                        on_click=_atualizar_situacao_agenda, args=(cliente, token, consulta["id"]))
 
 def _renderizar_disponibilidades_agenda(cliente, token, dia, perfis, *, force=False):
     pode_gerenciar = bool(perfis.intersection({"profissional", "administrador", "recepcionista"}))
@@ -803,7 +814,6 @@ def _renderizar_painel_administrador(cliente, conta, pode_cadastrar_paciente, po
             "SEXTA-FEIRA", "SÁBADO", "DOMINGO")
     meses = ("JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO",
              "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO")
-    st.caption(f"{dias[dia.weekday()]}, {dia.day} DE {meses[dia.month - 1]}")
     titulo, acao = st.columns([3, 1], vertical_alignment="center")
     primeiro_nome = conta.nome.split()[0] if conta.nome.strip() else "equipe"
     titulo.title(f"Olá, {primeiro_nome}! 👋")
@@ -817,6 +827,7 @@ def _renderizar_painel_administrador(cliente, conta, pode_cadastrar_paciente, po
             help=None if consulta_integrada else "A tela Nova Consulta ainda não está integrada ao Xano.",
         )
 
+    ilustracoes.banner_contextual("01-boas-vindas.png", "", "Clínica Sorriso", "Organize a agenda, atenda Pacientes e mantenha a clínica sempre em dia.")
     atualizar = st.button("Atualizar resumo", key="inicio-admin-atualizar")
     credencial = st.session_state.get(sessao.CHAVE)
     consultas = pacientes_ativos = None
@@ -1066,6 +1077,7 @@ def renderizar(conta, cliente):
                 renderizar_marca_menu()
                 if not paciente_exclusivo:
                     st.button("Visão geral", on_click=abrir_inicio, key="menu-inicio",
+                              icon=":material/home:", type="primary" if pagina == "inicio" else "secondary",
                               disabled=ocupado, width="stretch")
                 for area in navegacao.areas_visiveis(
                     conta.perfis, modo_demonstracao=False,
@@ -1073,10 +1085,13 @@ def renderizar(conta, cliente):
                 ):
                     if area["chave"] == "agenda":
                         st.button(area["rotulo"], key="menu-agenda", on_click=abrir_agenda,
+                                  icon=":material/calendar_month:", type="primary" if pagina == "agenda" else "secondary",
                                   disabled=ocupado, width="stretch")
                     elif area["chave"] != "inicio":
                         st.button(
                             area["rotulo"],
+                            type="primary" if pagina == area["chave"] else "secondary",
+                            icon={"pacientes": ":material/groups:", "profissionais": ":material/badge:", "prontuarios": ":material/description:", "procedimentos": ":material/dentistry:"}.get(area["chave"], ":material/folder_open:"),
                             key=(f"menu-{area['chave']}" if area["disponivel"]
                                  else f"menu-indisponivel-{area['chave']}"),
                             on_click=(lambda chave=area["chave"]: abrir_area_conectada(chave))
@@ -1128,8 +1143,9 @@ def renderizar(conta, cliente):
                     renderizar_topbar(conta, pagina)
                 elif pagina == "inicio":
                     renderizar_topbar(conta, "inicio")
-                    renderizar_inicio(cliente, conta, administrador, pode_cadastrar_paciente,
-                                      bool(set(conta.perfis) & navegacao.PERFIS_NOVA_CONSULTA))
+                    with st.container(key="visao-geral"):
+                        renderizar_inicio(cliente, conta, administrador, pode_cadastrar_paciente,
+                                          bool(set(conta.perfis) & navegacao.PERFIS_NOVA_CONSULTA))
                 else:
                     renderizar_topbar(conta, pagina)
                     modulo = navegacao.carregar_modulo_xano(pagina)
@@ -1146,6 +1162,8 @@ def renderizar(conta, cliente):
 
 def renderizar_topbar(conta, pagina):
     """Faixa superior inspirada no breadcrumb e perfil das referências."""
+    if pagina != "inicio":
+        return
     titulos = {
         "inicio": "Visão geral", "agenda": "Agenda", "pacientes": "Pacientes",
         "profissionais": "Profissionais", "prontuarios": "Prontuários",

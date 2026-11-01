@@ -58,7 +58,7 @@ def renderizar(cliente, conta, consultas):
 
     formulario = st.empty()
     with formulario.container(key="modal-nova-evolucao", border=True):
-        fechar, titulo = st.columns([0.15, 1], vertical_alignment="center")
+        titulo, fechar = st.columns([1, 0.12], vertical_alignment="center")
         fechar.button("×", key="nova-evolucao-fechar", help="Fechar nova evolução",
                       on_click=_limpar_formulario)
         with titulo:
@@ -100,10 +100,9 @@ def renderizar(cliente, conta, consultas):
                 placeholder="Descreva o atendimento, achados clínicos, orientações e próximos passos",
                 key="nova-evolucao-conteudo",
             )
-            salvar = st.form_submit_button("Salvar no prontuário", type="primary")
-
-        cancelar, _ = st.columns([1, 4])
-        cancelar.button("Cancelar", key="nova-evolucao-cancelar", on_click=_limpar_formulario)
+            cancelar, acao = st.columns(2)
+            salvar = acao.form_submit_button("Salvar no prontuário", key="nova-evolucao-salvar", type="primary", width="stretch")
+            cancelar.form_submit_button("Cancelar", key="nova-evolucao-cancelar", on_click=_limpar_formulario, width="stretch")
 
         if salvar:
             if not conteudo or not conteudo.strip():

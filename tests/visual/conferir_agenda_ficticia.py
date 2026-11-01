@@ -62,7 +62,7 @@ def main():
             page.screenshot(path=destino / "agenda-desktop.png", full_page=True)
             menu = page.locator(".st-key-menu-equipe")
             coluna_menu = page.get_by_test_id("stColumn").filter(has=menu)
-            assert coluna_menu.evaluate("element => getComputedStyle(element).position") == "sticky"
+            assert menu.evaluate("element => getComputedStyle(element).position") == "fixed"
             page.locator(".st-key-conteudo-equipe").evaluate(
                 "element => element.style.minHeight = '1800px'"
             )
@@ -91,13 +91,14 @@ def main():
             largura = page.evaluate("({viewport: document.documentElement.clientWidth, pagina: document.documentElement.scrollWidth})")
             assert largura["pagina"] <= largura["viewport"], f"Rolagem horizontal no desktop: {largura}"
 
+            page.get_by_role("button", name="Opções", exact=True).click()
             page.get_by_role("button", name="Novo horário").click()
             page.get_by_role("group", name="Data do horário").wait_for()
             assert page.get_by_label("Profissional").is_visible()
             page.get_by_role("group", name="Horário inicial").wait_for()
             page.get_by_role("group", name="Horário final").wait_for()
             page.set_viewport_size({"width": 390, "height": 844})
-            assert coluna_menu.evaluate("element => getComputedStyle(element).position") == "static"
+            assert menu.evaluate("element => getComputedStyle(element).position") == "static"
             largura = page.evaluate("({viewport: document.documentElement.clientWidth, pagina: document.documentElement.scrollWidth})")
             assert largura["pagina"] <= largura["viewport"], f"Rolagem horizontal no formulário de horário: {largura}"
             page.screenshot(path=destino / "novo-horario-celular.png", full_page=True)

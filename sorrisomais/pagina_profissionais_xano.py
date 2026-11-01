@@ -21,7 +21,7 @@ def _listar_profissionais(cliente, token, estado, atualizar=False):
 
 def _situacao_card(cliente, profissional, token, estado, administrador):
     ativo = profissional["situacao"] == "ativo"
-    st.caption("Ativo" if ativo else "Inativo")
+    st.markdown(f'<span class="situacao-profissional {"ativo" if ativo else "inativo"}">{"Ativo" if ativo else "Inativo"}</span>', unsafe_allow_html=True)
     if not administrador:
         # O chamador usa ``None`` para sinalizar falha de autenticação durante
         # uma alteração de situação. Para um cartão somente de leitura, use o
@@ -56,9 +56,8 @@ def _situacao_card(cliente, profissional, token, estado, administrador):
 
 def renderizar(cliente, conta):
     """Exibe Profissionais e permite alterar situação apenas ao Administrador."""
-    st.caption("EQUIPE DA CLÍNICA")
     st.title("Profissionais")
-    st.write("Consulte os dados cadastrais dos Profissionais da clínica.")
+    st.write("Gerencie os Profissionais, especialidades e disponibilidade.")
 
     perfis = set(conta.perfis)
     if not perfis.intersection({"administrador", "recepcionista"}):

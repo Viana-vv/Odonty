@@ -1,6 +1,5 @@
 """Execute com: python -m streamlit run app.py."""
 
-from base64 import b64encode
 from pathlib import Path
 
 import streamlit as st
@@ -8,9 +7,10 @@ import streamlit as st
 from sorrisomais.api import ClienteXano, ErroAcesso
 from sorrisomais.config import Configuracao, ConfiguracaoInvalida
 from sorrisomais import sessao, paginas_equipe, acesso_equipe
+from sorrisomais.ilustracoes import MARCA_MASCOTE, marca_html
 
 RAIZ = Path(__file__).parent
-st.set_page_config(page_title="Entrar · Sorriso+", page_icon=str(RAIZ / "assets" / "mascote-sorriso.png"), layout="wide")
+st.set_page_config(page_title="Entrar · Sorriso+", page_icon=str(MARCA_MASCOTE), layout="wide")
 st.html((RAIZ / "assets" / "estilos.css").read_text(encoding="utf-8"))
 
 
@@ -60,12 +60,14 @@ else:
     with st.container(key="entrada"):
         ilustracao, formulario = st.columns([1.05, 1], gap="large", vertical_alignment="center")
         with ilustracao:
-            logo_mascote = b64encode((RAIZ / "assets" / "mascote-sorriso.png").read_bytes()).decode("ascii")
+            from sorrisomais.ilustracoes import _data_uri
+            arte_login = _data_uri("14-seguranca-login.png")
             st.html(f'''<section class="boas-vindas">
-              <div class="marca marca-clara"><span class="marca-icone"><img src="data:image/png;base64,{logo_mascote}" alt="Mascote Sorriso Mais"></span><span class="marca-nome">Sorriso<span>+</span></span></div>
+              <div class="marca-clara">{marca_html()}</div>
               <span class="etiqueta">GESTÃO ODONTOLÓGICA</span>
               <h1>Sua clínica mais organizada.<br>Seu atendimento mais <em>humano.</em></h1>
               <p>Agenda, pacientes e prontuários em um só lugar, para sua equipe cuidar do que realmente importa.</p>
+              <div class="login-arte"><img src="{arte_login}" alt="Mascote com proteção de acesso" /></div>
               <div class="marca-rodape">Cuidado que transforma sorrisos.</div>
             </section>''')
         with formulario:

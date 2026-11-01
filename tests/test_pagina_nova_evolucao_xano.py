@@ -58,7 +58,7 @@ def test_perfil_sem_permissao_nao_renderiza_formulario():
 
 def test_conteudo_vazio_nao_chama_api():
     app = abrir()
-    app.button[1].click().run()
+    app.button(key="nova-evolucao-salvar").click().run()
     assert not app.exception
     assert any("Informe a evolução clínica" in item.value for item in app.error)
     assert "_registro_enviado" not in app.session_state
@@ -68,7 +68,7 @@ def test_envia_contrato_existente_e_invalida_cache_apos_sucesso():
     app = abrir()
     app.text_area[0].set_value("Evolução fictícia do atendimento")
     app.selectbox[1].set_value(17)
-    app.button[1].click().run()
+    app.button(key="nova-evolucao-salvar").click().run()
     assert not app.exception
     assert app.session_state["_registro_enviado"] == {
         "paciente_id": 3,
@@ -82,7 +82,7 @@ def test_envia_contrato_existente_e_invalida_cache_apos_sucesso():
 def test_erro_de_permissao_nao_apresenta_detalhes_clinicos():
     app = abrir(falha=403)
     app.text_area[0].set_value("Conteúdo clínico fictício")
-    app.button[1].click().run()
+    app.button(key="nova-evolucao-salvar").click().run()
     assert not app.exception
     assert any("não tem permissão" in item.value for item in app.error)
     assert not any("Falha segura" in item.value for item in app.error)
@@ -91,7 +91,7 @@ def test_erro_de_permissao_nao_apresenta_detalhes_clinicos():
 def test_sessao_expirada_limpa_credencial():
     app = abrir(falha=401)
     app.text_area[0].set_value("Conteúdo clínico fictício")
-    app.button[1].click().run()
+    app.button(key="nova-evolucao-salvar").click().run()
     assert not app.exception
     assert any("Sua sessão expirou" in item.value for item in app.error)
     assert "credencial" not in app.session_state
