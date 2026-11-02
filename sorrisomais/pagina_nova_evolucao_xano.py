@@ -59,7 +59,7 @@ def renderizar(cliente, conta, consultas):
     formulario = st.empty()
     with formulario.container(key="modal-nova-evolucao", border=True):
         titulo, fechar = st.columns([1, 0.12], vertical_alignment="center")
-        fechar.button("×", key="nova-evolucao-fechar", help="Fechar nova evolução",
+        fechar.button("Fechar", key="nova-evolucao-fechar", help="Fechar nova evolução",
                       on_click=_limpar_formulario)
         with titulo:
             st.subheader("Nova evolução clínica")

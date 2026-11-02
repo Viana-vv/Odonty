@@ -63,6 +63,10 @@ def main():
                     quantidade = 4
                     assert page.locator(f'[class*="st-key-{prefixo}"]').count() == quantidade
                     assert page.locator(".icone-metrica").count() == quantidade
+                    assert page.locator('.icone-metrica svg.icone-regen[aria-hidden="true"]').count() == quantidade
+                if tela != "login":
+                    for botao in page.locator('.st-key-menu-equipe [data-testid="stButton"] button').all():
+                        assert "data:image/svg+xml;base64," in botao.evaluate("e=>getComputedStyle(e,'::before').maskImage")
                 if tela == "agenda":
                     assert page.locator(".agenda-tabela thead th").count() == 5
                     assert page.locator(".agenda-tabela tbody tr").count() == 5

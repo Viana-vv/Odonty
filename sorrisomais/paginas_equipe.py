@@ -11,6 +11,7 @@ import streamlit as st
 from .api import ErroAcesso, ROTULOS
 from . import sessao, pagina_paciente, navegacao, ilustracoes
 from .cache_xano import carregar_cache, invalidar_cache
+from .icones import icone_html, icone_metrica
 
 ESPECIALIDADES_CACHE_TTL_SEGUNDOS = 300
 ESPECIALIDADES_RETRY_SEGUNDOS = 20
@@ -95,12 +96,12 @@ def _renderizar_painel_recepcao(cliente, conta, pode_cadastrar_paciente, pode_ag
              "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO")
     titulo, acao = st.columns([3, 1], vertical_alignment="center")
     primeiro_nome = conta.nome.split()[0] if conta.nome.strip() else "equipe"
-    titulo.title(f"Olá, {primeiro_nome}! 👋")
+    titulo.title(f"Olá, {primeiro_nome}!")
     titulo.caption("Aqui está um resumo da clínica hoje.")
     consulta_integrada = navegacao.modulo_xano_disponivel("nova_consulta")
     if pode_agendar:
         acao.button(
-            "+ Nova consulta", key="inicio-nova-consulta",
+            "Nova consulta", key="inicio-nova-consulta",
             on_click=abrir_nova_consulta if consulta_integrada else None,
             disabled=not consulta_integrada, width="stretch",
             help=None if consulta_integrada else "A tela Nova Consulta ainda não está integrada ao Xano.",
@@ -156,16 +157,16 @@ def _renderizar_painel_recepcao(cliente, conta, pode_cadastrar_paciente, pode_ag
         ordenadas, realizadas, confirmadas, proxima = [], None, None, None
 
     indicadores = (
-        ("Consultas hoje", "▣", len(ordenadas) if consultas is not None else "—"),
-        ("Atendimentos", "✓", realizadas if consultas is not None else "—"),
-        ("Próxima consulta", "◷", _horario_consulta(proxima).strftime("%H:%M") if proxima else "—"),
-        ("Confirmadas", "✓", confirmadas if consultas is not None else "—"),
+        ("Consultas hoje", len(ordenadas) if consultas is not None else "—"),
+        ("Atendimentos", realizadas if consultas is not None else "—"),
+        ("Próxima consulta", _horario_consulta(proxima).strftime("%H:%M") if proxima else "—"),
+        ("Confirmadas", confirmadas if consultas is not None else "—"),
     )
     metricas = st.columns(4, gap="small")
-    for indice, (rotulo, icone, valor) in enumerate(indicadores):
+    for indice, (rotulo, valor) in enumerate(indicadores):
         with metricas[indice]:
             with st.container(key=f"metrica-xano-{indice}", border=True):
-                st.markdown(f"<span class='icone-metrica'>{icone}</span>", unsafe_allow_html=True)
+                st.markdown(icone_metrica(rotulo), unsafe_allow_html=True)
                 st.caption(rotulo)
                 st.markdown(f"<strong class='valor-metrica'>{valor}</strong>", unsafe_allow_html=True)
                 detalhe = ("concluídos hoje" if indice == 1 and consultas is not None else
@@ -182,7 +183,7 @@ def _renderizar_painel_recepcao(cliente, conta, pode_cadastrar_paciente, pode_ag
             topo, link = st.columns([2, 1], vertical_alignment="center")
             topo.subheader("Agenda de hoje")
             topo.caption(f"{len(ordenadas)} consultas" if consultas is not None else "Resumo indisponível")
-            link.button("Ver agenda completa →", key="inicio-abrir-agenda",
+            link.button("Ver agenda completa", key="inicio-abrir-agenda",
                         on_click=abrir_agenda, width="stretch")
             st.divider()
             if consultas is None:
@@ -203,9 +204,9 @@ def _renderizar_painel_recepcao(cliente, conta, pode_cadastrar_paciente, pode_ag
             st.subheader("Acesso rápido")
             st.caption("Acesse as áreas da clínica.")
             if pode_cadastrar_paciente:
-                st.button("+  Novo paciente", on_click=pagina_paciente.abrir,
+                st.button("Novo paciente", on_click=pagina_paciente.abrir,
                           key="inicio-cadastrar-paciente", type="primary", width="stretch")
-            st.button("▦  Visualizar agenda", on_click=abrir_agenda,
+            st.button("Visualizar agenda", on_click=abrir_agenda,
                       key="inicio-agenda-indisponivel", width="stretch")
         total = len(ordenadas) if consultas is not None else 0
         taxa = confirmadas / total if total else 0
@@ -349,17 +350,17 @@ def _renderizar_agenda(cliente, conta):
     cabecalho.title("Agenda")
     cabecalho.caption("Acompanhe consultas, horários e situação dos atendimentos.")
     if pode_agendar:
-        nova_consulta.button("＋ Nova consulta", key="agenda-nova", type="primary", width="stretch",
+        nova_consulta.button("Nova consulta", key="agenda-nova", type="primary", width="stretch",
                             on_click=_alternar_formulario_agenda, args=("agenda_nova",))
-    with opcoes_coluna.popover("Opções", icon=":material/tune:"):
+    with opcoes_coluna.popover("Opções"):
         st.caption("Navegar entre datas")
         anterior, hoje, proximo = st.columns([1,2,1])
-        anterior.button("‹", key="agenda-anterior", width="stretch", help="Dia anterior", on_click=_navegar_data_agenda, args=(-1,))
+        anterior.button("Dia anterior", key="agenda-anterior", width="stretch", help="Dia anterior", on_click=_navegar_data_agenda, args=(-1,))
         hoje.button("Hoje", key="agenda-hoje", width="stretch", on_click=_ir_para_hoje_na_agenda)
-        proximo.button("›", key="agenda-proximo", width="stretch", help="Próximo dia", on_click=_navegar_data_agenda, args=(1,))
+        proximo.button("Dia seguinte", key="agenda-proximo", width="stretch", help="Próximo dia", on_click=_navegar_data_agenda, args=(1,))
         atualizar_agenda = st.button("Atualizar Agenda", key="agenda-atualizar-listas", width="stretch")
         if pode_agendar:
-            st.button("＋ Novo horário", key="agenda-novo-horario", width="stretch", on_click=_alternar_formulario_agenda, args=("agenda_nova_disponibilidade",))
+            st.button("Novo horário", key="agenda-novo-horario", width="stretch", on_click=_alternar_formulario_agenda, args=("agenda_nova_disponibilidade",))
     aviso_agenda = st.session_state.pop("agenda_aviso", None)
     if aviso_agenda:
         ilustracoes.ilustracao_contextual("09-sucesso.png" if aviso_agenda[0] == "success" else "10-aviso.png")
@@ -786,7 +787,7 @@ def renderizar_cadastro_modal(cliente):
         cabecalho, fechar = st.columns([8, 1], vertical_alignment="center")
         cabecalho.markdown("### Novo profissional")
         cabecalho.caption("Cadastre um dentista e associe uma especialidade ativa.")
-        if fechar.button("×", key="cad-fechar-modal", help="Fechar cadastro"):
+        if fechar.button("Fechar", key="cad-fechar-modal", help="Fechar cadastro"):
             voltar()
             st.rerun()
         st.divider()
@@ -816,12 +817,12 @@ def _renderizar_painel_administrador(cliente, conta, pode_cadastrar_paciente, po
              "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO")
     titulo, acao = st.columns([3, 1], vertical_alignment="center")
     primeiro_nome = conta.nome.split()[0] if conta.nome.strip() else "equipe"
-    titulo.title(f"Olá, {primeiro_nome}! 👋")
+    titulo.title(f"Olá, {primeiro_nome}!")
     titulo.caption("Aqui está um resumo da clínica hoje.")
     consulta_integrada = navegacao.modulo_xano_disponivel("nova_consulta")
     if pode_agendar:
         acao.button(
-            "+ Nova consulta", key="inicio-nova-consulta",
+            "Nova consulta", key="inicio-nova-consulta",
             on_click=abrir_nova_consulta if consulta_integrada else None,
             disabled=not consulta_integrada, width="stretch",
             help=None if consulta_integrada else "A tela Nova Consulta ainda não está integrada ao Xano.",
@@ -882,16 +883,16 @@ def _renderizar_painel_administrador(cliente, conta, pode_cadastrar_paciente, po
                 st.rerun()
 
     indicadores = (
-        ("Consultas hoje", "□", len(ordenadas) if consultas is not None else "—"),
-        ("Atendimentos", "✓", realizadas if consultas is not None else "—"),
-        ("Pacientes ativos", "♙", pacientes_ativos if pacientes_ativos is not None else "—"),
-        ("Próxima consulta", "◷", _horario_consulta(proxima).strftime("%H:%M") if proxima else "—"),
+        ("Consultas hoje", len(ordenadas) if consultas is not None else "—"),
+        ("Atendimentos", realizadas if consultas is not None else "—"),
+        ("Pacientes ativos", pacientes_ativos if pacientes_ativos is not None else "—"),
+        ("Próxima consulta", _horario_consulta(proxima).strftime("%H:%M") if proxima else "—"),
     )
     metricas = st.columns(4, gap="small")
-    for indice, (rotulo, icone, valor) in enumerate(indicadores):
+    for indice, (rotulo, valor) in enumerate(indicadores):
         with metricas[indice]:
             with st.container(key=f"metrica-admin-{indice}", border=True):
-                st.markdown(f"<span class='icone-metrica'>{icone}</span>", unsafe_allow_html=True)
+                st.markdown(icone_metrica(rotulo), unsafe_allow_html=True)
                 st.caption(rotulo)
                 st.markdown(f"<strong class='valor-metrica'>{valor}</strong>", unsafe_allow_html=True)
                 detalhe = (
@@ -910,7 +911,7 @@ def _renderizar_painel_administrador(cliente, conta, pode_cadastrar_paciente, po
             topo, link = st.columns([2, 1], vertical_alignment="center")
             topo.subheader("Agenda de hoje")
             topo.caption(f"{len(ordenadas)} consultas" if consultas is not None else "Resumo indisponível")
-            link.button("Ver agenda completa →", key="inicio-abrir-agenda",
+            link.button("Ver agenda completa", key="inicio-abrir-agenda",
                         on_click=abrir_agenda, width="stretch")
             st.divider()
             if consultas is None:
@@ -932,18 +933,18 @@ def _renderizar_painel_administrador(cliente, conta, pode_cadastrar_paciente, po
             st.subheader("Acesso rápido")
             st.caption("Acesse as áreas da clínica.")
             if pode_cadastrar_paciente:
-                st.button("＋  Novo paciente", on_click=pagina_paciente.abrir,
+                st.button("Novo paciente", on_click=pagina_paciente.abrir,
                           key="inicio-cadastrar-paciente", type="primary", width="stretch")
             if navegacao.pode_acessar(conta.perfis, "prontuarios"):
                 prontuario_integrado = navegacao.modulo_xano_disponivel("prontuarios")
-                st.button("▤  Abrir prontuário", key="inicio-prontuario-indisponivel",
+                st.button("Abrir prontuário", key="inicio-prontuario-indisponivel",
                           on_click=(lambda: abrir_area_conectada("prontuarios")) if prontuario_integrado else None,
                           disabled=not prontuario_integrado, width="stretch",
                           help=None if prontuario_integrado else "A listagem de Prontuários ainda não está integrada ao Xano.")
-            st.button("▦  Visualizar agenda", on_click=abrir_agenda,
+            st.button("Visualizar agenda", on_click=abrir_agenda,
                       key="inicio-agenda-indisponivel", width="stretch")
             if "administrador" in conta.perfis:
-                st.button("＋  Novo profissional", on_click=abrir_cadastro,
+                st.button("Novo profissional", on_click=abrir_cadastro,
                           key="inicio-cadastrar-profissional", width="stretch")
         total = len(ordenadas) if consultas is not None else 0
         taxa = confirmadas / total if total else 0
@@ -972,26 +973,26 @@ def renderizar_inicio(cliente, conta, administrador, pode_cadastrar_paciente, po
     st.caption(f"{dias[dia.weekday()]}, {dia.day} DE {meses[dia.month - 1]}")
     titulo, acao = st.columns([3, 1], vertical_alignment="center")
     primeiro_nome = conta.nome.split()[0] if conta.nome.strip() else "equipe"
-    titulo.title(f"Olá, {primeiro_nome}! 👋")
+    titulo.title(f"Olá, {primeiro_nome}!")
     titulo.caption("Aqui está um resumo da clínica hoje.")
     consulta_integrada = navegacao.modulo_xano_disponivel("nova_consulta")
     if pode_agendar:
         acao.button(
-            "＋ Nova consulta", key="inicio-nova-consulta",
+            "Nova consulta", key="inicio-nova-consulta",
             on_click=abrir_nova_consulta if consulta_integrada else None,
             disabled=not consulta_integrada, width="stretch",
             help=None if consulta_integrada else "A tela Nova Consulta ainda não está integrada ao Xano.",
         )
 
     indicadores = (
-        ("Consultas hoje", "▢"), ("Atendimentos", "✓"),
-        ("Pacientes ativos", "♙"), ("Próxima consulta", "◷"),
+        "Consultas hoje", "Atendimentos",
+        "Pacientes ativos", "Próxima consulta",
     )
     metricas = st.columns(4, gap="small")
-    for indice, (rotulo, icone) in enumerate(indicadores):
+    for indice, rotulo in enumerate(indicadores):
         with metricas[indice]:
             with st.container(key=f"metrica-xano-{indice}", border=True):
-                st.markdown(f"<span class='icone-metrica'>{icone}</span>", unsafe_allow_html=True)
+                st.markdown(icone_metrica(rotulo), unsafe_allow_html=True)
                 st.caption(rotulo)
                 st.markdown("<strong class='valor-metrica'>—</strong>", unsafe_allow_html=True)
                 st.caption("Dados indisponíveis")
@@ -1009,19 +1010,19 @@ def renderizar_inicio(cliente, conta, administrador, pode_cadastrar_paciente, po
             st.subheader("Acesso rápido")
             st.caption("Acesse as áreas da clínica.")
             if pode_cadastrar_paciente:
-                st.button("＋  Novo paciente", on_click=pagina_paciente.abrir,
+                st.button("Novo paciente", on_click=pagina_paciente.abrir,
                           key="inicio-cadastrar-paciente", type="primary", width="stretch")
             if navegacao.pode_acessar(conta.perfis, "prontuarios"):
                 prontuario_integrado = navegacao.modulo_xano_disponivel("prontuarios")
-                st.button("▤  Abrir prontuário", key="inicio-prontuario-indisponivel",
+                st.button("Abrir prontuário", key="inicio-prontuario-indisponivel",
                           on_click=(lambda: abrir_area_conectada("prontuarios")) if prontuario_integrado else None,
                           disabled=not prontuario_integrado, width="stretch",
                           help=None if prontuario_integrado else "A listagem de Prontuários ainda não está integrada ao Xano.")
-            st.button("▦  Visualizar agenda", key="inicio-agenda-indisponivel",
+            st.button("Visualizar agenda", key="inicio-agenda-indisponivel",
                       disabled=True, width="stretch",
                       help="A agenda ainda não está integrada ao Xano.")
             if administrador:
-                st.button("＋  Novo profissional", on_click=abrir_cadastro,
+                st.button("Novo profissional", on_click=abrir_cadastro,
                           key="inicio-cadastrar-profissional", width="stretch")
             if not administrador and not pode_cadastrar_paciente:
                 st.info("Seu acesso à equipe está ativo.")
@@ -1077,7 +1078,7 @@ def renderizar(conta, cliente):
                 renderizar_marca_menu()
                 if not paciente_exclusivo:
                     st.button("Visão geral", on_click=abrir_inicio, key="menu-inicio",
-                              icon=":material/home:", type="primary" if pagina == "inicio" else "secondary",
+                              type="primary" if pagina == "inicio" else "secondary",
                               disabled=ocupado, width="stretch")
                 for area in navegacao.areas_visiveis(
                     conta.perfis, modo_demonstracao=False,
@@ -1085,13 +1086,12 @@ def renderizar(conta, cliente):
                 ):
                     if area["chave"] == "agenda":
                         st.button(area["rotulo"], key="menu-agenda", on_click=abrir_agenda,
-                                  icon=":material/calendar_month:", type="primary" if pagina == "agenda" else "secondary",
+                                  type="primary" if pagina == "agenda" else "secondary",
                                   disabled=ocupado, width="stretch")
                     elif area["chave"] != "inicio":
                         st.button(
                             area["rotulo"],
                             type="primary" if pagina == area["chave"] else "secondary",
-                            icon={"pacientes": ":material/groups:", "profissionais": ":material/badge:", "prontuarios": ":material/description:", "procedimentos": ":material/dentistry:"}.get(area["chave"], ":material/folder_open:"),
                             key=(f"menu-{area['chave']}" if area["disponivel"]
                                  else f"menu-indisponivel-{area['chave']}"),
                             on_click=(lambda chave=area["chave"]: abrir_area_conectada(chave))
@@ -1178,5 +1178,8 @@ def renderizar_topbar(conta, pagina):
         nome_perfil = " · ".join("Dentista" if p == "profissional" else ROTULOS[p]
                                  for p in conta.perfis)
         iniciais = "".join(parte[0] for parte in conta.nome.split()[:2]).upper() or "S"
-        perfil.markdown(f"**◉ {iniciais} · {conta.nome}**")
+        perfil.markdown(
+            f"{icone_html('user')} <strong>{escape(iniciais)} · {escape(conta.nome)}</strong>",
+            unsafe_allow_html=True,
+        )
         perfil.text(nome_perfil)

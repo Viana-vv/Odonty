@@ -8,10 +8,12 @@ from sorrisomais import autoatendimento_paciente, sessao_paciente
 from sorrisomais.api import ClienteXano, ErroAcesso
 from sorrisomais.config import Configuracao, ConfiguracaoInvalida
 from sorrisomais.ilustracoes import MARCA_MASCOTE
+from sorrisomais.icones import estilos_icones
 
 RAIZ = Path(__file__).parent
 st.set_page_config(page_title="Área do Paciente · Sorriso+", page_icon=str(MARCA_MASCOTE), layout="wide")
 st.html((RAIZ / "assets" / "estilos.css").read_text(encoding="utf-8"))
+st.html(estilos_icones())
 
 try:
     cliente = ClienteXano(Configuracao.do_ambiente())

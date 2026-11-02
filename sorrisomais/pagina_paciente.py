@@ -141,7 +141,7 @@ def renderizar_modal(cliente):
         cabecalho, fechar = st.columns([8, 1], vertical_alignment="center")
         cabecalho.markdown("### Novo paciente")
         cabecalho.caption("Preencha os dados cadastrais para criar um Paciente com prontuário vazio.")
-        if fechar.button("×", key="pac-fechar-modal", help="Fechar cadastro"):
+        if fechar.button("Fechar", key="pac-fechar-modal", help="Fechar cadastro"):
             voltar()
             st.rerun()
         st.divider()

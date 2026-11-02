@@ -83,7 +83,7 @@ def test_resumo_ordena_limita_e_omite_campos_clinicos(cliente_painel):
     texto = texto_ui(app)
 
     assert not app.exception
-    assert any(item.value == "Olá, Dra.! 👋" for item in app.title)
+    assert any(item.value == "Olá, Dra.!" for item in app.title)
     assert all(rotulo in texto for rotulo in (
         "Consultas hoje", "Atendimentos", "Confirmadas", "Próxima consulta"
     ))

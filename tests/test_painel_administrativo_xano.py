@@ -75,7 +75,7 @@ def test_painel_calcula_metricas_e_mostra_ate_cinco_consultas(cliente_painel):
     app = abrir_painel(cliente_painel)
 
     assert not app.exception
-    assert any(item.value == "Olá, Ana! 👋" for item in app.title)
+    assert any(item.value == "Olá, Ana!" for item in app.title)
     assert any(item.value == "Consultas hoje" for item in app.caption)
     assert any(item.value == "Pacientes ativos" for item in app.caption)
     assert any(">6</strong>" in item.value for item in app.markdown)

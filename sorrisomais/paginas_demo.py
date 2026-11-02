@@ -7,6 +7,7 @@ import streamlit as st
 
 from . import demonstracao, navegacao, sessao
 from .api import ROTULOS
+from .icones import icone_metrica
 from .paginas_equipe import renderizar_marca_menu, renderizar_topbar
 
 STATUS_CONSULTA = ("Agendada", "Confirmada", "Em atendimento", "Realizada", "Cancelada", "Falta")
@@ -35,10 +36,10 @@ def _cabecalho(titulo, descricao):
     st.write(descricao)
 
 
-def _cartao_metrica(coluna, rotulo, valor, descricao, icone):
+def _cartao_metrica(coluna, rotulo, valor, descricao):
     with coluna:
         with st.container(key=f"demo-metrica-{rotulo.casefold().replace(' ', '-')}", border=True):
-            st.markdown(f"<div class='metrica-icone'>{icone}</div>", unsafe_allow_html=True)
+            st.markdown(icone_metrica(rotulo), unsafe_allow_html=True)
             st.caption(rotulo)
             st.subheader(str(valor))
             st.caption(descricao)
@@ -108,11 +109,11 @@ def _pagina_inicio(repo, conta, perfis):
     st.caption(hoje.strftime("%A, %d de %B de %Y").upper())
     cols = st.columns(4)
     _cartao_metrica(cols[0], "Consultas hoje", metricas["consultas"],
-                    f"{metricas['aguardando']} ainda aguardando", "▣")
-    _cartao_metrica(cols[1], "Atendimentos", metricas["realizadas"], "concluídos hoje", "✓")
-    _cartao_metrica(cols[2], "Pacientes ativos", metricas["pacientes"], "cadastros na demonstração", "♙")
+                    f"{metricas['aguardando']} ainda aguardando")
+    _cartao_metrica(cols[1], "Atendimentos", metricas["realizadas"], "concluídos hoje")
+    _cartao_metrica(cols[2], "Pacientes ativos", metricas["pacientes"], "cadastros na demonstração")
     _cartao_metrica(cols[3], "Próxima consulta", proxima["hora"] if proxima else "—",
-                    _consulta_detalhe(repo, proxima)[0]["nome"] if proxima else "nenhuma marcada", "◷")
+                    _consulta_detalhe(repo, proxima)[0]["nome"] if proxima else "nenhuma marcada")
     esquerda, direita = st.columns([1.65, 1], gap="medium")
     with esquerda:
         with st.container(key="demo-painel-agenda", border=True):
@@ -122,15 +123,15 @@ def _pagina_inicio(repo, conta, perfis):
                 st.info("Nenhuma consulta para hoje.")
             for consulta in consultas[:5]:
                 _cartao_consulta(repo, consulta)
-            st.button("Ver agenda completa →", on_click=_navegar, args=("agenda",), key="demo-inicio-agenda")
+            st.button("Ver agenda completa", on_click=_navegar, args=("agenda",), key="demo-inicio-agenda")
     with direita:
         with st.container(key="demo-painel-atalhos", border=True):
             st.subheader("Acesso rápido")
             if perfis.intersection({"administrador", "recepcionista"}):
-                st.button("Novo paciente  ›", on_click=_navegar, args=("pacientes",), key="demo-inicio-paciente", width="stretch")
+                st.button("Novo paciente", on_click=_navegar, args=("pacientes",), key="demo-inicio-paciente", width="stretch")
             if "profissional" in perfis:
-                st.button("Abrir prontuário  ›", on_click=_navegar, args=("prontuarios",), key="demo-inicio-prontuario", width="stretch")
-            st.button("Visualizar agenda  ›", on_click=_navegar, args=("agenda",), key="demo-inicio-agenda-atalho", width="stretch")
+                st.button("Abrir prontuário", on_click=_navegar, args=("prontuarios",), key="demo-inicio-prontuario", width="stretch")
+            st.button("Visualizar agenda", on_click=_navegar, args=("agenda",), key="demo-inicio-agenda-atalho", width="stretch")
         total = metricas["consultas"]
         taxa = metricas["confirmadas"] / total if total else 0
         with st.container(key="demo-painel-confirmadas", border=True):
@@ -148,7 +149,7 @@ def _pagina_agenda(repo, perfis):
     busca = col_busca.text_input("Buscar paciente", key="demo-agenda-busca")
     pode_agendar = bool(perfis.intersection({"administrador", "recepcionista"}))
     if pode_agendar:
-        col_novo.button("+ Nova consulta", on_click=lambda: _navegar("nova_consulta"), type="primary", key="demo-agenda-nova")
+        col_novo.button("Nova consulta", on_click=lambda: _navegar("nova_consulta"), type="primary", key="demo-agenda-nova")
     consultas = [c for c in repo.listar("consultas") if c["data"] == dia.isoformat()]
     if status != "Todas":
         consultas = [c for c in consultas if c["situacao"] == status]
@@ -209,7 +210,7 @@ def _pagina_pacientes(repo, perfis):
     busca, novo = st.columns([3, 1])
     termo = busca.text_input("Buscar por nome, CPF ou telefone", key="demo-busca-pacientes")
     if perfis.intersection({"administrador", "recepcionista"}):
-        novo.button("+ Novo paciente", type="primary", key="demo-novo-paciente", on_click=_navegar, args=("novo_paciente",))
+        novo.button("Novo paciente", type="primary", key="demo-novo-paciente", on_click=_navegar, args=("novo_paciente",))
     pacientes = repo.buscar_pacientes(termo)
     st.caption(f"{len(pacientes)} pacientes")
     if not pacientes:
@@ -238,7 +239,7 @@ def _pagina_pacientes(repo, perfis):
 def _pagina_profissionais(repo, perfis):
     _cabecalho("Profissionais", "Consulte a equipe e confira sua situação cadastral.")
     pode_administrar = "administrador" in perfis
-    if pode_administrar and st.button("+ Novo profissional", type="primary", key="demo-novo-profissional"):
+    if pode_administrar and st.button("Novo profissional", type="primary", key="demo-novo-profissional"):
         _navegar("novo_profissional")
     pagina = st.session_state.get("demo_pagina", "profissionais")
     if pagina == "novo_profissional" and pode_administrar:
@@ -286,7 +287,7 @@ def _pagina_prontuarios(repo, perfis):
     selecionado = st.selectbox("Filtrar por paciente", list(opcoes), format_func=opcoes.get)
     if selecionado is not None:
         registros = [r for r in registros if r["paciente_id"] == selecionado]
-    nova = st.button("+ Nova evolução", type="primary", key="demo-nova-evolucao")
+    nova = st.button("Nova evolução", type="primary", key="demo-nova-evolucao")
     if nova:
         st.session_state["demo_pagina"] = f"nova_evolucao:{selecionado or ''}"
     pagina = st.session_state.get("demo_pagina", "prontuarios")
@@ -374,7 +375,7 @@ def renderizar(conta, cliente):
                     st.rerun()
         with conteudo:
             with st.container(key="conteudo-equipe", border=True):
-                st.info("Modo de demonstração: dados fictícios guardados somente nesta sessão; não são enviados ao Xano.", icon="ℹ️")
+                st.info("Modo de demonstração: dados fictícios guardados somente nesta sessão; não são enviados ao Xano.")
                 _aviso_operacao()
                 chave = atual.split(":", 1)[0]
                 if chave == "inicio":

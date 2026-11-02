@@ -6,7 +6,7 @@ MVP acadêmico com Python/Streamlit na interface e Xano para autenticação, aut
 
 Login, identificação da Conta de Acesso e logout estão implementados e validados no Xano. O export versionado define sessão interna de até oito horas; para aplicar esse prazo no ambiente publicado, configure `AUTH_SESSION_TTL_SECONDS=28800` no Xano. Administrador também pode cadastrar profissionais; Profissional aparece como Dentista. **O cadastro de Paciente está funcionando e pronto para uso demonstrativo** por Administrador e Recepcionista, com autorização aplicada no Xano. Recuperação de senha e funcionalidades clínicas permanecem fora desta entrega.
 
-As telas existentes de login, início da equipe e cadastros de Paciente e Profissional usam a identidade visual Sorriso+ e o mascote local `assets/1000323602.jpg`. A navegação exibe somente ações disponíveis para o perfil autenticado; módulos que ainda não possuem fluxo não aparecem como opções.
+As telas existentes usam a identidade visual Sorriso+ e os mascotes transparentes de `assets/mascotes-tratados/`, com assinatura compartilhada. A navegação exibe somente ações disponíveis para o perfil autenticado; módulos que ainda não possuem fluxo não aparecem como opções. A iconografia vetorial, sua procedência e a revisão de segurança estão documentadas em [Ícones da interface](docs/icones-interface.md).
 
 Issue: [#1](https://github.com/Viana-vv/Odonty/issues/1). Implementação na branch `feat/1-login-streamlit-xano`, preparada para revisão do grupo.
 
