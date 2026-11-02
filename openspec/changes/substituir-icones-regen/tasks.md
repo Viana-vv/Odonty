@@ -12,4 +12,4 @@
 ## 3. Verificação e entrega
 
 - [x] 3.1 Executar regressão Python e capturas automatizadas das telas com dados fictícios: 255 testes aprovados e 30 composições em duas resoluções, com ações, nomes, contraste, proporções e bloqueio de recursos externos no roteiro adicional.
-- [ ] 3.2 Atualizar documentação e validar OpenSpec, revisar diff, commitar e enviar branch separada vinculada à Issue, abrindo PR sem merge.
+- [x] 3.2 Atualizar documentação e validar OpenSpec, revisar diff, commitar e enviar branch feat/icones-regen-sorrisoplus vinculada à Issue #125; PR #126 aberta sem merge.
