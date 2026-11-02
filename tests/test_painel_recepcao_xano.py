@@ -75,7 +75,7 @@ def test_painel_mostra_metricas_e_cinco_consultas_ordenadas_sem_procedimentos(cl
     app = abrir_painel(cliente_painel)
 
     assert not app.exception
-    assert any(item.value == "Olá, Camila! 👋" for item in app.title)
+    assert any(item.value == "Olá, Camila!" for item in app.title)
     assert "Paciente Fictício 1" in texto_ui(app)
     assert "Paciente Fictício 5" in texto_ui(app)
     assert "Paciente Fictício 6" not in texto_ui(app)

@@ -7,6 +7,7 @@ import streamlit as st
 
 from . import navegacao, sessao, ilustracoes
 from .api import ErroAcesso
+from .icones import icone_metrica
 
 FUSO_CLINICA = ZoneInfo("America/Sao_Paulo")
 SITUACOES_TERMINAIS = {"Cancelada", "Falta", "Realizada"}
@@ -74,17 +75,17 @@ def _renderizar_metricas(consultas, agora):
     realizadas = sum(consulta["situacao"] == "Realizada" for consulta in consultas)
     confirmadas = sum(consulta["situacao"] == "Confirmada" for consulta in consultas)
     valores = (
-        ("Consultas hoje", str(len(consultas)), "na sua agenda", "▦"),
-        ("Atendimentos", str(realizadas), "realizados hoje", "✓"),
-        ("Confirmadas", str(confirmadas), "para hoje", "▤"),
+        ("Consultas hoje", str(len(consultas)), "na sua agenda"),
+        ("Atendimentos", str(realizadas), "realizados hoje"),
+        ("Confirmadas", str(confirmadas), "para hoje"),
         ("Próxima consulta", proxima["horario"].strftime("%H:%M") if proxima else "—",
-         proxima["paciente_nome"] if proxima else "nenhuma marcada", "◷"),
+         proxima["paciente_nome"] if proxima else "nenhuma marcada"),
     )
     with st.container(key="painel-profissional-metricas"):
         metricas = st.columns(4, gap="small")
-        for indice, (coluna, (rotulo, valor, detalhe, icone)) in enumerate(zip(metricas, valores)):
+        for indice, (coluna, (rotulo, valor, detalhe)) in enumerate(zip(metricas, valores)):
             with coluna, st.container(key=f"painel-profissional-metrica-{indice}", border=True):
-                st.markdown(f"<span class='icone-metrica'>{icone}</span>", unsafe_allow_html=True)
+                st.markdown(icone_metrica(rotulo), unsafe_allow_html=True)
                 st.caption(rotulo)
                 st.markdown(f"<strong class='valor-metrica'>{valor}</strong>", unsafe_allow_html=True)
                 st.caption(detalhe)
@@ -95,7 +96,7 @@ def _renderizar_agenda(consultas):
         cabecalho, abrir = st.columns([2, 1], vertical_alignment="center")
         cabecalho.subheader("Agenda de hoje")
         abrir.button(
-            "Ver agenda completa →", key="painel-profissional-abrir-agenda",
+            "Ver agenda completa", key="painel-profissional-abrir-agenda",
             on_click=lambda: st.session_state.__setitem__("pagina_equipe", "agenda"),
             width="stretch",
         )
@@ -123,14 +124,14 @@ def _renderizar_atalhos():
         st.subheader("Acesso rápido")
         if navegacao.modulo_xano_disponivel("prontuarios"):
             st.button(
-                "▤  Abrir prontuário", key="painel-profissional-prontuario",
+                "Abrir prontuário", key="painel-profissional-prontuario",
                 on_click=lambda: st.session_state.__setitem__("pagina_equipe", "prontuarios"),
                 width="stretch",
             )
         else:
             st.info("A listagem de Prontuários ainda não está integrada ao Xano.")
         st.button(
-            "▦  Visualizar agenda", key="painel-profissional-agenda-atalho",
+            "Visualizar agenda", key="painel-profissional-agenda-atalho",
             on_click=lambda: st.session_state.__setitem__("pagina_equipe", "agenda"),
             width="stretch",
         )
@@ -145,7 +146,7 @@ def renderizar(cliente, conta):
              "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO")
     st.caption(f"{dias_semana[hoje.weekday()]}, {hoje.day} DE {meses[hoje.month - 1]}")
     nome = conta.nome.split()[0] if conta.nome.strip() else "Profissional"
-    st.title(f"Olá, {nome}! 👋")
+    st.title(f"Olá, {nome}!")
     st.caption("Aqui está sua agenda de hoje.")
     ilustracoes.banner_contextual("16-acompanhamento.png", "", "Seus atendimentos", "Acompanhe sua agenda, consulte Prontuários e registre evoluções.")
 

@@ -9,6 +9,7 @@ from . import sessao
 from .api import ErroAcesso
 from . import pagina_nova_evolucao_xano
 from .cache_xano import carregar_cache
+from .icones import icone_html
 
 _CHAVE_PENDENTE = "prontuario_paciente_pendente"
 
@@ -150,7 +151,7 @@ def renderizar(cliente, conta):
             key="prontuario_paciente_id",
         )
     with aviso:
-        st.caption("◉ Acesso clínico restrito")
+        st.markdown(f'{icone_html("shield-check")} Acesso clínico restrito', unsafe_allow_html=True)
 
     recentes, linha_tempo = st.columns([0.85, 1.8], gap="medium")
     with recentes:
@@ -159,7 +160,7 @@ def renderizar(cliente, conta):
             for paciente_id in ids:
                 quantidade = sum(reg.get("paciente_id") == paciente_id for reg in registros)
                 if st.button(
-                    f"{nomes[paciente_id]}  ·  {quantidade} registro(s)  ›",
+                    f"{nomes[paciente_id]}  ·  {quantidade} registro(s)",
                     key=f"prontuario-paciente-{paciente_id}",
                     type="primary" if paciente_id == selecionado else "secondary",
                     width="stretch",

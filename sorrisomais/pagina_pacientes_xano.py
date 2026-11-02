@@ -132,7 +132,7 @@ def renderizar(cliente, conta):
     cabecalho.title("Pacientes")
     cabecalho.markdown("Consulte os dados cadastrais dos Pacientes.")
     with acao_cadastro:
-        if pode_editar and st.button("＋ Novo Paciente", type="primary", key="pacientes-xano-novo"):
+        if pode_editar and st.button("Novo Paciente", type="primary", key="pacientes-xano-novo"):
             pagina_paciente.abrir()
             st.rerun()
 
