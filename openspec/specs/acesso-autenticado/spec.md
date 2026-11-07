@@ -69,7 +69,7 @@ O sistema SHALL NOT expor senhas, tokens e segredos em código versionado, URLs,
 - **THEN** a interface e os registros de diagnóstico não reproduzem essas informações.
 
 ### Requirement: Fluxos auxiliares reais
-O sistema SHALL apresentar cadastro ou recuperação de senha somente após definição, aprovação e suporte real no backend.
+O sistema SHALL apresentar recuperação de senha por OTP somente com suporte real no Xano. O código SHALL ser enviado pelo SendGrid configurado no ambiente do Xano, SHALL expirar e SHALL ser invalidado após uso.
 
 #### Scenario: Fluxos não definidos
 - **WHEN** cadastro ou recuperação não estão definidos e implementados

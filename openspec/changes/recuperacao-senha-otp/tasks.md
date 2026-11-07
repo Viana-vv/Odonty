@@ -1,0 +1,5 @@
+- [x] Criar tabela e endpoints Xano para solicitação, validação e troca de senha.
+- [x] Adicionar métodos e tratamento de erros no cliente REST.
+- [x] Implementar as telas de recuperação, OTP e nova senha e o link no login.
+- [x] Criar testes unitários Python e JavaScript para os contratos.
+- [x] Atualizar a especificação de acesso autenticado.

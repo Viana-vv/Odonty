@@ -139,6 +139,10 @@ body:has(.st-key-formulario-nova-consulta)::before { content:""; position:fixed;
 .st-key-formulario [data-testid="stCaptionContainer"] { color:#6d7c76; }
 .st-key-formulario [data-testid="stFormSubmitButton"] { margin-top:15px; }
 .nota-acesso { margin-top:18px; padding-top:18px; border-top:1px solid var(--linha); color:#718078; text-align:center; font-size:12px; }
+.st-key-recuperacao-link { display:flex; justify-content:center; margin-top:6px; }
+.st-key-recuperacao-link button,.st-key-recuperacao-voltar button { min-height:28px!important; padding:3px 8px!important; border:0!important; background:transparent!important; box-shadow:none!important; color:var(--verde)!important; font-size:12px!important; font-weight:600!important; }
+.st-key-recuperacao-link button:hover,.st-key-recuperacao-voltar button:hover { color:var(--verde-escuro)!important; text-decoration:underline; }
+.st-key-recuperacao-voltar { display:flex; justify-content:center; margin-top:16px; padding-top:14px; border-top:1px solid var(--linha); }
 .portal-paciente-boas-vindas { min-height:680px; padding:44px; background:linear-gradient(120deg,#004c3a,#08775a); color:#fff; }
 .portal-paciente-boas-vindas h1 { color:#fff; }
 .portal-paciente-etiqueta { margin-top:70px; }
@@ -193,5 +197,6 @@ body:has(.st-key-formulario-nova-consulta)::before { content:""; position:fixed;
  .boas-vindas { min-height:0; padding:28px 24px; } .boas-vindas::before { display:none; } .marca-clara { margin-bottom:30px; }
  .boas-vindas h1 { max-width:100%; font-size:30px!important; } .boas-vindas>p { max-width:100%; } .login-arte { width:180px; margin:8px 0 20px auto; }
  .marca-rodape { left:24px; bottom:10px; } .st-key-formulario { min-height:0; padding:32px 24px; } .st-key-formulario h1 { font-size:29px!important; }
+ .st-key-recuperacao-link { margin-top:2px; } .st-key-recuperacao-voltar { margin-top:12px; }
 }
 </style>
