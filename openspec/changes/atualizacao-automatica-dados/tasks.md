@@ -1,0 +1,4 @@
+- [x] Adicionar fragmento de atualização periódica com proteção para formulários.
+- [x] Invalidar cache privado antes do rerun automático.
+- [x] Adicionar testes para o intervalo e a proteção de edição.
+- [x] Executar testes e validar a change.

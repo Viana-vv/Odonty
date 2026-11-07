@@ -171,15 +171,32 @@ except ErroAcesso as error:
 
 if conta:
     acesso_equipe.renderizar(conta, cliente, paginas_equipe)
-    # Reexecuta a página no prazo de expiração mesmo sem interação.
-    @st.fragment(run_every="15s")
+    # Reexecuta a página para refletir alterações feitas por outra sessão.
+    @st.fragment(run_every="20s")
     def verificar_prazo():
         from datetime import datetime, timezone
+        from time import monotonic
         credencial = st.session_state.get(sessao.CHAVE)
         if credencial and credencial.expira_em <= datetime.now(timezone.utc):
             sessao.limpar(st.session_state)
             st.session_state["aviso"] = ("info", "Sua sessão expirou. Entre novamente.")
             st.rerun(scope="app")
+        if not credencial:
+            return
+        agora_monotonic = monotonic()
+        ultima_atualizacao = st.session_state.get("dados_atualizados_automaticamente_em", 0.0)
+        if agora_monotonic - ultima_atualizacao < 20:
+            return
+        prefixes_edicao = (
+            "cad_", "pac_", "pacientes_xano_edicao", "nova-evolucao-",
+            "nova-consulta", "reagendar-", "procedimentos-consulta-",
+        )
+        if any(chave.startswith(prefix) for chave in st.session_state for prefix in prefixes_edicao):
+            return
+        from sorrisomais.cache_xano import invalidar_cache
+        st.session_state["dados_atualizados_automaticamente_em"] = agora_monotonic
+        invalidar_cache(st.session_state)
+        st.rerun(scope="app")
     verificar_prazo()
 else:
     if st.session_state.get("recuperacao_etapa"):
