@@ -26,4 +26,8 @@ def test_xano_envia_otp_por_sendgrid():
     assert "api.request" in codigo
     assert "$conta.email" in codigo
     assert '"type":"text/html"' in codigo
-    assert "mascote-sorriso.png" in codigo
+    assert "mascote-sorriso-email.png" in codigo
+    assert "331904" not in codigo
+    assert "PASSWORD_OTP_TTL_SECONDS" in codigo
+    assert "Este código é válido por %s minutos." in codigo
+    assert codigo.count("width:34px;height:34px") == 6
