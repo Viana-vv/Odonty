@@ -26,6 +26,22 @@ export XANO_HTTP_TIMEOUT_SECONDS="10"
 
 ### Windows (PowerShell)
 
+Se o ambiente virtual já estiver instalado, inicie com:
+
+```powershell
+.\iniciar.cmd
+```
+
+O script usa a URL pública do grupo Xano documentada abaixo quando
+`XANO_API_BASE_URL` não está definida, sem gravar credenciais ou alterar
+configurações permanentes do Windows. Valores já definidos no ambiente são
+preservados. Para outra porta, defina `$env:STREAMLIT_SERVER_PORT = "8510"`
+antes de executar o script e abra `http://localhost:8510`.
+O processo precisa de acesso à rede para consultar o Xano;
+o script não altera firewall ou permissões de execução.
+
+Para instalar o ambiente ou iniciar manualmente:
+
 ```powershell
 py -3 -m venv .venv
 .venv\Scripts\python.exe -m pip install -r requirements-dev.txt
