@@ -49,7 +49,6 @@ def recuperar_senha():
             </section>''')
         with formulario:
             with st.container(key="formulario"):
-                st.caption("RECUPERAÇÃO DE ACESSO")
                 if etapa == "email":
                     st.title("Esqueceu sua senha?")
                     st.markdown("Informe o e-mail da sua Conta de Acesso.")
@@ -142,7 +141,6 @@ else:
             </section>''')
         with formulario:
             with st.container(key="formulario"):
-                st.caption("BEM-VINDO DE VOLTA")
                 st.title("Acesse a clínica")
                 st.markdown("Entre com sua Conta de Acesso da equipe.")
                 aviso()
@@ -160,7 +158,6 @@ else:
                     if st.button("Esqueci minha senha", type="tertiary", disabled=ocupado or not cliente):
                         st.session_state["recuperacao_etapa"] = "email"
                         st.rerun()
-                st.caption("Acesso exclusivo à equipe da clínica.")
                 st.html('<div class="nota-acesso">Seu cuidado faz a diferença. Vamos começar?</div>')
                 if ocupado:
                     email, senha = st.session_state.pop("entrada_pendente", ("", ""))
