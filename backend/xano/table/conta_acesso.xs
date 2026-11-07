@@ -7,6 +7,8 @@ table conta_acesso {
     text nome filters=trim
     email email filters=trim|lower
     password senha
+    // Aditivo LOCAL: login/OTP existentes ainda não coordenam esta versão.
+    int versao_credencial?=1
     enum[] perfis {
       values = ["administrador", "recepcionista", "profissional", "paciente"]
     }

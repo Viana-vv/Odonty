@@ -16,6 +16,8 @@ class Configuracao:
     timeout: float = 10
     cadastro_paciente_habilitado: bool = True
     modo_demonstracao: bool = False
+    redefinicao_senha_habilitada: bool = False
+    redefinicao_senha_configuracao_valida: bool = True
 
     @classmethod
     def do_ambiente(cls):
@@ -39,8 +41,11 @@ class Configuracao:
         demonstracao = os.getenv("SORRISOMAIS_MODO_DEMONSTRACAO", "0").strip().lower()
         if demonstracao not in {"0", "1", "false", "true"}:
             raise ConfiguracaoInvalida("A configuração do modo demonstrativo é inválida.")
+        redefinicao = os.getenv("SORRISO_REDEFINICAO_HABILITADA", "0").strip().lower()
         return cls(
             url, timeout,
             os.getenv("XANO_CADASTRO_PACIENTE_HABILITADO") != "0",
             demonstracao in {"1", "true"},
+            redefinicao in {"1", "true"},
+            redefinicao in {"0", "1", "false", "true"},
         )

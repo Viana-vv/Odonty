@@ -1,0 +1,626 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Contratos locais de redefinição de senha",
+    "version": "0.1.0",
+    "description": "Etapa local, não publicada. Modelo offline não comprova atomicidade, timeout ou autorização no Xano."
+  },
+  "x-habilitado-por-padrao": false,
+  "x-invariantes": {
+    "token_ttl_segundos": 900,
+    "idempotencia_segundos": 2592000,
+    "uuid7_idade_max_segundos": 300,
+    "uuid7_futuro_max_segundos": 60,
+    "timeout_envio_padrao_segundos": 20,
+    "timeout_envio_max_segundos": 30,
+    "limite_admin_hora": 10,
+    "limite_conta_hora": 3,
+    "cooldown_conta_segundos": 60
+  },
+  "paths": {
+    "/contas-acesso/{conta_id}/redefinicoes-senha": {
+      "post": {
+        "operationId": "solicitarRedefinicao",
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
+        "x-autorizacao": "Administrador ativo; sessão válida; primeira reserva exige flag/dependências habilitadas. Replay exige vínculo original.",
+        "parameters": [
+          {
+            "name": "conta_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Criacao"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reserva ou replay conhecido sem novo envio.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultadoAdministrativo"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Erro sanitizado.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "x-codigos": [
+              "DADOS_INVALIDOS"
+            ]
+          },
+          "401": {
+            "description": "Erro sanitizado.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "x-codigos": [
+              "SESSAO_INVALIDA"
+            ]
+          },
+          "403": {
+            "description": "Erro sanitizado.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "x-codigos": [
+              "ACESSO_NEGADO"
+            ]
+          },
+          "404": {
+            "description": "Erro sanitizado.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "x-codigos": [
+              "CONTA_NAO_ENCONTRADA"
+            ]
+          },
+          "409": {
+            "description": "Erro sanitizado.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Segundos; obrigatório em ENVIO_EM_PROCESSAMENTO."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "x-codigos": [
+              "CONTA_INELEGIVEL",
+              "OPERACAO_CONFLITANTE",
+              "OPERACAO_ANTIGA",
+              "OPERACAO_FUTURA"
+            ]
+          },
+          "429": {
+            "description": "Erro sanitizado.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Segundos; obrigatório em ENVIO_EM_PROCESSAMENTO."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "x-codigos": [
+              "LIMITE_ENVIO"
+            ]
+          },
+          "503": {
+            "description": "Erro sanitizado.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "x-codigos": [
+              "RECURSO_INDISPONIVEL"
+            ]
+          }
+        }
+      }
+    },
+    "/contas-acesso/{conta_id}/redefinicoes-senha/{operacao_id}": {
+      "get": {
+        "operationId": "consultarRedefinicao",
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
+        "x-autorizacao": "Administrador ativo e solicitante/destinatário originais. Recepcionista não consulta operações.",
+        "x-somente-leitura": true,
+        "x-nao-aceita-corpo-ou-query": true,
+        "parameters": [
+          {
+            "name": "conta_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "operacao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/OperacaoId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Projeção sem escrita; sem token/link/e-mail.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultadoAdministrativo"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Erro sanitizado.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "x-codigos": [
+              "DADOS_INVALIDOS"
+            ]
+          },
+          "401": {
+            "description": "Erro sanitizado.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "x-codigos": [
+              "SESSAO_INVALIDA"
+            ]
+          },
+          "403": {
+            "description": "Erro sanitizado.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "x-codigos": [
+              "ACESSO_NEGADO"
+            ]
+          },
+          "404": {
+            "description": "Erro sanitizado.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "x-codigos": [
+              "OPERACAO_NAO_ENCONTRADA"
+            ]
+          },
+          "503": {
+            "description": "Erro sanitizado.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "x-codigos": [
+              "SERVICO_INDISPONIVEL"
+            ]
+          }
+        }
+      }
+    },
+    "/auth/redefinicoes-senha/confirmar": {
+      "post": {
+        "operationId": "confirmarRedefinicao",
+        "security": [],
+        "x-autorizacao": "Posse do token específico vigente, finalidade, geração, versão/e-mail e situação da conta verificados no backend.",
+        "x-max-corpo-bytes": 4096,
+        "x-sem-retry-automatico": true,
+        "x-resposta-perdida": "Resultado não confirmado: encerrar formulário e orientar login. Token usado continua genérico.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Confirmacao"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Troca e revogações concluídas, sem emissão de sessão.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Erro sanitizado.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "x-codigos": [
+              "DADOS_INVALIDOS",
+              "LINK_INDISPONIVEL"
+            ]
+          },
+          "409": {
+            "description": "Erro sanitizado.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Segundos; obrigatório em ENVIO_EM_PROCESSAMENTO."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "x-codigos": [
+              "ENVIO_EM_PROCESSAMENTO"
+            ]
+          },
+          "429": {
+            "description": "Erro sanitizado.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Segundos; obrigatório em ENVIO_EM_PROCESSAMENTO."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "x-codigos": [
+              "LIMITE_CONFIRMACAO"
+            ]
+          },
+          "503": {
+            "description": "Erro sanitizado.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            },
+            "x-codigos": [
+              "SERVICO_INDISPONIVEL"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "sessao": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "OperacaoId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+        "description": "UUIDv7 canônico. Frescor exigido somente na primeira reserva desconhecida."
+      },
+      "DataUTC": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+      },
+      "ResultadoAdministrativo": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operacao_id",
+          "criada_em",
+          "consultavel_ate",
+          "estado_envio",
+          "estado_link",
+          "expira_em",
+          "envio_limite_em"
+        ],
+        "properties": {
+          "operacao_id": {
+            "$ref": "#/components/schemas/OperacaoId"
+          },
+          "estado_envio": {
+            "enum": [
+              "processando",
+              "aceito",
+              "falhou",
+              "desconhecido"
+            ]
+          },
+          "estado_link": {
+            "enum": [
+              "pendente",
+              "ativo",
+              "consumido",
+              "expirado",
+              "substituido",
+              "invalidado"
+            ]
+          },
+          "criada_em": {
+            "$ref": "#/components/schemas/DataUTC"
+          },
+          "consultavel_ate": {
+            "$ref": "#/components/schemas/DataUTC"
+          },
+          "expira_em": {
+            "$ref": "#/components/schemas/DataUTC"
+          },
+          "envio_limite_em": {
+            "$ref": "#/components/schemas/DataUTC"
+          }
+        }
+      },
+      "Criacao": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operacao_id"
+        ],
+        "properties": {
+          "operacao_id": {
+            "$ref": "#/components/schemas/OperacaoId"
+          }
+        }
+      },
+      "Confirmacao": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "codigo",
+          "senha"
+        ],
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "description": "Decodificação base64url estrita de 32 bytes, inclusive bits de padding canônicos."
+          },
+          "senha": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 128,
+            "description": "Sem trim ou normalização."
+          }
+        }
+      },
+      "Erro": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "codigo",
+          "mensagem"
+        ],
+        "properties": {
+          "codigo": {
+            "type": "string"
+          },
+          "mensagem": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

@@ -7,6 +7,9 @@ table sessao_acesso {
     timestamp criada_em?=now
     timestamp expira_em
     timestamp? revogada_em?
+    // Legado null equivale a 1 somente enquanto a conta estiver em versão 1.
+    // Integração de emissão/validação depende da etapa remota, não alterada aqui.
+    int? versao_credencial?
   }
   index = [{type: "primary", field: [{name: "id"}]}]
   guid = "6Mb0f4MVouTTQ53i7ax_FShsA3A"
