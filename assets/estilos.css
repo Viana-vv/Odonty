@@ -142,6 +142,12 @@ body:has(.st-key-formulario-nova-consulta)::before { content:""; position:fixed;
 .st-key-recuperacao-link { display:flex; justify-content:center; margin-top:6px; }
 .st-key-recuperacao-link button,.st-key-recuperacao-voltar button { min-height:28px!important; padding:3px 8px!important; border:0!important; background:transparent!important; box-shadow:none!important; color:var(--verde)!important; font-size:12px!important; font-weight:600!important; }
 .st-key-recuperacao-link button:hover,.st-key-recuperacao-voltar button:hover { color:var(--verde-escuro)!important; text-decoration:underline; }
+.st-key-otp-campos { display:flex; flex-direction:row; justify-content:center; gap:12px; margin:22px 0 8px; }
+.st-key-otp-campos>[data-testid="stElementContainer"] { flex:1 1 0; min-width:0; max-width:58px; }
+.st-key-otp-campos [data-testid="stTextInput"] { margin:0; }
+.st-key-otp-campos [data-testid="stTextInputRootElement"] { height:58px; border:2px solid var(--linha)!important; border-radius:12px!important; box-shadow:none; transition:border-color .15s, box-shadow .15s; }
+.st-key-otp-campos [data-testid="stTextInputRootElement"]:focus-within { border-color:var(--verde)!important; box-shadow:0 0 0 3px #71c9aa55!important; }
+.st-key-otp-campos [data-testid="stTextInput"] input { min-height:54px; padding:0; text-align:center; font-size:24px; font-weight:700; color:var(--tinta); }
 .st-key-recuperacao-voltar { display:flex; justify-content:center; margin-top:16px; padding-top:14px; border-top:1px solid var(--linha); }
 .portal-paciente-boas-vindas { min-height:680px; padding:44px; background:linear-gradient(120deg,#004c3a,#08775a); color:#fff; }
 .portal-paciente-boas-vindas h1 { color:#fff; }
@@ -198,5 +204,9 @@ body:has(.st-key-formulario-nova-consulta)::before { content:""; position:fixed;
  .boas-vindas h1 { max-width:100%; font-size:30px!important; } .boas-vindas>p { max-width:100%; } .login-arte { width:180px; margin:8px 0 20px auto; }
  .marca-rodape { left:24px; bottom:10px; } .st-key-formulario { min-height:0; padding:32px 24px; } .st-key-formulario h1 { font-size:29px!important; }
  .st-key-recuperacao-link { margin-top:2px; } .st-key-recuperacao-voltar { margin-top:12px; }
+ .st-key-otp-campos { gap:7px; margin:18px 0 6px; }
+ .st-key-otp-campos>[data-testid="stElementContainer"] { max-width:none; }
+ .st-key-otp-campos [data-testid="stTextInputRootElement"] { height:48px; border-radius:10px!important; }
+ .st-key-otp-campos [data-testid="stTextInput"] input { min-height:44px; font-size:21px; }
 }
 </style>

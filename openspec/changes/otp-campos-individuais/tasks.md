@@ -1,0 +1,5 @@
+- [x] Implementar os seis campos numéricos e a concatenação para a validação existente.
+- [x] Adicionar comportamento de foco, backspace e colagem do OTP.
+- [x] Ajustar estilos dos campos e responsividade.
+- [x] Melhorar o template do e-mail OTP com HTML, fallback texto e imagem da marca.
+- [x] Criar/atualizar testes de interface e executar a suíte relevante.

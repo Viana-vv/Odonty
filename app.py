@@ -65,12 +65,70 @@ def recuperar_senha():
                 elif etapa == "otp":
                     st.title("Valide seu código")
                     st.markdown("Digite o código de seis dígitos enviado para seu e-mail.")
-                    otp = st.text_input("Código OTP", key="recuperacao_otp", max_chars=6)
+                    with st.container(key="otp-campos"):
+                        partes_otp = [
+                            st.text_input(
+                                f"Dígito {indice + 1}",
+                                key=f"recuperacao_otp_{indice}",
+                                max_chars=1,
+                                label_visibility="collapsed",
+                            )
+                            for indice in range(6)
+                        ]
+                    st.html("""
+                    <script>
+                    (() => {
+                      const root = document.querySelector('.st-key-otp-campos');
+                      if (!root || root.dataset.otpConfigurado === '1') return;
+                      const campos = [...root.querySelectorAll('[data-testid="stTextInput"] input')];
+                      if (campos.length !== 6) return;
+                      root.dataset.otpConfigurado = '1';
+                      campos.forEach((campo, indice) => {
+                        campo.inputMode = 'numeric';
+                        campo.pattern = '[0-9]*';
+                        campo.autocomplete = indice === 0 ? 'one-time-code' : 'off';
+                        campo.addEventListener('keydown', (evento) => {
+                          if (evento.key === 'Backspace' && !campo.value && indice > 0) {
+                            campos[indice - 1].focus();
+                            campos[indice - 1].select();
+                          }
+                          if (evento.key.length === 1 && !/[0-9]/.test(evento.key)) evento.preventDefault();
+                          if (/^[0-9]$/.test(evento.key) && indice < campos.length - 1) {
+                            window.setTimeout(() => campos[indice + 1].focus(), 0);
+                          }
+                        });
+                        campo.addEventListener('input', () => {
+                          const somenteDigitos = campo.value.replace(/[^0-9]/g, '');
+                          if (campo.value !== somenteDigitos) {
+                            const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+                            setter.call(campo, somenteDigitos.slice(-1));
+                            campo.dispatchEvent(new Event('input', { bubbles: true }));
+                          }
+                          if (campo.value && indice < campos.length - 1) campos[indice + 1].focus();
+                        });
+                        campo.addEventListener('paste', (evento) => {
+                          const colado = (evento.clipboardData || window.clipboardData).getData('text').replace(/[^0-9]/g, '');
+                          if (!colado) return;
+                          evento.preventDefault();
+                          const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+                          [...colado.slice(0, campos.length - indice)].forEach((digito, deslocamento) => {
+                            const destino = campos[indice + deslocamento];
+                            setter.call(destino, digito);
+                            destino.dispatchEvent(new Event('input', { bubbles: true }));
+                          });
+                          campos[Math.min(indice + colado.length, campos.length - 1)].focus();
+                        });
+                      });
+                    })();
+                    </script>
+                    """)
+                    otp = recuperacao.montar_otp(partes_otp)
                     if st.button("Validar código", type="primary", width="stretch"):
                         try:
                             cliente.validar_otp(st.session_state.get("recuperacao_operacao", ""), otp)
                             st.session_state["recuperacao_etapa"] = "senha"
-                            st.session_state.pop("recuperacao_otp", None)
+                            for indice in range(6):
+                                st.session_state.pop(f"recuperacao_otp_{indice}", None)
                             st.rerun()
                         except ErroAcesso as error:
                             st.session_state["aviso"] = ("error", str(error))
@@ -92,7 +150,8 @@ def recuperar_senha():
                     aviso()
                 with st.container(key="recuperacao-voltar"):
                     if st.button("Voltar para o login", type="tertiary"):
-                        for chave in ("recuperacao_etapa", "recuperacao_email", "recuperacao_operacao", "recuperacao_otp", "recuperacao_nova", "recuperacao_confirmacao"):
+                        chaves_otp = [f"recuperacao_otp_{indice}" for indice in range(6)]
+                        for chave in ("recuperacao_etapa", "recuperacao_email", "recuperacao_operacao", *chaves_otp, "recuperacao_nova", "recuperacao_confirmacao"):
                             st.session_state.pop(chave, None)
                         st.rerun()
 

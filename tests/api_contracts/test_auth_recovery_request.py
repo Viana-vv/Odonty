@@ -25,3 +25,5 @@ def test_xano_envia_otp_por_sendgrid():
     codigo = caminho.read_text(encoding="utf-8-sig")
     assert "api.request" in codigo
     assert "$conta.email" in codigo
+    assert '"type":"text/html"' in codigo
+    assert "mascote-sorriso.png" in codigo

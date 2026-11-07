@@ -19,6 +19,12 @@ def validar_otp(otp):
     return otp
 
 
+def montar_otp(partes):
+    """Concatena os seis campos visuais do OTP sem alterar sua validação."""
+    valores = partes if isinstance(partes, (list, tuple)) else []
+    return "".join(str(valor or "").strip() for valor in valores)
+
+
 def validar_senhas(nova, confirmacao):
     if not isinstance(nova, str) or not 12 <= len(nova) <= 128:
         raise ErroAcesso("A nova senha deve ter entre 12 e 128 caracteres.", 400)
