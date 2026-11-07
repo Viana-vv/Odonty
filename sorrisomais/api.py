@@ -106,6 +106,8 @@ class ClienteXano:
                     409: "E-mail ou CRO já cadastrado.",
                     404: "O recurso solicitado não foi encontrado.",
                     429: "Muitas tentativas. Aguarde um pouco antes de tentar novamente.",
+                    503: ("Não foi possível enviar o código agora. Tente novamente mais tarde."
+                          if route.startswith("/auth/recuperacao-senha") else INDISPONIVEL),
                 }
                 if status == 409:
                     if route == "/consultas":
@@ -140,6 +142,33 @@ class ClienteXano:
                 or data.get("tipo_token") != "Bearer"):
             raise ErroAcesso()
         return Credencial(token, ler_validade(data.get("expira_em")))
+
+    def solicitar_recuperacao(self, email):
+        from .recuperacao import validar_email
+        email = validar_email(email)
+        data = self._request("POST", "/auth/recuperacao-senha", payload={"email": email})
+        operacao = data.get("operacao_id")
+        if not isinstance(operacao, str) or not operacao or any(c.isspace() for c in operacao):
+            raise ErroAcesso()
+        return operacao
+
+    def validar_otp(self, operacao_id, otp):
+        from .recuperacao import validar_otp
+        if not isinstance(operacao_id, str) or not operacao_id or any(c.isspace() for c in operacao_id):
+            raise ErroAcesso("A solicitação de recuperação não é válida.", 400)
+        otp = validar_otp(otp)
+        data = self._request("POST", "/auth/recuperacao-senha/validar", payload={"operacao_id": operacao_id, "otp": otp})
+        if data.get("validado") is not True:
+            raise ErroAcesso()
+
+    def trocar_senha(self, operacao_id, nova_senha, confirmacao):
+        from .recuperacao import validar_senhas
+        if not isinstance(operacao_id, str) or not operacao_id or any(c.isspace() for c in operacao_id):
+            raise ErroAcesso("A solicitação de recuperação não é válida.", 400)
+        senha = validar_senhas(nova_senha, confirmacao)
+        data = self._request("POST", "/auth/recuperacao-senha/trocar", payload={"operacao_id": operacao_id, "senha": senha})
+        if data.get("alterada") is not True:
+            raise ErroAcesso()
 
     def identificar(self, token):
         data = self._request("GET", "/auth/me", token=token)

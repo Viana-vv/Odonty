@@ -64,6 +64,7 @@ def estilos_icones() -> str:
            f'[data-testid="stFormSubmitButton"] {{ --icone-acao:{_mascara("save")};}}',
            f'.st-key-formulario [data-testid="stFormSubmitButton"],.st-key-portal-paciente-formulario [data-testid="stFormSubmitButton"] {{ --icone-acao:{_mascara("log-in")};}}',
            f'[data-testid="stPopover"] {{ --icone-acao:{_mascara("adjustments")};}}']
+    css.append('.st-key-entrada [data-testid="stButton"] button::before,.st-key-entrada [data-testid="stFormSubmitButton"] button::before,.st-key-recuperacao-link button::before,.st-key-recuperacao-voltar button::before {display:none!important;content:none!important;} .st-key-entrada [data-testid="stButton"] button,.st-key-entrada [data-testid="stFormSubmitButton"] button,.st-key-recuperacao-link button,.st-key-recuperacao-voltar button {column-gap:0!important;}')
     # Chaves já existentes: a escolha visual não muda a identidade de nenhum widget.
     grupos = {
         "file-text": ("prontuario",), "calendar": ("agenda-atalho", "-ver-agenda", "inicio-agenda", "abrir-agenda"),

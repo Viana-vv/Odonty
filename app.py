@@ -6,7 +6,7 @@ import streamlit as st
 
 from sorrisomais.api import ClienteXano, ErroAcesso
 from sorrisomais.config import Configuracao, ConfiguracaoInvalida
-from sorrisomais import sessao, paginas_equipe, acesso_equipe
+from sorrisomais import sessao, paginas_equipe, acesso_equipe, recuperacao
 from sorrisomais.ilustracoes import MARCA_MASCOTE, marca_html
 from sorrisomais.icones import estilos_icones
 
@@ -31,6 +31,71 @@ def aviso():
     if notification:
         kind, message = notification
         getattr(st, kind)(message)
+
+
+def recuperar_senha():
+    etapa = st.session_state.get("recuperacao_etapa", "email")
+    with st.container(key="entrada"):
+        ilustracao, formulario = st.columns([1.05, 1], gap="large", vertical_alignment="center")
+        with ilustracao:
+            from sorrisomais.ilustracoes import _data_uri
+            arte_login = _data_uri("14-seguranca-login.png")
+            st.html(f'''<section class="boas-vindas">
+              <div class="marca-clara">{marca_html()}</div>
+              <h1>Recupere seu acesso.<br>Com segurança e tranquilidade.</h1>
+              <p>Enviaremos um código para confirmar sua identidade e permitir que você crie uma nova senha.</p>
+              <div class="login-arte"><img src="{arte_login}" alt="Mascote com proteção de acesso" /></div>
+              <div class="marca-rodape">Cuidado que transforma sorrisos.</div>
+            </section>''')
+        with formulario:
+            with st.container(key="formulario"):
+                st.caption("RECUPERAÇÃO DE ACESSO")
+                if etapa == "email":
+                    st.title("Esqueceu sua senha?")
+                    st.markdown("Informe o e-mail da sua Conta de Acesso.")
+                    email = st.text_input("E-mail", key="recuperacao_email", placeholder="voce@exemplo.com")
+                    if st.button("Enviar código", type="primary", width="stretch", disabled=not cliente):
+                        try:
+                            st.session_state["recuperacao_operacao"] = cliente.solicitar_recuperacao(email)
+                            st.session_state["recuperacao_etapa"] = "otp"
+                            st.session_state["aviso"] = ("success", "Se o e-mail estiver cadastrado, você receberá um código em instantes.")
+                            st.rerun()
+                        except ErroAcesso as error:
+                            st.session_state["aviso"] = ("error", str(error))
+                    aviso()
+                elif etapa == "otp":
+                    st.title("Valide seu código")
+                    st.markdown("Digite o código de seis dígitos enviado para seu e-mail.")
+                    otp = st.text_input("Código OTP", key="recuperacao_otp", max_chars=6)
+                    if st.button("Validar código", type="primary", width="stretch"):
+                        try:
+                            cliente.validar_otp(st.session_state.get("recuperacao_operacao", ""), otp)
+                            st.session_state["recuperacao_etapa"] = "senha"
+                            st.session_state.pop("recuperacao_otp", None)
+                            st.rerun()
+                        except ErroAcesso as error:
+                            st.session_state["aviso"] = ("error", str(error))
+                    aviso()
+                else:
+                    st.title("Crie uma nova senha")
+                    st.markdown("Escolha uma senha com pelo menos 12 caracteres.")
+                    nova = st.text_input("Nova senha", type="password", key="recuperacao_nova")
+                    confirmacao = st.text_input("Confirmar senha", type="password", key="recuperacao_confirmacao")
+                    if st.button("Trocar senha", type="primary", width="stretch"):
+                        try:
+                            cliente.trocar_senha(st.session_state.get("recuperacao_operacao", ""), nova, confirmacao)
+                            for chave in ("recuperacao_etapa", "recuperacao_email", "recuperacao_operacao", "recuperacao_nova", "recuperacao_confirmacao"):
+                                st.session_state.pop(chave, None)
+                            st.session_state["aviso"] = ("success", "Senha alterada com sucesso. Entre com sua nova senha.")
+                            st.rerun()
+                        except ErroAcesso as error:
+                            st.session_state["aviso"] = ("error", str(error))
+                    aviso()
+                with st.container(key="recuperacao-voltar"):
+                    if st.button("Voltar para o login", type="tertiary"):
+                        for chave in ("recuperacao_etapa", "recuperacao_email", "recuperacao_operacao", "recuperacao_otp", "recuperacao_nova", "recuperacao_confirmacao"):
+                            st.session_state.pop(chave, None)
+                        st.rerun()
 
 
 try:
@@ -59,6 +124,9 @@ if conta:
             st.rerun(scope="app")
     verificar_prazo()
 else:
+    if st.session_state.get("recuperacao_etapa"):
+        recuperar_senha()
+        st.stop()
     with st.container(key="entrada"):
         ilustracao, formulario = st.columns([1.05, 1], gap="large", vertical_alignment="center")
         with ilustracao:
@@ -88,6 +156,10 @@ else:
                         "Entrando…" if ocupado else "Entrar", type="primary", width="stretch",
                         disabled=ocupado or not cliente, on_click=solicitar_entrada, key="login-entrar",
                     )
+                with st.container(key="recuperacao-link"):
+                    if st.button("Esqueci minha senha", type="tertiary", disabled=ocupado or not cliente):
+                        st.session_state["recuperacao_etapa"] = "email"
+                        st.rerun()
                 st.caption("Acesso exclusivo à equipe da clínica.")
                 st.html('<div class="nota-acesso">Seu cuidado faz a diferença. Vamos começar?</div>')
                 if ocupado:
