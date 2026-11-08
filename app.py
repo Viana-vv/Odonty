@@ -78,24 +78,24 @@ def recuperar_senha():
                     st.html("""
                     <script>
                     (() => {
+                      const configurarCampos = () => {
                       const root = document.querySelector('.st-key-otp-campos');
-                      if (!root || root.dataset.otpConfigurado === '1') return;
+                      if (!root) return;
                       const campos = [...root.querySelectorAll('[data-testid="stTextInput"] input')];
                       if (campos.length !== 6) return;
-                      root.dataset.otpConfigurado = '1';
                       campos.forEach((campo, indice) => {
+                        if (campo.dataset.otpConfigurado === '1') return;
+                        campo.dataset.otpConfigurado = '1';
                         campo.inputMode = 'numeric';
                         campo.pattern = '[0-9]*';
                         campo.autocomplete = indice === 0 ? 'one-time-code' : 'off';
                         campo.addEventListener('keydown', (evento) => {
+                          if (evento.ctrlKey || evento.metaKey || evento.altKey) return;
                           if (evento.key === 'Backspace' && !campo.value && indice > 0) {
                             campos[indice - 1].focus();
                             campos[indice - 1].select();
                           }
                           if (evento.key.length === 1 && !/[0-9]/.test(evento.key)) evento.preventDefault();
-                          if (/^[0-9]$/.test(evento.key) && indice < campos.length - 1) {
-                            window.setTimeout(() => campos[indice + 1].focus(), 0);
-                          }
                         });
                         campo.addEventListener('input', () => {
                           const somenteDigitos = campo.value.replace(/[^0-9]/g, '');
@@ -104,7 +104,12 @@ def recuperar_senha():
                             setter.call(campo, somenteDigitos.slice(-1));
                             campo.dispatchEvent(new Event('input', { bubbles: true }));
                           }
-                          if (campo.value && indice < campos.length - 1) campos[indice + 1].focus();
+                          if (campo.value && indice < campos.length - 1) {
+                            window.setTimeout(() => {
+                              campos[indice + 1].focus();
+                              campos[indice + 1].select();
+                            }, 0);
+                          }
                         });
                         campo.addEventListener('paste', (evento) => {
                           const colado = (evento.clipboardData || window.clipboardData).getData('text').replace(/[^0-9]/g, '');
@@ -116,12 +121,17 @@ def recuperar_senha():
                             setter.call(destino, digito);
                             destino.dispatchEvent(new Event('input', { bubbles: true }));
                           });
-                          campos[Math.min(indice + colado.length, campos.length - 1)].focus();
+                          window.setTimeout(() => campos[Math.min(indice + colado.length, campos.length - 1)].focus(), 0);
                         });
                       });
+                      };
+                      window.sorrisoOtpObserver?.disconnect();
+                      window.sorrisoOtpObserver = new MutationObserver(configurarCampos);
+                      window.sorrisoOtpObserver.observe(document.body, {childList: true, subtree: true});
+                      configurarCampos();
                     })();
                     </script>
-                    """)
+                    """, unsafe_allow_javascript=True)
                     otp = recuperacao.montar_otp(partes_otp)
                     if st.button("Validar código", type="primary", width="stretch"):
                         try:

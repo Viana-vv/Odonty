@@ -1,5 +1,5 @@
 - [x] Implementar os seis campos numéricos e a concatenação para a validação existente.
-- [x] Adicionar comportamento de foco, backspace e colagem do OTP.
+- [ ] Corrigir a execução do script de foco, backspace e colagem do OTP; verificar digitação e preenchimento no navegador, conforme issue #137.
 - [x] Ajustar estilos dos campos e responsividade.
 - [x] Melhorar o template do e-mail OTP com HTML, fallback texto e imagem da marca.
-- [x] Criar/atualizar testes de interface e executar a suíte relevante.
+- [ ] Substituir a verificação textual de foco por teste de interação no navegador e executar a suíte relevante.
