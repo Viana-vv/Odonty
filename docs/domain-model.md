@@ -362,7 +362,12 @@ O prontuário não representa uma única consulta. Ele reúne os registros produ
 - pertence a um único paciente;
 - um paciente possui um prontuário ativo;
 - contém vários registros clínicos;
-- seus registros podem estar relacionados a consultas, procedimentos e exames.
+- seus registros podem estar relacionados a consultas, procedimentos e exames;
+- pode consolidar Anamnese, Histórico Odontológico, Odontograma, Exame
+  Clínico, Diagnósticos, Plano de Tratamento, Prescrições, Documentos e
+  Evoluções Clínicas;
+- Procedimentos e Exames continuam pertencendo às suas entidades próprias,
+  sendo apenas apresentados no agregado do Prontuário.
 
 ### Regras
 
@@ -372,6 +377,51 @@ O prontuário não representa uma única consulta. Ele reúne os registros produ
 - o paciente não pode alterar registros clínicos;
 - correções devem preservar o histórico;
 - alterações devem ser registradas como complemento ou retificação.
+
+### Seções clínicas
+
+O Prontuário pode reunir as seguintes seções, sem transformar uma entidade em
+outra:
+
+- Dados do Paciente: nome, CPF, data de nascimento, telefone e endereço
+  quando cadastrados e autorizados;
+- Anamnese: doenças, alergias, medicamentos, hábitos e histórico de saúde;
+- Histórico Odontológico: tratamentos anteriores, cirurgias e problemas
+  bucais;
+- Odontograma: condições dos dentes, como cárie, restauração, ausência e
+  outras situações registradas;
+- Exame Clínico: avaliação de dentes, gengivas, mucosas e demais estruturas;
+- Diagnósticos: problemas odontológicos identificados;
+- Plano de Tratamento: procedimentos necessários, prioridades e etapas;
+- Procedimentos Realizados: procedimento, data, dente ou região e
+  profissional responsável;
+- Exames e Imagens: exames relacionados, situação, resultado liberado e
+  referências privadas de arquivos quando existirem;
+- Prescrições: medicamentos, orientações e profissional responsável;
+- Evolução Clínica: acompanhamento dos tratamentos, resultados e retificações;
+- Documentos: termos, contratos, atestados e encaminhamentos autorizados.
+
+Uma seção sem registros deve ser representada como vazia. A interface não
+deve criar nomes, diagnósticos, dentes, arquivos ou conteúdo clínico para
+preencher uma seção sem dados.
+
+### Consulta agregada e histórico
+
+O acesso de leitura do Prontuário deve ser resolvido pelo Xano por meio de uma
+resposta agregada autorizada para o Paciente. O Profissional só pode consultar
+Pacientes e Consultas dentro do próprio escopo de atendimento. O Paciente só
+pode consultar o próprio Prontuário e os conteúdos liberados pela clínica.
+
+Administrador e Recepcionista não recebem conteúdo clínico por padrão. O
+filtro visual na interface não amplia o escopo retornado pelo backend.
+
+Cada alteração clínica deve gerar uma nova versão, retificação ou evento
+histórico, mantendo autor, data, Prontuário e Consulta quando aplicável. Não
+é permitida exclusão física de uma seção clínica.
+
+Documentos e imagens devem usar referências privadas. Listagens não devem
+retornar URLs públicas permanentes; eventual download exige autenticação e
+autorização do Xano.
 
 ## 4.8 Registro Clínico
 

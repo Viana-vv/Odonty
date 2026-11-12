@@ -14,7 +14,7 @@ CONSULTAS = [
 ]
 
 
-def abrir(*, perfis=("profissional",), falha=None, paciente_selecionado=None):
+def abrir(*, perfis=("profissional",), falha=None, falha_validacao=None, paciente_selecionado=None):
     raiz = Path(__file__).resolve().parents[1]
     script = f'''\
 from datetime import datetime, timedelta, timezone
@@ -23,6 +23,7 @@ import sys
 import streamlit as st
 sys.path.insert(0, {str(raiz)!r})
 from sorrisomais.api import Credencial, ErroAcesso
+from sorrisomais.contratos_clinicos import DadosContratoInvalidos
 from sorrisomais.pagina_nova_evolucao_xano import renderizar
 from sorrisomais import pagina_nova_evolucao_xano as pagina
 if "_iniciado" not in st.session_state:
@@ -34,7 +35,7 @@ class ClienteFalso:
     def registrar_clinico(self, token, paciente_id, conteudo, *, consulta_id=None):
         st.session_state["_envios"] = st.session_state.get("_envios", 0) + 1
         st.session_state["_registro_enviado"] = {{"paciente_id": paciente_id, "conteudo": conteudo, "consulta_id": consulta_id}}
-        {f'raise ErroAcesso("Falha segura.", {falha})' if falha else 'return {"id": 42}'}
+        {f'raise ErroAcesso("Falha segura.", {falha})' if falha else (f'raise DadosContratoInvalidos("{falha_validacao}")' if falha_validacao else 'return {"id": 42}')}
 renderizar(ClienteFalso(), SimpleNamespace(nome="Dra. Fictícia", perfis={perfis!r}), {CONSULTAS!r})
 '''
     return AppTest.from_string(script, default_timeout=20).run()
@@ -62,6 +63,15 @@ def test_conteudo_vazio_nao_chama_api():
     assert not app.exception
     assert any("Informe a evolução clínica" in item.value for item in app.error)
     assert "_registro_enviado" not in app.session_state
+
+
+def test_validacao_do_contrato_preserva_mensagem_corrigivel():
+    app = abrir(falha_validacao="Informe uma Consulta válida.")
+    app.text_area[0].set_value("Evolução clínica fictícia")
+    app.button(key="nova-evolucao-salvar").click().run()
+    assert not app.exception
+    assert any("Informe uma Consulta válida." in item.value for item in app.error)
+    assert "Evolução clínica fictícia" in app.text_area[0].value
 
 
 def test_envia_contrato_existente_e_invalida_cache_apos_sucesso():
