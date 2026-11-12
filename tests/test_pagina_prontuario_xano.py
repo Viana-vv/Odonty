@@ -6,6 +6,35 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 
+SECOES_PRONTUARIO = (
+    "Anamnese",
+    "Histórico Odontológico",
+    "Odontograma",
+    "Exame Clínico",
+    "Diagnósticos",
+    "Plano de Tratamento",
+    "Procedimentos",
+    "Exames e Imagens",
+    "Prescrições",
+    "Evolução Clínica",
+    "Documentos",
+)
+
+CHAVES_SECOES_PRONTUARIO = {
+    "Anamnese": "anamnese",
+    "Histórico Odontológico": "historico_odontologico",
+    "Odontograma": "odontograma",
+    "Exame Clínico": "exame_clinico",
+    "Diagnósticos": "diagnosticos",
+    "Plano de Tratamento": "plano_tratamento",
+    "Procedimentos": "procedimentos",
+    "Exames e Imagens": "exames",
+    "Prescrições": "prescricoes",
+    "Evolução Clínica": "evolucoes",
+    "Documentos": "documentos",
+}
+
+
 def abrir(consultas, registros, *, perfis=("profissional",), erro=None, erro_gravacao=None):
     script = f'''\
 from datetime import datetime, timedelta, timezone
@@ -33,6 +62,55 @@ class ClienteFalso:
 renderizar(ClienteFalso(), SimpleNamespace(nome="Dra. Fictícia", perfis={perfis!r}))
 '''
     return AppTest.from_string(script, default_timeout=20).run()
+
+
+def abrir_agregado(agregado, *, perfis=("profissional",), erro=None):
+    """Executa a tela com o contrato agregado, sem usar rede."""
+    script = f'''\
+from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
+import sys
+import streamlit as st
+sys.path.insert(0, {str(Path(__file__).resolve().parents[1])!r})
+from sorrisomais.api import Credencial, ErroAcesso
+from sorrisomais import sessao
+from sorrisomais.pagina_prontuario_xano import renderizar
+if "_iniciado" not in st.session_state:
+    st.session_state["_iniciado"] = True
+    st.session_state[sessao.CHAVE] = Credencial("token-ficticio", datetime.now(timezone.utc) + timedelta(hours=1))
+class ClienteFalso:
+    def obter_prontuario(self, token, paciente_id):
+        {f'raise ErroAcesso("Falha segura.", {erro})' if erro else f'return {agregado!r}'}
+renderizar(ClienteFalso(), SimpleNamespace(nome="Dra. Fictícia", perfis={perfis!r}))
+'''
+    return AppTest.from_string(script, default_timeout=20).run()
+
+
+def test_prontuario_agregado_apresenta_dados_e_todas_as_secoes_sem_inventar_vazios():
+    agregado = {
+        "paciente": {
+            "nome": "Paciente Fictícia Aurora",
+            "cpf": "00000000000",
+            "data_nascimento": "1990-01-01",
+            "telefone": "(11) 90000-0000",
+            "endereco": "Rua Fictícia, 10",
+        },
+        "prontuario": {"situacao": "ativo"},
+        **{chave: [] for chave in CHAVES_SECOES_PRONTUARIO.values()},
+    }
+    app = abrir_agregado(agregado)
+    assert not app.exception
+    textos = [item.value for item in app.markdown]
+    assert any("Paciente Fictícia Aurora" in texto for texto in textos)
+    assert any("00000000000" in texto for texto in textos)
+    assert all(any(secao in texto for texto in textos) for secao in SECOES_PRONTUARIO)
+    assert not any("Diagnóstico fictício" in texto for texto in textos)
+
+
+def test_prontuario_agregado_nao_carrega_conteudo_para_perfil_administrativo():
+    app = abrir_agregado({"paciente": {}, "prontuario": {}}, perfis=("recepcionista",))
+    assert not app.exception
+    assert not any("Anamnese" in item.value for item in app.markdown)
 
 
 def test_historico_mostra_apenas_conteudo_retornado_para_paciente_selecionado():

@@ -1,6 +1,7 @@
 """Contrato REST do Xano. Nunca registra payloads ou credenciais."""
 
 import re
+import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
@@ -19,6 +20,77 @@ class ErroAcesso(Exception):
         super().__init__(mensagem)
         self.status = status
         self.codigo = codigo
+
+
+SECOES_PRONTUARIO = frozenset({
+    "anamnese",
+    "historico_odontologico",
+    "odontograma",
+    "exame_clinico",
+    "diagnosticos",
+    "plano_tratamento",
+    "prescricoes",
+    "evolucoes",
+    "documentos",
+})
+SECOES_AGREGADAS_PRONTUARIO = (
+    "anamnese", "historico_odontologico", "odontograma", "exame_clinico",
+    "diagnosticos", "plano_tratamento", "procedimentos", "exames",
+    "prescricoes", "evolucoes", "documentos",
+)
+
+
+def _validar_secao_prontuario(secao):
+    if not isinstance(secao, str) or secao not in SECOES_PRONTUARIO:
+        raise ErroAcesso("Informe uma seção válida do Prontuário.", 400)
+    return secao
+
+
+def _validar_conteudo_secao(conteudo, campo="o conteúdo da seção"):
+    if not isinstance(conteudo, dict) or not conteudo:
+        raise ErroAcesso(f"Informe {campo} válido.", 400)
+    return conteudo
+
+
+def _validar_id_prontuario(valor, campo):
+    from .contratos_clinicos import DadosContratoInvalidos, validar_id
+
+    try:
+        return validar_id(valor, campo)
+    except DadosContratoInvalidos as error:
+        raise ErroAcesso(str(error), 400) from None
+
+
+def _validar_objeto_prontuario(objeto, *, exigir_id=False):
+    if not isinstance(objeto, dict):
+        raise ErroAcesso()
+    if exigir_id and (type(objeto.get("id")) is not int or objeto["id"] <= 0):
+        raise ErroAcesso()
+    for chave, valor in objeto.items():
+        if chave == "id" or chave.endswith("_id"):
+            if valor is not None and (type(valor) is not int or valor <= 0):
+                raise ErroAcesso()
+        elif chave == "versao" and (type(valor) is not int or valor <= 0):
+            raise ErroAcesso()
+        elif isinstance(valor, dict):
+            _validar_objeto_prontuario(valor)
+        elif isinstance(valor, list):
+            for item in valor:
+                if isinstance(item, dict):
+                    _validar_objeto_prontuario(item)
+    return objeto
+
+
+def _validar_secao_resposta(data):
+    if not isinstance(data, dict):
+        raise ErroAcesso()
+    secao = data.get("secao")
+    if not isinstance(secao, dict):
+        raise ErroAcesso()
+    _validar_objeto_prontuario(secao, exigir_id=True)
+    if "conteudo" in secao and not isinstance(secao["conteudo"], (dict, str)):
+        raise ErroAcesso()
+    return secao
 
 
 @dataclass(frozen=True)
@@ -598,6 +670,108 @@ class ClienteXano:
             payload["motivo_cancelamento"] = validar_texto(motivo_cancelamento, "o motivo do cancelamento", 1000)
         data = self._request("PATCH", f"/consultas/{consulta_id}/situacao", token=token, payload=payload)
         return self._consulta_resposta(data)
+
+    def listar_consulta_agregada(self, token, paciente_id):
+        """Retorna o Prontuário agregado autorizado para um Paciente."""
+        self._token_obrigatorio(token)
+        paciente_id = _validar_id_prontuario(paciente_id, "Paciente")
+        data = self._request("GET", f"/prontuarios/{paciente_id}", token=token)
+        agregado = data
+        if (not isinstance(data.get("paciente"), dict)
+                and isinstance(data.get("prontuario"), dict)):
+            agregado = data["prontuario"]
+        if not isinstance(agregado.get("paciente"), dict) or not isinstance(agregado.get("prontuario"), dict):
+            raise ErroAcesso()
+        paciente = _validar_objeto_prontuario(agregado["paciente"], exigir_id=True)
+        prontuario = _validar_objeto_prontuario(agregado["prontuario"], exigir_id=True)
+        if paciente["id"] != paciente_id or prontuario.get("paciente_id") != paciente_id:
+            raise ErroAcesso()
+        if not isinstance(paciente.get("nome"), str) or not paciente["nome"].strip():
+            raise ErroAcesso()
+        if not isinstance(prontuario.get("situacao"), str) or not prontuario["situacao"].strip():
+            raise ErroAcesso()
+        for secao in SECOES_AGREGADAS_PRONTUARIO:
+            itens = agregado.get(secao)
+            if not isinstance(itens, list):
+                raise ErroAcesso()
+            for item in itens:
+                _validar_objeto_prontuario(item, exigir_id=True)
+        return agregado
+
+    def criar_secao_prontuario(self, token, paciente_id, secao, conteudo,
+                               *, consulta_id=None, liberado_paciente=False):
+        """Cria uma versão de seção clínica no Prontuário autorizado."""
+        self._token_obrigatorio(token)
+        paciente_id = _validar_id_prontuario(paciente_id, "Paciente")
+        secao = _validar_secao_prontuario(secao)
+        conteudo = _validar_conteudo_secao(conteudo)
+        if consulta_id is not None:
+            consulta_id = _validar_id_prontuario(consulta_id, "Consulta")
+        if type(liberado_paciente) is not bool:
+            raise ErroAcesso("Informe se a seção foi liberada ao Paciente.", 400)
+        payload = {"tipo": secao, "conteudo": json.dumps(conteudo, ensure_ascii=False),
+                   "liberado_paciente": liberado_paciente}
+        if consulta_id is not None:
+            payload["consulta_id"] = consulta_id
+        data = self._request("POST", f"/prontuarios/{paciente_id}/secoes",
+                             token=token, payload=payload, status_esperado=201)
+        resultado = _validar_secao_resposta(data)
+        if resultado.get("paciente_id") != paciente_id:
+            raise ErroAcesso()
+        if resultado.get("tipo", resultado.get("secao")) != secao:
+            raise ErroAcesso()
+        return resultado
+
+    def retificar_secao_prontuario(self, token, paciente_id, secao_id,
+                                   conteudo, justificativa):
+        """Registra uma retificação append-only de uma seção clínica."""
+        from .contratos_clinicos import validar_texto
+
+        self._token_obrigatorio(token)
+        paciente_id = _validar_id_prontuario(paciente_id, "Paciente")
+        secao_id = _validar_id_prontuario(secao_id, "Seção do Prontuário")
+        conteudo = _validar_conteudo_secao(conteudo, "o conteúdo da retificação")
+        justificativa = validar_texto(justificativa, "a justificativa", 1000)
+        data = self._request(
+            "POST", f"/prontuarios/{paciente_id}/secoes/{secao_id}/retificacao",
+            token=token, payload={"conteudo": json.dumps(conteudo, ensure_ascii=False), "justificativa": justificativa},
+            status_esperado=201,
+        )
+        resultado = None
+        if isinstance(data, dict):
+            resultado = data.get("retificacao") or data.get("secao")
+        if not isinstance(resultado, dict):
+            raise ErroAcesso()
+        _validar_objeto_prontuario(resultado, exigir_id=True)
+        if resultado.get("paciente_id") != paciente_id:
+            if resultado.get("prontuario_id") is None:
+                raise ErroAcesso()
+        return resultado
+
+    def obter_prontuario(self, token, paciente_id):
+        """Alias legado para a consulta agregada do Prontuário."""
+        from .contratos_clinicos import DadosContratoInvalidos
+
+        try:
+            return self.listar_consulta_agregada(token, paciente_id)
+        except ErroAcesso as error:
+            if error.status == 400 or error.status is None:
+                raise DadosContratoInvalidos(str(error)) from None
+            raise
+
+    def registrar_secao_prontuario(self, token, paciente_id, tipo, conteudo,
+                                   *, consulta_id=None):
+        """Alias legado para criação de uma seção do Prontuário."""
+        from .contratos_clinicos import DadosContratoInvalidos
+
+        try:
+            return self.criar_secao_prontuario(
+                token, paciente_id, tipo, conteudo, consulta_id=consulta_id,
+            )
+        except ErroAcesso as error:
+            if error.status == 400 or error.status is None:
+                raise DadosContratoInvalidos(str(error)) from None
+            raise
 
     def registrar_clinico(self, token, paciente_id, conteudo, *, consulta_id=None, liberado_paciente=False):
         from .contratos_clinicos import DadosContratoInvalidos, validar_id, validar_texto
