@@ -55,15 +55,15 @@ def _mascara(nome: str) -> str:
 def estilos_icones() -> str:
     """Máscaras herdam cor sem modificar labels, callbacks ou áreas de clique."""
     botoes = ':is([data-testid="stButton"],[data-testid="stFormSubmitButton"],[data-testid="stDownloadButton"],[data-testid="stLinkButton"])'
-    css = [f'{botoes} button::before,{botoes} a::before,[data-testid="stPopoverButton"]::before {{content:"";display:inline-block;flex:0 0 20px;width:20px;height:20px;background:currentColor;mask:var(--icone-acao,{_mascara("arrow-right")}) center/contain no-repeat;}}',
+    css = [f'{botoes} button::before,{botoes} a::before,[data-testid="stPopoverButton"]::before {{content:"";display:var(--icone-acao-display,none);flex:0 0 var(--icone-acao-tamanho,0);width:var(--icone-acao-tamanho,0);height:20px;background:currentColor;mask:var(--icone-acao,none) center/contain no-repeat;}}',
            f'{botoes} [data-testid="stIconMaterial"],[data-testid="stPopoverButton"] [data-testid="stIconMaterial"] {{display:none;}}',
            '.icone-regen {display:inline-block;width:24px;height:24px;flex-shrink:0;vertical-align:middle;}',
            '.icone-metrica .icone-regen {width:26px;height:26px;}.icone-procedimento .icone-regen {width:28px;height:28px;}',
            f'{botoes} button {{column-gap:8px;}}',
            '.st-key-menu-equipe [data-testid="stButton"] button>div {flex:1;justify-content:flex-start;text-align:left;}',
-           f'[data-testid="stFormSubmitButton"] {{ --icone-acao:{_mascara("save")};}}',
-           f'.st-key-formulario [data-testid="stFormSubmitButton"],.st-key-portal-paciente-formulario [data-testid="stFormSubmitButton"] {{ --icone-acao:{_mascara("log-in")};}}',
-           f'[data-testid="stPopover"] {{ --icone-acao:{_mascara("adjustments")};}}']
+           f'[data-testid="stFormSubmitButton"] {{ --icone-acao:{_mascara("save")};--icone-acao-display:inline-block;--icone-acao-tamanho:20px;}}',
+           f'.st-key-formulario [data-testid="stFormSubmitButton"],.st-key-portal-paciente-formulario [data-testid="stFormSubmitButton"] {{ --icone-acao:{_mascara("log-in")};--icone-acao-display:inline-block;--icone-acao-tamanho:20px;}}',
+           f'[data-testid="stPopover"] {{ --icone-acao:{_mascara("adjustments")};--icone-acao-display:inline-block;--icone-acao-tamanho:20px;}}']
     css.append('.st-key-entrada [data-testid="stButton"] button::before,.st-key-entrada [data-testid="stFormSubmitButton"] button::before,.st-key-recuperacao-link button::before,.st-key-recuperacao-voltar button::before {display:none!important;content:none!important;} .st-key-entrada [data-testid="stButton"] button,.st-key-entrada [data-testid="stFormSubmitButton"] button,.st-key-recuperacao-link button,.st-key-recuperacao-voltar button {column-gap:0!important;}')
     # Chaves já existentes: a escolha visual não muda a identidade de nenhum widget.
     grupos = {
@@ -76,15 +76,15 @@ def estilos_icones() -> str:
     }
     for nome, termos in grupos.items():
         seletores = ','.join(f':where([class*="st-key-"])[class*="{termo}"]' for termo in termos)
-        css.append(f'{seletores} {{ --icone-acao:{_mascara(nome)};}}')
+        css.append(f'{seletores} {{ --icone-acao:{_mascara(nome)};--icone-acao-display:inline-block;--icone-acao-tamanho:20px;}}')
     exatos = {"menu-inicio": "home", "menu-agenda": "calendar", "menu-pacientes": "users",
               "menu-profissionais": "user", "menu-prontuarios": "file-text", "menu-procedimentos": "tool",
               "menu-exames": "scan", "menu-reagendar_consulta": "repeat", "menu-contas_acesso": "shield-check",
               "menu-cadastrar-paciente": "user-plus", "menu-cadastrar-profissional": "user-plus", "sair": "log-out", "paciente-sair": "log-out"}
     for chave, nome in exatos.items():
-        css.append(f'.st-key-{chave} {{ --icone-acao:{_mascara(nome)};}}')
+        css.append(f'.st-key-{chave} {{ --icone-acao:{_mascara(nome)};--icone-acao-display:inline-block;--icone-acao-tamanho:20px;}}')
         if chave.startswith("menu-"):
-            css.append(f'.st-key-demo-nav-{chave[5:]} {{ --icone-acao:{_mascara(nome)};}}')
+            css.append(f'.st-key-demo-nav-{chave[5:]} {{ --icone-acao:{_mascara(nome)};--icone-acao-display:inline-block;--icone-acao-tamanho:20px;}}')
     css.extend([
         '[class*="st-key-"][class*="fechar"] button p,.st-key-agenda-anterior button p,.st-key-agenda-proximo button p {position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}',
         f'.st-key-visao-geral h1::after {{content:"";display:inline-block;vertical-align:middle;margin-left:12px;width:26px;height:26px;background:var(--verde);mask:{_mascara("heart")} center/contain no-repeat;}}',
