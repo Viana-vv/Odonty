@@ -174,6 +174,11 @@ except ConfiguracaoInvalida as error:
     configuracao_mensagem = str(error)
 
 try:
+    from sorrisomais import sessao_local
+    try:
+        sessao_local.restaurar(st.session_state, st.context.cookies)
+    except OSError:
+        st.warning("A recuperação local está indisponível. Entre novamente para continuar.")
     conta = sessao.identificar(st.session_state, cliente) if cliente else None
 except ErroAcesso as error:
     if st.session_state.get(sessao.CHAVE):
@@ -185,6 +190,10 @@ except ErroAcesso as error:
     conta = None
 
 if conta:
+    try:
+        sessao_local.oferecer(st.session_state)
+    except OSError:
+        st.warning("Não foi possível ativar a recuperação local. Confira se a porta 8502 está livre.")
     acesso_equipe.renderizar(conta, cliente, paginas_equipe)
     # Reexecuta a página no prazo de expiração mesmo sem interação.
     @st.fragment(run_every="15s")

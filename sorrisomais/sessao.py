@@ -11,6 +11,8 @@ INTERVALO_REVALIDACAO_SEGUNDOS = 20
 
 
 def limpar(estado):
+    from .sessao_local import revogar
+    revogar(estado)
     from .cache_xano import invalidar_cache
     invalidar_cache(estado)
     for chave in (CHAVE, CHAVE_CONTA, CHAVE_VERIFICADA, "cad_especialidades_cache",

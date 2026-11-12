@@ -82,9 +82,14 @@ def test_falha_revalidacao_retira_conteudo(cliente_simulado):
         seconds=sessao.INTERVALO_REVALIDACAO_SEGUNDOS + 1)
     app.run()
     assert not app.exception
-    assert len(app.text_input) == 2
+    assert len(app.text_input) == 0
     assert not any(texto.value == "Pessoa Ficticia" for texto in app.text)
-    assert sessao.CHAVE not in app.session_state
+    assert sessao.CHAVE in app.session_state
+    assert any(botao.label == "Tentar novamente" for botao in app.button)
+    identificar.side_effect = None
+    app.button(key="revalidar-sessao").click().run()
+    assert not app.exception
+    assert any(texto.value == "Pessoa Ficticia" for texto in app.text)
 
 
 def test_sessao_nova_nao_recupera_login(cliente_simulado):
