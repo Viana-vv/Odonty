@@ -102,6 +102,17 @@ def test_erros_nao_expoem_resposta(cliente, http, status):
     assert "SEGREDO" not in str(e.value)
 
 
+@pytest.mark.parametrize(
+    "status,trecho",
+    [(404, "escopo permitido"), (409, "operação do Exame")],
+)
+def test_erros_de_exames_tem_mensagem_contextual(cliente, http, status, trecho):
+    http.return_value = resposta({"mensagem": "DETALHE_INTERNO"}, status)
+    with pytest.raises(ErroAcesso, match=trecho) as erro:
+        cliente._request("GET", "/exames", token="token-ficticio")
+    assert "DETALHE_INTERNO" not in str(erro.value)
+
+
 @pytest.mark.parametrize("error", [requests.Timeout, requests.ConnectionError])
 def test_falha_rede_segura(cliente, http, error):
     http.side_effect = error("token=NAO_EXIBIR")

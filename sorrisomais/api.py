@@ -109,6 +109,11 @@ class ClienteXano:
                     503: ("Não foi possível enviar o código agora. Tente novamente mais tarde."
                           if route.startswith("/auth/recuperacao-senha") else INDISPONIVEL),
                 }
+                if route == "/exames" or route.startswith("/exames/"):
+                    if status == 404:
+                        messages[404] = "O Exame, Paciente ou Consulta não foi encontrado no escopo permitido."
+                    elif status == 409:
+                        messages[409] = "Não foi possível concluir a operação do Exame. Atualize a lista e tente novamente."
                 if status == 409:
                     if route == "/consultas":
                         message = "Este horário não está mais disponível. Escolha outro."
