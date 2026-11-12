@@ -88,6 +88,15 @@ def test_erro_de_permissao_nao_apresenta_detalhes_clinicos():
     assert not any("Falha segura" in item.value for item in app.error)
 
 
+def test_recurso_fora_do_escopo_informa_prontuario_sem_expor_detalhes():
+    app = abrir(falha=404)
+    app.text_area[0].set_value("Conteúdo clínico fictício")
+    app.button(key="nova-evolucao-salvar").click().run()
+    assert not app.exception
+    assert any("Paciente, Prontuário ou Consulta não encontrados" in item.value for item in app.error)
+    assert not any("Falha segura" in item.value for item in app.error)
+
+
 def test_sessao_expirada_limpa_credencial():
     app = abrir(falha=401)
     app.text_area[0].set_value("Conteúdo clínico fictício")

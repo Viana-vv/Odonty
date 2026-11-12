@@ -75,6 +75,7 @@ query "registros-clinicos" verb=POST {
     }
     var $consulta { value = null }
     var $consulta_escopo { value = null }
+    var $consulta_id_resolvida { value = null }
     conditional {
       if (($bruto|get:"consulta_id") != null) {
         db.get consulta {
@@ -88,6 +89,7 @@ query "registros-clinicos" verb=POST {
             return { value = {codigo: "RECURSO_NAO_ENCONTRADO", mensagem: "Consulta não encontrada no escopo permitido."} }
           }
         }
+        var.update $consulta_id_resolvida { value = $consulta.id }
       }
       else {
         // Sem vínculo explícito, ainda exige relação clínica prévia entre
@@ -103,6 +105,7 @@ query "registros-clinicos" verb=POST {
             return { value = {codigo: "RECURSO_NAO_ENCONTRADO", mensagem: "Paciente não encontrado no escopo permitido."} }
           }
         }
+        var.update $consulta_id_resolvida { value = $consulta_escopo.id }
       }
     }
     var $registro { value = null }
@@ -111,7 +114,7 @@ query "registros-clinicos" verb=POST {
         db.transaction {
           stack {
             db.add registro_clinico {
-              data = {prontuario_id: $prontuario.id, paciente_id: $paciente.id, profissional_id: $profissional.id, consulta_id: $consulta.id, conteudo: $conteudo, liberado_paciente: $liberado, concluido: true, registrado_em: now}
+              data = {prontuario_id: $prontuario.id, paciente_id: $paciente.id, profissional_id: $profissional.id, consulta_id: $consulta_id_resolvida, conteudo: $conteudo, liberado_paciente: $liberado, concluido: true, registrado_em: now}
             } as $registro
           }
         }
