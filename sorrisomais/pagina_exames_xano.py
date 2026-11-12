@@ -12,6 +12,20 @@ from .exames_api import ClienteExames
 _FEEDBACK_CHAVE = "exames_feedback"
 
 
+def _mensagem_erro_exame(error, operacao):
+    if error.status == 400:
+        return str(error)
+    if error.status == 403:
+        return f"Sua Conta de Acesso não tem permissão para {operacao} Exames."
+    if error.status == 404:
+        return "O Exame, Paciente ou Consulta não foi encontrado no escopo permitido. Atualize a lista e tente novamente."
+    if error.status == 409:
+        return f"Não foi possível concluir a operação de {operacao} Exame. Atualize a lista e tente novamente."
+    if error.status == 429:
+        return "Muitas tentativas. Aguarde um pouco antes de tentar novamente."
+    return f"Não foi possível {operacao} o Exame. Tente novamente em instantes."
+
+
 def _rotulo_consulta(consulta):
     """Monta um rótulo legível sem expor o identificador como opção principal."""
     inicio = consulta.get("inicio_em", "")
@@ -130,7 +144,7 @@ def _cartao(exame, *, profissional, api, token):
                                     sessao.limpar(st.session_state)
                                     st.error("Sua sessão expirou. Entre novamente.")
                                 else:
-                                    st.error("Não foi possível atualizar o Exame. Confira os dados e tente novamente.")
+                                    st.error(_mensagem_erro_exame(error, "atualizar"))
         elif situacao == "Resultado disponível":
             st.write(exame.get("resultado") or "Resultado sem texto informado.")
         else:
@@ -224,7 +238,7 @@ def renderizar(cliente, conta):
                             sessao.limpar(st.session_state)
                             st.error("Sua sessão expirou. Entre novamente.")
                         else:
-                            st.error("Não foi possível solicitar o Exame. Confira os dados e tente novamente.")
+                            st.error(_mensagem_erro_exame(error, "solicitar"))
 
     if not exames:
         st.info("Nenhum Exame encontrado neste escopo.")

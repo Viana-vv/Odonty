@@ -20,6 +20,8 @@ class ClienteFalso:
     def _request(self, method, route, **kwargs):
         if method == 'GET':
             return {{'exames': []}}
+        if {falha!r} == 'solicitacao_403':
+            raise ErroAcesso('Falha segura.', 403)
         st.session_state['solicitacao'] = kwargs['payload']
         return {{'exame': {{'id': 71}}}}
     def listar_opcoes_agenda(self, token):
@@ -81,3 +83,19 @@ def test_lista_vazia_apresenta_orientacao_sem_formulario():
     assert not app.exception
     assert any("Cadastre Pacientes ativos" in item.value for item in app.info)
     assert not any(item.label == "Solicitar exame" for item in app.button)
+
+
+def test_solicitacao_sem_tipo_informa_campo_obrigatorio():
+    app = abrir()
+    next(button for button in app.button if button.label == "Solicitar exame").click().run()
+    assert not app.exception
+    assert any("Informe o tipo do exame" in item.value for item in app.error)
+    assert "solicitacao" not in app.session_state
+
+
+def test_solicitacao_sem_permissao_informa_contexto():
+    app = abrir("solicitacao_403")
+    app.text_input[0].input("Radiografia fictícia").run()
+    next(button for button in app.button if button.label == "Solicitar exame").click().run()
+    assert not app.exception
+    assert any("não tem permissão para solicitar Exames" in item.value for item in app.error)

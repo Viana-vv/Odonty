@@ -36,7 +36,7 @@ def _limpar_edicao():
 
 def _mensagem_edicao(error):
     if error.status == 400:
-        return "Confira os dados cadastrais informados e tente novamente."
+        return str(error)
     if error.status == 404:
         return "Este Paciente não foi encontrado. Atualize a listagem e tente novamente."
     if error.status == 409:

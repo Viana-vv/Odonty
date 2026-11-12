@@ -1,5 +1,7 @@
 """Cliente REST isolado para o fluxo de Exames; não registra dados clínicos."""
 
+from datetime import date
+
 from .api import ErroAcesso
 
 
@@ -23,8 +25,22 @@ class ClienteExames:
         return [item for item in exames if isinstance(item, dict)]
 
     def solicitar(self, token, *, paciente_id, consulta_id, tipo, solicitado_em, observacoes=None):
+        if not isinstance(paciente_id, int) or isinstance(paciente_id, bool) or paciente_id <= 0:
+            raise ErroAcesso("Selecione um Paciente.", 400)
+        if not isinstance(consulta_id, int) or isinstance(consulta_id, bool) or consulta_id <= 0:
+            raise ErroAcesso("Selecione uma Consulta.", 400)
         if not isinstance(tipo, str) or not tipo.strip() or len(tipo.strip()) > 160:
             raise ErroAcesso("Informe o tipo do exame.", 400)
+        if not isinstance(solicitado_em, str):
+            raise ErroAcesso("Informe uma data de solicitação válida.", 400)
+        try:
+            data_solicitacao = date.fromisoformat(solicitado_em)
+        except ValueError:
+            raise ErroAcesso("Informe uma data de solicitação válida.", 400) from None
+        if data_solicitacao > date.today():
+            raise ErroAcesso("A data da solicitação não pode estar no futuro.", 400)
+        if observacoes is not None and (not isinstance(observacoes, str) or len(observacoes.strip()) > 1000):
+            raise ErroAcesso("As observações devem ter no máximo 1000 caracteres.", 400)
         payload = {"paciente_id": paciente_id, "consulta_id": consulta_id,
                    "tipo": tipo.strip(), "solicitado_em": solicitado_em}
         if observacoes:

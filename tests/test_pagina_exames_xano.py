@@ -22,6 +22,10 @@ class ClienteFalso:
             st.session_state.setdefault("patch_calls", []).append((method, route, kwargs))
             return {{"exame": {{"id": 2, "situacao": kwargs["payload"]["situacao"]}}}}
         {f'raise ErroAcesso("Falha segura.", {erro})' if erro else f'return {{"exames": {exames!r}}}'}
+    def listar_opcoes_agenda(self, token):
+        return {{"pacientes": [{{"id": 11, "nome": "Paciente Fictício"}}]}}
+    def listar_consultas(self, token):
+        return [{{"id": 31, "paciente_id": 11, "paciente_nome": "Paciente Fictício", "situacao": "Confirmada"}}]
 renderizar(ClienteFalso(), SimpleNamespace(perfis={perfis!r}))
 '''
     return AppTest.from_string(script, default_timeout=20).run()
@@ -69,7 +73,7 @@ def test_profissional_tem_controles_para_avancar_situacao():
 
 def test_profissional_envia_transicao_realizado_ao_xano():
     app = abrir([{"id": 2, "tipo": "Radiografia fictícia", "situacao": "Solicitado"}], perfis=("profissional",))
-    app.selectbox[0].set_value("Realizado").run()
+    app.selectbox(key="exame-situacao-2").set_value("Realizado").run()
     next(botao for botao in app.button if botao.label == "Salvar atualização").click().run()
     chamadas = app.session_state["patch_calls"]
     assert chamadas[0][0:2] == ("PATCH", "/exames/2/situacao")

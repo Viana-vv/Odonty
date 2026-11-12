@@ -1,4 +1,4 @@
-from types import SimpleNamespace
+from datetime import date, timedelta
 
 import pytest
 
@@ -30,6 +30,30 @@ def test_post_exame_envia_somente_campos_textuais():
     payload = falso.calls[0][1]["payload"]
     assert payload["tipo"] == "Panorâmico"
     assert "arquivo" not in payload and "url" not in payload
+
+
+def test_post_exame_informa_paciente_ausente():
+    with pytest.raises(ErroAcesso, match="Selecione um Paciente"):
+        ClienteExames(Falso({})).solicitar(
+            "token-ficticio", paciente_id=None, consulta_id=3,
+            tipo="Panorâmico", solicitado_em="2026-10-24",
+        )
+
+
+def test_post_exame_rejeita_data_futura_antes_da_rede():
+    with pytest.raises(ErroAcesso, match="não pode estar no futuro"):
+        ClienteExames(Falso({})).solicitar(
+            "token-ficticio", paciente_id=8, consulta_id=3,
+            tipo="Panorâmico", solicitado_em=(date.today() + timedelta(days=1)).isoformat(),
+        )
+
+
+def test_post_exame_rejeita_observacao_acima_do_limite():
+    with pytest.raises(ErroAcesso, match="no máximo 1000"):
+        ClienteExames(Falso({})).solicitar(
+            "token-ficticio", paciente_id=8, consulta_id=3,
+            tipo="Panorâmico", solicitado_em="2026-10-24", observacoes="x" * 1001,
+        )
 
 
 def test_patch_exame_rejeita_situacao_desconhecida():
