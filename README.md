@@ -4,11 +4,120 @@ MVP acadêmico com Python/Streamlit na interface e Xano para autenticação, aut
 
 ## Estado atual
 
-Login, identificação da Conta de Acesso e logout estão implementados e validados no Xano. O export versionado define sessão interna de até oito horas; para aplicar esse prazo no ambiente publicado, configure `AUTH_SESSION_TTL_SECONDS=28800` no Xano. Administrador também pode cadastrar profissionais; Profissional aparece como Dentista. **O cadastro de Paciente está funcionando e pronto para uso demonstrativo** por Administrador e Recepcionista, com autorização aplicada no Xano. Recuperação de senha e funcionalidades clínicas permanecem fora desta entrega.
+O projeto possui acesso da equipe, portal do Paciente, recuperação de senha, painéis por perfil, Agenda, cadastros, Consultas, Procedimentos, Exames e consulta de Registros Clínicos. O Profissional aparece na interface como Dentista. O Prontuário completo ainda possui tarefas abertas em `openspec/changes/implementar-prontuario-completo/`; a existência de uma tela não significa que todas as funcionalidades planejadas estejam concluídas.
+
+O export Xano define sessão interna de até oito horas, conforme `AUTH_SESSION_TTL_SECONDS`. No uso local da equipe, `python iniciar_local.py` habilita recuperação automática após recarga, respeitando a validade original do Xano. O portal do Paciente possui sessão própria.
 
 As telas existentes usam a identidade visual Sorriso+ e os mascotes transparentes de `assets/mascotes-tratados/`, com assinatura compartilhada. A navegação exibe somente ações disponíveis para o perfil autenticado; módulos que ainda não possuem fluxo não aparecem como opções. A iconografia vetorial, sua procedência e a revisão de segurança estão documentadas em [Ícones da interface](docs/icones-interface.md).
 
-Issue: [#1](https://github.com/Viana-vv/Odonty/issues/1). Implementação na branch `feat/1-login-streamlit-xano`, preparada para revisão do grupo.
+## Telas e caminhos por usuário
+
+Administrador, Recepcionista e Dentista usam a mesma entrada da equipe. O perfil da **Conta de Acesso**, validado pelo Xano, determina o menu apresentado. Não existem URLs independentes para cada tela do menu: a navegação acontece dentro do Streamlit. O Paciente usa um portal separado.
+
+| Usuário | Entrada local | Caminhos na interface |
+|---|---|---|
+| Administrador | `http://localhost:8501` · [app.py](app.py) | Login → Visão geral → Agenda, Pacientes, Profissionais, Procedimentos ou Reagendamento. Atalhos: Cadastrar paciente e Cadastrar profissional. |
+| Recepcionista | `http://localhost:8501` · [app.py](app.py) | Login → Visão geral → Agenda, Pacientes, Profissionais ou Reagendamento. Atalho: Cadastrar paciente. |
+| Dentista / Profissional | `http://localhost:8501` · [app.py](app.py) | Login → Visão geral → Agenda, Prontuários ou Exames. Na Agenda: gerenciar as próprias Consultas e acessar os Procedimentos da Consulta. |
+| Paciente | `http://localhost:8503` · [portal_paciente.py](portal_paciente.py) | Login do portal → Consultas futuras ou passadas, Informações liberadas e Exames. |
+
+Para abrir as duas entradas ao mesmo tempo, configure `XANO_API_BASE_URL` nos dois terminais e execute:
+
+```sh
+# Terminal 1 — equipe, com recuperação local automática da sessão
+python iniciar_local.py
+
+# Terminal 2 — portal do Paciente
+python -m streamlit run portal_paciente.py --server.port=8503
+```
+
+A porta `8502` é usada pela recuperação de sessão da equipe. As portas acima descrevem a execução local; não são endereços públicos de implantação.
+
+### Entrada da equipe
+
+Administrador, Recepcionista e Dentista informam o e-mail e a senha da própria Conta de Acesso. A opção **Esqueci minha senha** conduz à recuperação por código, quando o serviço Xano/SendGrid está configurado.
+
+![Tela de login compartilhada pela equipe](docs/imagens/telas/login-equipe.png)
+
+### Administrador
+
+O painel reúne o resumo administrativo e os atalhos de cadastro. Para agendar: **Agenda → Nova Consulta → selecionar Paciente, Profissional e horário → confirmar**. Para editar um cadastro: **Pacientes → Editar → Salvar alterações**.
+
+![Visão geral do Administrador com menu administrativo](docs/imagens/telas/painel-administrador.png)
+
+### Recepcionista
+
+O caminho de atendimento é **Visão geral → Agenda → Nova Consulta**. Cadastros ficam em **Pacientes → Cadastrar paciente** e mudanças de horário em **Reagendamento**. O perfil não recebe os menus clínicos de Prontuários e Exames nem o cadastro de Profissional.
+
+![Visão geral da Recepcionista com os atalhos de atendimento](docs/imagens/telas/painel-recepcionista.png)
+
+### Dentista / Profissional
+
+Para acompanhar atendimentos: **Visão geral → Agenda → Gerenciar consultas e horários**. Para registrar evolução: **Prontuários → Nova Evolução → selecionar Paciente e Consulta → informar evolução → Salvar no prontuário**. Para solicitar um Exame: **Exames → formulário de solicitação → selecionar Paciente e Consulta → preencher tipo e data → solicitar**.
+
+A solicitação do Exame é registrada para o Paciente e a Consulta selecionados. Ela não envia automaticamente pedidos a laboratório ou a profissional externo. As seções completas de Prontuário, documentos e odontograma permanecem sujeitas às pendências da change indicada acima.
+
+![Visão geral do Dentista com Agenda, Prontuários e Exames](docs/imagens/telas/painel-dentista.png)
+
+### Paciente
+
+O Paciente entra no portal próprio e alterna entre **Consultas**, **Informações liberadas** e **Exames**. Em Consultas, pode selecionar **Futuras** ou **Passadas**. O agendamento é feito pela equipe; para cancelar uma Consulta, o Paciente entra em contato com a clínica. Resultados e informações clínicas aparecem conforme liberação e autorização do Xano.
+
+Cadastrar um Paciente pela equipe cria o cadastro da pessoa atendida e seu Prontuário; isso não cria automaticamente uma Conta de Acesso para entrar no portal.
+
+![Entrada independente da Área do Paciente](docs/imagens/telas/login-paciente.png)
+
+![Portal do Paciente com as abas de Consultas, Informações liberadas e Exames](docs/imagens/telas/portal-paciente.png)
+
+### Demais telas
+
+<details>
+<summary>Agenda e Nova Consulta</summary>
+
+**Caminho:** menu Agenda; para agendar, ação Nova Consulta disponível à equipe administrativa autorizada.
+
+![Agenda da equipe com Consultas fictícias](docs/imagens/telas/agenda.png)
+
+![Formulário de Nova Consulta](docs/imagens/telas/nova-consulta.png)
+
+</details>
+
+<details>
+<summary>Pacientes e cadastro de Paciente</summary>
+
+**Caminho:** menu Pacientes → Editar; para novo cadastro, Cadastrar paciente.
+
+![Listagem administrativa de Pacientes](docs/imagens/telas/pacientes.png)
+
+![Formulário de cadastro de Paciente](docs/imagens/telas/cadastro-paciente.png)
+
+</details>
+
+<details>
+<summary>Profissionais e cadastro de Profissional</summary>
+
+**Caminho:** menu Profissionais. O cadastro de Profissional é exclusivo do Administrador, pela ação Cadastrar profissional.
+
+![Listagem de Profissionais](docs/imagens/telas/profissionais.png)
+
+![Formulário de cadastro de Profissional](docs/imagens/telas/cadastro-profissional.png)
+
+</details>
+
+<details>
+<summary>Procedimentos, Prontuários e Exames</summary>
+
+**Caminhos:** Administrador → Procedimentos; Dentista → Prontuários; Dentista → Exames.
+
+![Catálogo de Procedimentos](docs/imagens/telas/procedimentos.png)
+
+![Tela de Prontuários do Profissional](docs/imagens/telas/prontuarios.png)
+
+![Tela de solicitação e acompanhamento de Exames](docs/imagens/telas/exames.png)
+
+</details>
+
+As capturas desta seção mostram componentes reais da interface renderizados com o cliente visual de `tests/visual/app_referencias.py`, dados inteiramente fictícios e respostas simuladas, sem chamadas ao Xano. Foram capturadas em 12/11/2026, em resolução de 1365 × 950, com altura expandida quando necessário. São exemplos visuais, não comprovação de integração publicada. As permissões efetivas continuam sendo verificadas pelo Xano.
 
 ## Executar localmente
 
@@ -66,17 +175,19 @@ O arquivo `.env.example` é uma referência: a aplicação não carrega `.env` a
 
 Sem configuração válida, a tela informa o problema e desabilita o formulário.
 
-No modo Xano atual, permanecem disponíveis login, identificação e logout,
+Na entrega inicial do modo Xano, estavam disponíveis login, identificação e logout,
 cadastro de Paciente, cadastro de Profissional e listagem de Especialidades
 necessária ao cadastro. Agenda, Consultas, listagens e perfil de Paciente,
-Prontuários e Registros Clínicos ainda não têm integração Xano confirmada;
-essas áreas aparecem somente na demonstração fictícia até aprovação de uma
-change própria baseada no contrato real.
+Prontuários e Registros Clínicos ainda não tinham integração Xano confirmada.
+Esse registro é histórico: os módulos e caminhos atuais estão descritos na
+seção **Telas e caminhos por usuário** acima; pendências do Prontuário completo
+continuam registradas na change correspondente.
 
 O export local de `GET /registros-clinicos` também inclui retificações
 append-only com conteúdo, justificativa, autoria e data. Essa alteração ainda
-não foi publicada nem validada no grupo Xano; o fluxo clínico continua
-desabilitado no modo Xano até essa validação.
+não havia sido publicada nem validada no grupo Xano na entrega inicial.
+As capturas atuais demonstram a interface com respostas simuladas e não
+substituem a validação das rotas no ambiente publicado.
 
 ### Prontuário e Nova Evolução — finalização local
 
