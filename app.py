@@ -176,6 +176,11 @@ except ConfiguracaoInvalida as error:
 try:
     conta = sessao.identificar(st.session_state, cliente) if cliente else None
 except ErroAcesso as error:
+    if st.session_state.get(sessao.CHAVE):
+        st.error("Não foi possível verificar seu acesso agora. Tente novamente em instantes.")
+        if st.button("Tentar novamente", key="revalidar-sessao"):
+            st.rerun()
+        st.stop()
     st.session_state["aviso"] = ("error", str(error))
     conta = None
 

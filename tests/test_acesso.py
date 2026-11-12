@@ -190,6 +190,20 @@ def test_sessoes_isoladas_e_identidade_revalidada():
     assert not a
 
 
+@pytest.mark.parametrize("status", [None, 429, 500, 503])
+def test_falha_temporaria_preserva_credencial_para_nova_validacao(status):
+    credencial = Credencial("ficticio", FUTURO)
+    estado = {sessao.CHAVE: credencial}
+    cliente = Mock()
+    cliente.identificar.side_effect = ErroAcesso(status=status)
+    with pytest.raises(ErroAcesso):
+        sessao.identificar(estado, cliente)
+    assert estado[sessao.CHAVE] is credencial
+    cliente.identificar.side_effect = None
+    cliente.identificar.return_value = ContaAcesso(1, "Fictício", ("profissional",), FUTURO)
+    assert sessao.identificar(estado, cliente).id == 1
+
+
 def test_sessao_expirada_nao_consulta_conteudo():
     client = Mock()
     state = {sessao.CHAVE: Credencial("ficticio", datetime.now(timezone.utc) - timedelta(seconds=1))}

@@ -73,8 +73,9 @@ def identificar(estado, cliente):
         estado[CHAVE_CONTA] = conta
         estado[CHAVE_VERIFICADA] = agora
         return conta
-    except ErroAcesso:
-        limpar(estado)
+    except ErroAcesso as error:
+        if error.status in (401, 403):
+            limpar(estado)
         raise
 
 
