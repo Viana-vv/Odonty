@@ -2,6 +2,14 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from streamlit.testing.v1 import AppTest
+from sorrisomais.pagina_exames_xano import _data_legivel
+
+
+def test_data_legivel_aceita_timestamp_iso_e_epoch():
+    assert _data_legivel("2026-11-12T12:30:00Z") == "12/11/2026"
+    assert _data_legivel(1794486600) == "12/11/2026"
+    assert _data_legivel(None) == "Data não informada"
+    assert _data_legivel({"timestamp": 1}) == "Data não informada"
 
 
 def abrir(exames, perfis=("paciente",), erro=None):

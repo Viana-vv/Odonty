@@ -42,6 +42,22 @@ def _rotulo_consulta(consulta):
     return " · ".join(parte for parte in partes if parte)
 
 
+def _data_legivel(valor):
+    """Formata timestamps ISO ou epoch retornados pelo Xano."""
+    if isinstance(valor, (int, float)):
+        try:
+            return datetime.fromtimestamp(valor / 1000 if valor > 10_000_000_000 else valor).strftime("%d/%m/%Y")
+        except (OverflowError, OSError, ValueError):
+            return "Data não informada"
+    if isinstance(valor, str):
+        try:
+            return datetime.fromisoformat(valor.replace("Z", "+00:00")).strftime("%d/%m/%Y")
+        except ValueError:
+            if len(valor) >= 10:
+                return valor[:10]
+    return "Data não informada"
+
+
 def _carregar_opcoes_solicitacao(cliente, token):
     """Carrega nomes para a interface e consultas para manter os IDs no envio."""
     usar_consultas_para_pacientes = False
@@ -87,8 +103,8 @@ def _cartao(exame, *, profissional, api, token):
     with st.container(border=True):
         st.subheader(exame.get("tipo") or "Exame")
         st.caption(f"Situação · {situacao}")
-        if exame.get("solicitado_em"):
-            st.caption(f"Solicitado em {exame['solicitado_em'][:10]}")
+        if exame.get("solicitado_em") is not None:
+            st.caption(f"Solicitado em {_data_legivel(exame['solicitado_em'])}")
 
         if profissional:
             if exame.get("resultado"):
