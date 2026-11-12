@@ -12,6 +12,61 @@ from .exames_api import ClienteExames
 _FEEDBACK_CHAVE = "exames_feedback"
 
 
+def _rotulo_consulta(consulta):
+    """Monta um rótulo legível sem expor o identificador como opção principal."""
+    inicio = consulta.get("inicio_em", "")
+    if inicio:
+        try:
+            inicio = datetime.fromisoformat(inicio.replace("Z", "+00:00")).astimezone().strftime(
+                "%d/%m/%Y às %H:%M"
+            )
+        except (TypeError, ValueError):
+            inicio = str(inicio)
+    paciente = consulta.get("paciente_nome") or "Paciente"
+    situacao = consulta.get("situacao") or ""
+    partes = [inicio, paciente, situacao]
+    return " · ".join(parte for parte in partes if parte)
+
+
+def _carregar_opcoes_solicitacao(cliente, token):
+    """Carrega nomes para a interface e consultas para manter os IDs no envio."""
+    usar_consultas_para_pacientes = False
+    try:
+        opcoes = cliente.listar_opcoes_agenda(token)
+    except ErroAcesso as error:
+        # O endpoint de opções é administrativo; o profissional ainda pode
+        # obter os nomes dos pacientes nas consultas que estão no seu escopo.
+        if error.status != 403:
+            raise
+        opcoes = {"pacientes": []}
+        usar_consultas_para_pacientes = True
+    consultas = cliente.listar_consultas(token)
+    pacientes = {
+        item["id"]: item["nome"]
+        for item in opcoes.get("pacientes", [])
+        if isinstance(item, dict) and isinstance(item.get("id"), int) and item.get("nome")
+    }
+    consultas = [
+        item for item in consultas
+        if isinstance(item, dict)
+        and isinstance(item.get("id"), int)
+        and isinstance(item.get("paciente_id"), int)
+    ]
+    if pacientes:
+        consultas = [item for item in consultas if item["paciente_id"] in pacientes]
+    elif usar_consultas_para_pacientes:
+        pacientes = {
+            item["paciente_id"]: item["paciente_nome"]
+            for item in consultas
+            if item.get("paciente_id") and item.get("paciente_nome")
+        }
+        consultas = [
+            item for item in consultas
+            if item.get("paciente_id") in pacientes
+        ]
+    return pacientes, consultas
+
+
 def _cartao(exame, *, profissional, api, token):
     identificador = exame.get("id")
     situacao = exame.get("situacao", "Solicitado")
@@ -122,10 +177,33 @@ def renderizar(cliente, conta):
         st.rerun()
 
     if "profissional" in perfis:
+        try:
+            pacientes, consultas = _carregar_opcoes_solicitacao(cliente, credencial.token)
+        except (ErroAcesso, KeyError, TypeError, ValueError):
+            st.error("Não foi possível carregar Pacientes e Consultas para solicitar o Exame.")
+            return
+
+        if not pacientes or not consultas:
+            st.info("Cadastre Pacientes ativos e tenha Consultas disponíveis antes de solicitar um Exame.")
+            return
+
         with st.expander("Solicitar exame", expanded=False):
             with st.form("form-solicitar-exame", border=True):
-                paciente_id = st.number_input("Paciente *", min_value=1, step=1)
-                consulta_id = st.number_input("Consulta *", min_value=1, step=1)
+                paciente_id = st.selectbox(
+                    "Paciente *", list(pacientes), format_func=pacientes.get,
+                    index=0, key="exame-paciente",
+                )
+                consultas_por_paciente = {
+                    consulta["id"]: _rotulo_consulta(consulta)
+                    for consulta in consultas if consulta["paciente_id"] == paciente_id
+                }
+                consulta_id = st.selectbox(
+                    "Consulta *", list(consultas_por_paciente),
+                    format_func=consultas_por_paciente.get,
+                    index=0 if consultas_por_paciente else None,
+                    placeholder="Selecione uma Consulta", key="exame-consulta",
+                    disabled=paciente_id is None or not consultas_por_paciente,
+                )
                 tipo = st.text_input("Tipo do exame *", max_chars=160)
                 solicitado_em = st.date_input("Data da solicitação", value=date.today())
                 observacoes = st.text_area("Observações", max_chars=1000)
