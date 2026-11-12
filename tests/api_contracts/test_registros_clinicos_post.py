@@ -37,3 +37,6 @@ def test_post_registros_clinicos_sem_consulta_explicita_exige_vinculo_profission
     assert "db.query consulta" in codigo
     assert "$db.consulta.paciente_id == $paciente.id && $db.consulta.profissional_id == $profissional.id" in codigo
     assert 'if ($consulta_escopo == null)' in codigo
+    assert 'var $consulta_id_resolvida { value = null }' in codigo
+    assert 'var.update $consulta_id_resolvida { value = $consulta_escopo.id }' in codigo
+    assert 'consulta_id: $consulta_id_resolvida' in codigo
