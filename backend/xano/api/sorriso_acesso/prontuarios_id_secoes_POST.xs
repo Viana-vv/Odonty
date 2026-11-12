@@ -1,9 +1,10 @@
 // Cria uma seção clínica versionada somente por Profissional ativo e autorizado.
-query "prontuarios/{prontuario_id}/secoes" verb=POST {
+// administrador e recepcionista não podem gravar conteúdo clínico.
+query "prontuarios/{paciente_id}/secoes" verb=POST {
   api_group = "Sorriso Acesso"
   auth = "conta_acesso"
   input {
-    int prontuario_id
+    int paciente_id
   }
   stack {
     util.set_header { value = "Cache-Control: no-store" duplicates = "replace" }
@@ -31,7 +32,7 @@ query "prontuarios/{prontuario_id}/secoes" verb=POST {
       }
     }
     conditional {
-      if (($bruto|is_object) == false || ($bruto|keys|count) < 2 || ($bruto|keys|count) > 5 || ($bruto|get:"paciente_id"|is_int) == false || ($bruto|get:"tipo"|is_text) == false || ($bruto|get:"conteudo"|is_text) == false || (($bruto|get:"consulta_id") != null && ($bruto|get:"consulta_id"|is_int) == false) || (($bruto|get:"liberado_paciente") != null && ($bruto|get:"liberado_paciente"|is_bool) == false)) {
+      if (($bruto|is_object) == false || ($bruto|keys|count) < 2 || ($bruto|keys|count) > 4 || ($bruto|get:"tipo"|is_text) == false || ($bruto|get:"conteudo"|is_text) == false || (($bruto|get:"consulta_id") != null && ($bruto|get:"consulta_id"|is_int) == false) || (($bruto|get:"liberado_paciente") != null && ($bruto|get:"liberado_paciente"|is_bool) == false)) {
         util.set_header { value = "HTTP/1.1 400 Bad Request" }
         return { value = {codigo: "DADOS_INVALIDOS", mensagem: "Paciente, tipo e conteúdo da seção são obrigatórios."} }
       }
@@ -40,7 +41,7 @@ query "prontuarios/{prontuario_id}/secoes" verb=POST {
     var $conteudo { value = $bruto.conteudo|trim }
     var $liberado { value = ($bruto|get:"liberado_paciente"|default:false) }
     conditional {
-      if ($bruto.paciente_id <= 0 || ($tipo|strlen) == 0 || ($conteudo|strlen) == 0 || ($conteudo|strlen) > 8000 || (($bruto|get:"consulta_id") != null && $bruto.consulta_id <= 0) || ($tipo != "Anamnese" && $tipo != "Histórico Odontológico" && $tipo != "Exame Clínico" && $tipo != "Diagnóstico" && $tipo != "Plano de Tratamento" && $tipo != "Odontograma" && $tipo != "Prescrição" && $tipo != "Documento")) {
+      if ($input.paciente_id <= 0 || ($tipo|strlen) == 0 || ($conteudo|strlen) == 0 || ($conteudo|strlen) > 8000 || (($bruto|get:"consulta_id") != null && $bruto.consulta_id <= 0) || ($tipo != "Anamnese" && $tipo != "Histórico Odontológico" && $tipo != "Exame Clínico" && $tipo != "Diagnóstico" && $tipo != "Plano de Tratamento" && $tipo != "Odontograma" && $tipo != "Prescrição" && $tipo != "Documento")) {
         util.set_header { value = "HTTP/1.1 400 Bad Request" }
         return { value = {codigo: "DADOS_INVALIDOS", mensagem: "Informe um tipo permitido e conteúdo não vazio para a seção."} }
       }
@@ -50,16 +51,16 @@ query "prontuarios/{prontuario_id}/secoes" verb=POST {
       field_value = $auth.id
       output = ["id", "situacao"]
     } as $profissional
-    db.get prontuario_paciente {
-      field_name = "id"
-      field_value = $input.prontuario_id
-      output = ["id", "paciente_id", "situacao"]
-    } as $prontuario
     db.get paciente {
       field_name = "id"
-      field_value = $bruto.paciente_id
+      field_value = $input.paciente_id
       output = ["id", "situacao"]
     } as $paciente
+    db.query prontuario_paciente {
+      where = $db.prontuario_paciente.paciente_id == $input.paciente_id
+      return = {type: "single"}
+      output = ["id", "paciente_id", "situacao"]
+    } as $prontuario
     conditional {
       if ($profissional == null || $profissional.situacao != "Ativo") {
         util.set_header { value = "HTTP/1.1 403 Forbidden" }

@@ -41,15 +41,15 @@ def agregado(**sobrescritas):
 
 def test_get_prontuario_agregado_envia_paciente_e_retorna_todas_as_secoes(cliente, http):
     http.return_value = resposta(agregado(
-        anamnese=[{"versao": 2, "alergias": "Nenhuma fictícia"}],
-        odontograma=[{"numero_dente": "11", "condicao": "saudável"}],
-        diagnosticos=[{"descricao": "Diagnóstico fictício"}],
-        plano_tratamento=[{"objetivo": "Plano fictício"}],
-        procedimentos=[{"situacao": "realizado"}],
-        exames=[{"tipo": "Radiografia fictícia", "situacao": "Solicitado"}],
-        prescricoes=[{"medicamento": "Medicamento fictício"}],
-        evolucoes=[{"conteudo": "Evolução fictícia"}],
-        documentos=[{"tipo": "Atestado fictício", "referencia_privada": "ref-ficticia"}],
+            anamnese=[{"id": 1, "versao": 2, "alergias": "Nenhuma fictícia"}],
+            odontograma=[{"id": 2, "numero_dente": "11", "condicao": "saudável"}],
+            diagnosticos=[{"id": 3, "descricao": "Diagnóstico fictício"}],
+            plano_tratamento=[{"id": 4, "objetivo": "Plano fictício"}],
+            procedimentos=[{"id": 5, "situacao": "realizado"}],
+            exames=[{"id": 6, "tipo": "Radiografia fictícia", "situacao": "Solicitado"}],
+            prescricoes=[{"id": 7, "medicamento": "Medicamento fictício"}],
+            evolucoes=[{"id": 8, "conteudo": "Evolução fictícia"}],
+            documentos=[{"id": 9, "tipo": "Atestado fictício", "referencia_privada": "ref-ficticia"}],
     ))
 
     resultado = cliente.obter_prontuario("token-ficticio", 12)
@@ -89,21 +89,21 @@ def test_get_prontuario_rejeita_resposta_sem_agregado(cliente, http):
 
 def test_get_prontuario_documenta_autenticacao_escopo_e_perfis_no_xano():
     caminho = (Path(__file__).resolve().parents[2] / "backend" / "xano" / "api"
-               / "sorriso_acesso" / "prontuario_GET.xs")
+               / "sorriso_acesso" / "prontuarios_id_GET.xs")
     codigo = caminho.read_text(encoding="utf-8-sig")
 
     assert 'auth = "conta_acesso"' in codigo
     assert "function.run sorriso_validar_sessao" in codigo
     assert '"administrador"' not in codigo or "conteudo_clinico" not in codigo
     assert '"recepcionista"' not in codigo or "conteudo_clinico" not in codigo
-    assert "$input.paciente_id" in codigo
+    assert "$input.id" in codigo
     assert "liberado_paciente" in codigo
     assert "history = false" in codigo
 
 
 def test_get_prontuario_nao_expoe_url_publica_nem_conteudo_de_outro_paciente():
     caminho = (Path(__file__).resolve().parents[2] / "backend" / "xano" / "api"
-               / "sorriso_acesso" / "prontuario_GET.xs")
+               / "sorriso_acesso" / "prontuarios_id_GET.xs")
     codigo = caminho.read_text(encoding="utf-8-sig")
 
     assert "url_publica" not in codigo

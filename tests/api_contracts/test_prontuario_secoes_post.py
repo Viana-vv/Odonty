@@ -14,7 +14,7 @@ def test_post_secao_prontuario_envia_tipo_conteudo_e_vinculo(cliente, http):
         "paciente_id": 12,
         "tipo": "anamnese",
         "versao": 1,
-        "conteudo": {"alergias": "Nenhuma fictícia"},
+        "conteudo": '{"alergias": "Nenhuma fictícia"}',
     }}, 201)
 
     resultado = cliente.registrar_secao_prontuario(
@@ -28,8 +28,9 @@ def test_post_secao_prontuario_envia_tipo_conteudo_e_vinculo(cliente, http):
     )
     assert http.call_args.kwargs["json"] == {
         "tipo": "anamnese",
-        "conteudo": {"alergias": "Nenhuma fictícia"},
+        "conteudo": '{"alergias": "Nenhuma fictícia"}',
         "consulta_id": 9,
+        "liberado_paciente": False,
     }
 
 
@@ -61,21 +62,21 @@ def test_post_secao_prontuario_rejeita_vinculo_invalido_sem_rede(cliente, http):
 
 def test_post_secao_prontuario_exige_validacao_de_sessao_escopo_e_historico():
     caminho = (Path(__file__).resolve().parents[2] / "backend" / "xano" / "api"
-               / "sorriso_acesso" / "prontuario_secoes_POST.xs")
+               / "sorriso_acesso" / "prontuarios_id_secoes_POST.xs")
     codigo = caminho.read_text(encoding="utf-8-sig")
 
     assert 'auth = "conta_acesso"' in codigo
     assert "function.run sorriso_validar_sessao" in codigo
     assert '"profissional"' in codigo
     assert "$input.paciente_id" in codigo
-    assert "$input.consulta_id" in codigo
+    assert "$bruto.consulta_id" in codigo
     assert "versao" in codigo
     assert "history = false" in codigo
 
 
 def test_post_secao_prontuario_nao_permite_exclusao_fisica_ou_log_clinico():
     caminho = (Path(__file__).resolve().parents[2] / "backend" / "xano" / "api"
-               / "sorriso_acesso" / "prontuario_secoes_POST.xs")
+               / "sorriso_acesso" / "prontuarios_id_secoes_POST.xs")
     codigo = caminho.read_text(encoding="utf-8-sig")
 
     assert "db.delete" not in codigo

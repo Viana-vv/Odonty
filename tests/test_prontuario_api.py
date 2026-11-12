@@ -101,7 +101,7 @@ def test_criar_secao_valida_entrada_e_resposta(cliente, http):
     payload = http.call_args.kwargs["json"]
     assert payload == {
         "tipo": "anamnese",
-        "conteudo": {"alergias": "Nenhuma"},
+        "conteudo": '{"alergias": "Nenhuma"}',
         "consulta_id": 3,
         "liberado_paciente": False,
     }

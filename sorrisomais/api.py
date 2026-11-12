@@ -1,6 +1,7 @@
 """Contrato REST do Xano. Nunca registra payloads ou credenciais."""
 
 import re
+import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
@@ -708,7 +709,7 @@ class ClienteXano:
             consulta_id = _validar_id_prontuario(consulta_id, "Consulta")
         if type(liberado_paciente) is not bool:
             raise ErroAcesso("Informe se a seção foi liberada ao Paciente.", 400)
-        payload = {"tipo": secao, "conteudo": conteudo,
+        payload = {"tipo": secao, "conteudo": json.dumps(conteudo, ensure_ascii=False),
                    "liberado_paciente": liberado_paciente}
         if consulta_id is not None:
             payload["consulta_id"] = consulta_id
@@ -733,7 +734,7 @@ class ClienteXano:
         justificativa = validar_texto(justificativa, "a justificativa", 1000)
         data = self._request(
             "POST", f"/prontuarios/{paciente_id}/secoes/{secao_id}/retificacao",
-            token=token, payload={"conteudo": conteudo, "justificativa": justificativa},
+            token=token, payload={"conteudo": json.dumps(conteudo, ensure_ascii=False), "justificativa": justificativa},
             status_esperado=201,
         )
         resultado = None
