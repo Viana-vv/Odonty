@@ -6,28 +6,32 @@ Restaurar na especificação vigente os requisitos aprovados nos deltas arquivad
 ## Requirements
 
 ### Requirement: Profissional registra evolução clínica no prontuário
-A aplicação MUST permitir que um Profissional autenticado registre conteúdo clínico para um Paciente dentro do seu escopo de atendimento. O Registro Clínico deve ser associado ao Prontuário ativo do Paciente, identificar o Profissional autenticado e permanecer no histórico após a criação.
 
-#### Scenario: Registro vinculado a Consulta do Profissional
-- **WHEN** um Profissional autorizado seleciona um Paciente e uma Consulta pertencente ao mesmo Paciente e Profissional, informa o conteúdo e salva
-- **THEN** o Xano cria um Registro Clínico concluído vinculado ao Prontuário e à Consulta e retorna confirmação sem expor o conteúdo clínico em logs
+O sistema MUST permitir que Profissional autenticado registre conteúdo clínico no Prontuário ativo do Paciente sob seu escopo, identificando autoria e preservando o histórico. O Xano MUST gravar a Consulta explicitamente validada ou a Consulta encontrada no escopo quando o formulário não informar uma Consulta.
 
 #### Scenario: Registro sem Consulta
-- **WHEN** um Profissional autorizado seleciona um Paciente no seu escopo, informa o conteúdo e salva sem Consulta associada
-- **THEN** o Xano cria um Registro Clínico no Prontuário sem associação a uma Consulta
+
+- **WHEN** Profissional autorizado salva evolução sem Consulta explícita para Paciente com Prontuário ativo e Consulta no escopo
+- **THEN** o Xano encontra a Consulta autorizada e grava seu identificador no Registro Clínico
+
+#### Scenario: Registro vinculado a Consulta do Profissional
+
+- **WHEN** Profissional autorizado salva conteúdo com Consulta pertencente ao mesmo Paciente e Profissional
+- **THEN** o Xano valida os vínculos e cria Registro Clínico concluído no Prontuário e na Consulta sem expor conteúdo em logs
+
+#### Scenario: Paciente ou Consulta fora do escopo
+
+- **WHEN** Paciente, Prontuário ou Consulta não estiver no escopo permitido ou o Paciente estiver inativo
+- **THEN** o Xano rejeita a operação sem criar Registro Clínico
 
 #### Scenario: Conteúdo obrigatório
-- **WHEN** o conteúdo clínico está vazio ou contém apenas espaços
+- **WHEN** o conteúdo está vazio ou contém apenas espaços
 - **THEN** a aplicação impede o envio e solicita conteúdo válido
 
 #### Scenario: Profissional não autorizado
-- **WHEN** uma Conta de Acesso sem perfil profissional autorizado tenta registrar uma evolução
-- **THEN** o Xano rejeita a operação com acesso negado e nenhum Registro Clínico é criado
-
-#### Scenario: Paciente ou Consulta fora do escopo
-- **WHEN** o Paciente estiver inativo ou a Consulta não pertencer ao Paciente e ao Profissional autenticado
-- **THEN** o Xano rejeita a operação sem alterar o Prontuário
+- **WHEN** Conta sem perfil profissional autorizado tenta registrar evolução
+- **THEN** o Xano rejeita sem criar Registro Clínico
 
 #### Scenario: Contrato não suporta data ou procedimento informados
-- **WHEN** o Profissional abre o formulário de nova evolução
-- **THEN** a aplicação não sugere que uma data de atendimento ou Procedimento seja gravado pelo contrato atual; a data do Registro Clínico é definida pelo Xano e procedimentos permanecem no fluxo próprio de Consulta
+- **WHEN** Profissional abre o formulário de evolução
+- **THEN** a interface não sugere gravar data de atendimento ou Procedimento pelo contrato atual; o Xano define a data do Registro e Procedimentos permanecem no fluxo de Consulta

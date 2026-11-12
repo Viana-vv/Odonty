@@ -1,4 +1,9 @@
-## ADDED Requirements
+# sessao-local Specification
+
+## Purpose
+Manter a sessão local após recarga do navegador, com recuperação automática, revalidação no Xano e preservação da validade original.
+
+## Requirements
 
 ### Requirement: Recuperar sessão local
 O sistema SHALL oferecer recuperação após recarga em localhost usando cookie HttpOnly, SameSite=Strict e identificador opaco, mantendo credenciais somente na memória e revalidando a identidade no Xano.
