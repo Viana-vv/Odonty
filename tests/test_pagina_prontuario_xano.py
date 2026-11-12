@@ -80,7 +80,12 @@ if "_iniciado" not in st.session_state:
     st.session_state[sessao.CHAVE] = Credencial("token-ficticio", datetime.now(timezone.utc) + timedelta(hours=1))
 class ClienteFalso:
     def obter_prontuario(self, token, paciente_id):
+        assert paciente_id == 12
         {f'raise ErroAcesso("Falha segura.", {erro})' if erro else f'return {agregado!r}'}
+    def listar_consultas(self, token):
+        return [{{"id": 31, "paciente_id": 12, "paciente_nome": "Paciente Fictícia Aurora"}}]
+    def listar_registros_clinicos(self, token):
+        return []
 renderizar(ClienteFalso(), SimpleNamespace(nome="Dra. Fictícia", perfis={perfis!r}))
 '''
     return AppTest.from_string(script, default_timeout=20).run()
@@ -89,6 +94,7 @@ renderizar(ClienteFalso(), SimpleNamespace(nome="Dra. Fictícia", perfis={perfis
 def test_prontuario_agregado_apresenta_dados_e_todas_as_secoes_sem_inventar_vazios():
     agregado = {
         "paciente": {
+            "id": 12,
             "nome": "Paciente Fictícia Aurora",
             "cpf": "00000000000",
             "data_nascimento": "1990-01-01",
@@ -99,6 +105,7 @@ def test_prontuario_agregado_apresenta_dados_e_todas_as_secoes_sem_inventar_vazi
         **{chave: [] for chave in CHAVES_SECOES_PRONTUARIO.values()},
     }
     app = abrir_agregado(agregado)
+    app.selectbox(key="prontuario_paciente_id").select(12).run()
     assert not app.exception
     textos = [item.value for item in app.markdown]
     assert any("Paciente Fictícia Aurora" in texto for texto in textos)

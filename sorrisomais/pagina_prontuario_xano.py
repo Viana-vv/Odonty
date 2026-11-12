@@ -29,10 +29,24 @@ def _carregar_dados(cliente, token, *, force=False):
     for nome in _METODOS_AGREGADOS_ITEM:
         metodo = getattr(cliente, nome, None)
         if callable(metodo):
-            agregado = carregar_cache(
-                st.session_state, token, "prontuario-agregado", lambda: metodo(token, None), force=force
+            consultas = carregar_cache(
+                st.session_state, token, "consultas", lambda: cliente.listar_consultas(token), force=force
             )
-            return {"agregado": agregado, "consultas": [], "registros": []}
+            registros = carregar_cache(
+                st.session_state, token, "registros-clinicos", lambda: cliente.listar_registros_clinicos(token), force=force
+            )
+            ids = sorted(_pacientes_disponiveis(consultas, registros))
+            agregado = []
+            for paciente_id in ids:
+                try:
+                    agregado.append(carregar_cache(
+                        st.session_state, token, f"prontuario-agregado-{paciente_id}",
+                        lambda paciente_id=paciente_id: metodo(token, paciente_id), force=force,
+                    ))
+                except ErroAcesso as error:
+                    if error.status != 404:
+                        raise
+            return {"agregado": agregado or None, "consultas": consultas, "registros": registros}
     consultas = carregar_cache(st.session_state, token, "consultas", lambda: cliente.listar_consultas(token), force=force)
     registros = carregar_cache(
         st.session_state, token, "registros-clinicos", lambda: cliente.listar_registros_clinicos(token), force=force
