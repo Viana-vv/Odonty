@@ -139,18 +139,18 @@ def revogar(estado):
                 servico().revogar(valor)
 
 
-def oferecer(estado):
+def manter(estado):
     from . import sessao
 
-    if not habilitado() or estado.get(CHAVE) or not estado.get(sessao.CHAVE):
+    if (not habilitado() or estado.get(CHAVE)
+            or estado.get("sessao_local_pendente") or not estado.get(sessao.CHAVE)):
         return
-    if st.button("Manter acesso neste navegador", key="ativar-sessao-local"):
-        pendente = estado.pop("sessao_local_pendente", None)
-        if pendente:
-            servico().revogar(pendente)
-        identificador, ticket = servico().criar(estado[sessao.CHAVE])
-        estado["sessao_local_pendente"] = identificador
-        st.markdown(
-            f'<a target="_self" href="http://localhost:8502/ativar?ticket={ticket}">'
-            'Confirmar neste navegador</a>', unsafe_allow_html=True,
-        )
+    identificador, ticket = servico().criar(estado[sessao.CHAVE])
+    estado["sessao_local_pendente"] = identificador
+    # Navegação no documento principal; o servidor emite o cookie HttpOnly
+    # e retorna ao app. A nova conexão já recebe o cookie em st.context.
+    st.html(
+        '<script>window.location.replace('
+        f'"http://localhost:8502/ativar?ticket={ticket}"'
+        ');</script>', unsafe_allow_javascript=True,
+    )

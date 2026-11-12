@@ -27,6 +27,23 @@ def test_ticket_unico_e_identificadores_isolados():
     assert memoria.recuperar(outro) is not None
 
 
+def test_login_ativa_recuperacao_automaticamente_sem_cliques(monkeypatch):
+    monkeypatch.setenv("SORRISOMAIS_SESSAO_LOCAL", "1")
+    memoria = sessao_local.SessoesLocais()
+    monkeypatch.setattr(sessao_local, "servico", lambda: memoria)
+    html = Mock()
+    monkeypatch.setattr(sessao_local.st, "html", html)
+    estado = {sessao.CHAVE: credencial()}
+    sessao_local.manter(estado)
+    script = html.call_args.args[0]
+    assert "window.location.replace" in script
+    assert "token-ficticio" not in script
+    assert html.call_args.kwargs["unsafe_allow_javascript"] is True
+    assert estado["sessao_local_pendente"] in memoria.sessoes
+    sessao_local.manter(estado)
+    html.assert_called_once()
+
+
 def test_rota_ativacao_emite_cookie_http_only_e_recusa_ticket_repetido():
     memoria = sessao_local.SessoesLocais()
     _, ticket = memoria.criar(credencial())

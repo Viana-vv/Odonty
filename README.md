@@ -151,7 +151,7 @@ O [design](openspec/changes/archive/2026-09-25-login-streamlit-xano/design.md) d
 
 O token fica no estado da sessão Streamlit. A identidade é revalidada antes da exibição protegida. O export Xano limita o prazo absoluto a oito horas, sem renovação, e `auth/me` devolve a validade emitida pelo backend. A instância publicada ainda precisa receber `AUTH_SESSION_TTL_SECONDS=28800` para aplicar esse padrão. O logout sempre limpa o estado local e informa quando não confirmou a revogação remota.
 
-Para uso apenas local, execute `python iniciar_local.py` e acesse `http://localhost:8501`. Após login, clique em **Manter acesso neste navegador** e **Confirmar neste navegador**. A sessão poderá ser recuperada após atualizar a página, com nova validação no Xano. Use sempre `localhost`, inclusive na ativação; `127.0.0.1` é outro host para cookies. As portas 8501 e 8502 precisam estar livres.
+Para uso apenas local, execute `python iniciar_local.py` e acesse `http://localhost:8501`. Após login, o aplicativo mantém o acesso automaticamente: uma navegação breve em localhost grava o cookie e retorna à tela. A sessão poderá ser recuperada após atualizar a página, com nova validação no Xano. Use sempre `localhost`; `127.0.0.1` é outro host para cookies. As portas 8501 e 8502 precisam estar livres.
 
 A recuperação local usa cookie HttpOnly, SameSite=Strict e identificador aleatório. O token permanece na memória do processo; nenhuma credencial é gravada em arquivo ou localStorage. O cookie usa HTTP local, sem Secure. A recuperação termina no logout, na expiração original ou ao encerrar o aplicativo. Essa opção não é destinada a hospedagem remota. A execução direta com `streamlit run app.py` mantém o comportamento sem persistência após recarga.
 

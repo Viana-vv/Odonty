@@ -6,7 +6,7 @@ A recarga do navegador perde o estado da conexão Streamlit e exige novo login m
 
 - Recuperar a sessão local por identificador aleatório em cookie HttpOnly.
 - Guardar a credencial somente na memória do processo Python, limitada à validade do Xano.
-- Oferecer inicializador local e ativação explícita no navegador após login.
+- Oferecer inicializador local e ativação automática no navegador após login.
 - Invalidar a recuperação ao sair e revalidar a identidade no Xano após recarga.
 
 ## Capabilities

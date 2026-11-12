@@ -191,7 +191,7 @@ except ErroAcesso as error:
 
 if conta:
     try:
-        sessao_local.oferecer(st.session_state)
+        sessao_local.manter(st.session_state)
     except OSError:
         st.warning("Não foi possível ativar a recuperação local. Confira se a porta 8502 está livre.")
     acesso_equipe.renderizar(conta, cliente, paginas_equipe)

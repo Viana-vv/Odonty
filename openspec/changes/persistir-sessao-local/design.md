@@ -8,7 +8,7 @@ Um servidor HTTP da biblioteca padrão, ligado a 127.0.0.1:8502, emite cookie ho
 
 O cookie contém identificador aleatório de 256 bits. Credenciais ficam em memória, nunca em URL, disco ou JavaScript. Um ticket de uso único, válido por 60 segundos, permite ativar o cookie em navegação de mesma aba e redireciona para endereço local fixo. O ticket é uma capacidade temporária e também não deve aparecer nos logs.
 
-O prazo é o menor entre oito horas e a validade recebida do Xano. Após recarga, a credencial recuperada passa por auth/me antes de exibir conteúdo. Logout, rejeição de autorização, expiração ou reinício removem a recuperação. Falhas temporárias preservam a credencial e bloqueiam a tela até nova validação.
+Após login, a interface executa uma navegação automática para consumir o ticket e retornar ao app. Não há botões ou confirmação adicional. O endereço de ativação é substituído no histórico. O prazo é o menor entre oito horas e a validade recebida do Xano. Após recarga, a credencial recuperada passa por auth/me antes de exibir conteúdo. Logout, rejeição de autorização, expiração ou reinício removem a recuperação. Falhas temporárias preservam a credencial e bloqueiam a tela até nova validação.
 
 ## Limites
 

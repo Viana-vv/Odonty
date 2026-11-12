@@ -3,6 +3,10 @@
 ### Requirement: Recuperar sessão local
 O sistema SHALL oferecer recuperação após recarga em localhost usando cookie HttpOnly, SameSite=Strict e identificador opaco, mantendo credenciais somente na memória e revalidando a identidade no Xano.
 
+#### Scenario: Login concluído
+- **WHEN** o login é validado no modo local
+- **THEN** a persistência é ativada automaticamente e retorna ao app sem botões ou confirmação adicional.
+
 #### Scenario: Recarga com sessão válida
 - **WHEN** o navegador possui identificador local válido após ativação
 - **THEN** a credencial é recuperada e validada no Xano antes de exibir conteúdo protegido.
