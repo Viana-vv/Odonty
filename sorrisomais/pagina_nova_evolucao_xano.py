@@ -92,7 +92,8 @@ def renderizar(cliente, conta, consultas, *, pacientes=None):
                 elif error.status == 403:
                     st.error("Sua Conta de Acesso não tem permissão para registrar esta evolução.")
                 elif error.status == 404:
-                    st.error("Paciente, Prontuário ou Consulta não encontrados no escopo permitido.")
+                    st.error(str(error) if error.codigo in {"RECURSO_NAO_ENCONTRADO", "ROTA_NAO_PUBLICADA"} else
+                             "Paciente, Prontuário ou Consulta não encontrados no escopo permitido.")
                 else:
                     st.error("Não foi possível confirmar o Registro Clínico. Atualize o histórico antes de tentar novamente.")
                 return
