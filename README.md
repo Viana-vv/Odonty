@@ -16,7 +16,7 @@ Administrador, Recepcionista e Dentista usam a mesma entrada da equipe. O perfil
 
 | Usuário | Entrada local | Caminhos na interface |
 |---|---|---|
-| Administrador | `http://localhost:8501` · [app.py](app.py) | Login → Visão geral → Agenda, Pacientes, Profissionais, Procedimentos ou Reagendamento. Atalhos: Cadastrar paciente e Cadastrar profissional. |
+| Administrador | `http://localhost:8501` · [app.py](app.py) | Login → Visão geral → Agenda, Pacientes, Profissionais, Procedimentos ou Reagendamento. Atalhos: Cadastrar paciente, Cadastrar profissional e Cadastrar recepcionista. |
 | Recepcionista | `http://localhost:8501` · [app.py](app.py) | Login → Visão geral → Agenda, Pacientes, Profissionais ou Reagendamento. Atalho: Cadastrar paciente. |
 | Dentista / Profissional | `http://localhost:8501` · [app.py](app.py) | Login → Visão geral → Agenda, Prontuários ou Exames. Na Agenda: gerenciar as próprias Consultas e acessar os Procedimentos da Consulta. |
 | Paciente | `http://localhost:8503` · [portal_paciente.py](portal_paciente.py) | Login do portal → Consultas futuras ou passadas, Informações liberadas e Exames. |
@@ -122,6 +122,34 @@ O catálogo **Procedimentos** pode ser consultado por Administrador e Recepcioni
 </details>
 
 As capturas desta seção mostram componentes reais da interface renderizados com o cliente visual de `tests/visual/app_referencias.py`, dados inteiramente fictícios e respostas simuladas, sem chamadas ao Xano. Foram capturadas em 12/11/2026, em resolução de 1365 × 950, com altura expandida quando necessário. São exemplos visuais, não comprovação de integração publicada. As permissões efetivas continuam sendo verificadas pelo Xano.
+
+### Cadastrar Recepcionista
+
+Como Administrador, abra **Cadastros integrados → Cadastrar recepcionista**.
+Preencha nome (2 a 120 caracteres), e-mail válido (até 254 caracteres), senha
+inicial (12 a 128 caracteres) e confirmação. Depois do sucesso, a Conta de
+Acesso fica disponível na listagem e pode entrar pelo login da equipe.
+
+O `POST /contas-acesso/recepcionistas` exige uma sessão ativa de Administrador.
+Recebe somente `nome`, `email` e `senha` e responde com HTTP 201 e
+`conta` contendo `id`, `nome`, `email`, `perfis` e `situacao`. O Xano
+normaliza o e-mail, recusa duplicidade com HTTP 409 e atribui o perfil único
+`recepcionista` e a situação `ativo`. Se a resposta for inconclusiva, confira
+a lista de Contas de Acesso antes de reenviar.
+
+O [export da rota](backend/xano/api/sorriso_acesso/contas_acesso_recepcionistas_POST.xs)
+foi publicado no grupo **Sorriso Acesso**. O ambiente publicado retornou
+HTTP 401 sem sessão e o export remoto preservou a validação da sessão e o
+acesso à tabela de Contas de Acesso. A criação com uma conta fictícia
+autenticada ainda precisa de verificação no Xano.
+
+A validação local usa dados fictícios e dispensa rede:
+
+```powershell
+python -m pytest -q tests/api_contracts/test_contas_acesso_recepcionistas_post.py tests/test_cadastro_recepcionista.py tests/test_navegacao.py tests/test_roteamento_equipe_xano.py tests/test_cache_xano.py
+node --test tests/js/api_contracts/contas-acesso-recepcionistas-post.test.mjs
+openspec validate cadastrar-recepcionista-admin --strict
+```
 
 ## Executar localmente
 

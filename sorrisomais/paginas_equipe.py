@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 import streamlit as st
 
 from .api import ErroAcesso, ROTULOS
-from . import sessao, pagina_paciente, navegacao, ilustracoes
+from . import sessao, pagina_paciente, navegacao, ilustracoes, cadastro_recepcionista
 from .cache_xano import carregar_cache, invalidar_cache
 from .icones import icone_html, icone_metrica
 
@@ -1044,6 +1044,9 @@ def renderizar(conta, cliente):
     if (pagina_anterior != "procedimentos_consulta" and contexto is not None
             or isinstance(contexto, dict) and contexto.get("sessao") != identidade_atual):
         st.session_state.pop(CHAVE_CONSULTA_PROCEDIMENTOS, None)
+    if st.session_state.pop(cadastro_recepcionista.SUCESSO, False):
+        cadastro_recepcionista.limpar()
+        st.success("Recepcionista cadastrado. A conta j? pode entrar pelo login da equipe.")
     if st.session_state.pop("pac_sucesso", False):
         st.success("Paciente cadastrado com prontuário vazio. Este cadastro não cria login.")
     paciente_exclusivo = perfis == {"paciente"}
@@ -1051,6 +1054,7 @@ def renderizar(conta, cliente):
     pode_cadastrar_paciente = (cliente.configuracao.cadastro_paciente_habilitado
                               and bool(set(conta.perfis) & {"administrador", "recepcionista"}))
     if not administrador:
+        cadastro_recepcionista.limpar()
         limpar_formulario()
         if st.session_state.get("pagina_equipe") == "cadastro":
             st.session_state.pop("pagina_equipe", None)
@@ -1071,6 +1075,7 @@ def renderizar(conta, cliente):
         st.session_state["pagina_equipe"] = pagina
     ocupado = (st.session_state.get("cad_processando", False)
                or st.session_state.get("pac_processando", False))
+    cadastro_recepcionista.renderizar(cliente, conta)
     with st.container(key="layout-equipe"):
         menu, conteudo = st.columns([0.205, 0.795], gap="medium", vertical_alignment="top")
         with menu:
@@ -1109,6 +1114,9 @@ def renderizar(conta, cliente):
                     st.button("Cadastrar profissional", on_click=abrir_cadastro,
                               key="menu-cadastrar-profissional", disabled=ocupado or pagina == "cadastro",
                               width="stretch")
+                    st.button("Cadastrar recepcionista", key="menu-cadastrar-recepcionista",
+                              on_click=cadastro_recepcionista.abrir,
+                              disabled=ocupado, width="stretch")
                 st.divider()
                 st.caption("SEU ACESSO")
                 st.text(conta.nome)

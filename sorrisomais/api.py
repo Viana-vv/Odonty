@@ -398,6 +398,38 @@ class ClienteXano:
                 error.status,
             ) from None
 
+    def cadastrar_recepcionista(self, token, nome, email, senha):
+        self._token_obrigatorio(token)
+        nome = nome.strip() if isinstance(nome, str) else ""
+        email = email.strip().lower() if isinstance(email, str) else ""
+        if not 2 <= len(nome) <= 120:
+            raise ErroAcesso("Informe um nome com 2 a 120 caracteres.", 400)
+        if len(email) > 254 or not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", email):
+            raise ErroAcesso("Informe um e-mail válido de até 254 caracteres.", 400)
+        if not isinstance(senha, str) or not 12 <= len(senha) <= 128:
+            raise ErroAcesso("Informe uma senha de 12 a 128 caracteres.", 400)
+        try:
+            data = self._request("POST", "/contas-acesso/recepcionistas", token=token,
+                                 payload={"nome": nome, "email": email, "senha": senha},
+                                 status_esperado=201)
+            conta = self._item_resposta(data, "conta", {
+                "nome": str, "email": str, "perfis": list, "situacao": str,
+            })
+            if (set(data) != {"conta"} or set(data["conta"]) != set(conta)
+                    or conta["nome"] != nome or conta["email"] != email
+                    or conta["perfis"] != ["recepcionista"] or conta["situacao"] != "ativo"):
+                raise ErroAcesso()
+            return conta["id"]
+        except ErroAcesso as error:
+            if error.status == 409:
+                raise ErroAcesso("E-mail já cadastrado.", 409) from None
+            if error.status in (400, 401, 403, 429):
+                raise
+            raise ErroAcesso(
+                "Não foi possível confirmar o cadastro. Confira a lista de Contas de Acesso "
+                "antes de tentar novamente.", error.status,
+            ) from None
+
     def listar_profissionais(self, token):
         """Lista Profissionais ativos e inativos autorizados pelo Xano."""
         self._token_obrigatorio(token)

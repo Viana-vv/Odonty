@@ -26,7 +26,8 @@ def limpar(estado):
     estado.pop("agenda_xano_cache", None)
     estado.pop("agenda_xano_erro_em", None)
     for chave in list(estado):
-        if chave.startswith(("cad_", "pac_", "pacientes_xano_edicao_", "prontuario_", "nova-evolucao-")):
+        if chave.startswith(("cad_", "pac_", "pacientes_xano_edicao_", "prontuario_",
+                             "nova-evolucao-", "recepcao_cadastro_")):
             estado.pop(chave, None)
 
 
