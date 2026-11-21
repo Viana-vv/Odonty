@@ -10,7 +10,7 @@
 
 - [x] 3.1 Executar regressões e validação OpenSpec e atualizar a documentação com o contrato exclusivo.
 - [x] 3.2 Publicar somente a nova rota Xano e verificar a listagem e a autorização sem alterar cadastros existentes.
-- [ ] 3.3 Criar commit e Pull Request da Issue #146 com resultado dos testes e orientação de revisão.
+- [x] 3.3 Criar commit e Pull Request da Issue #146 com resultado dos testes e orientação de revisão.
 
 ## Verificação em 21/11/2026
 
@@ -18,4 +18,5 @@
 - Verificação real: sem autenticação → 401; Recepcionista e Administrador → 200 com 15 Pacientes e somente `id`/`nome`; Profissional e Paciente → 403. Logout executado e as quatro Contas de Acesso fictícias criadas para verificação foram inativadas.
 - Contratos JavaScript: 51 testes aprovados. Validação estrita OpenSpec e `git diff --check` sem erros.
 - Regressão Python final: 347 testes aprovados, 7 subtestes aprovados e 1 caso preexistente excluído (`-k 'not falha_revalidacao'`), cobrindo contratos REST, listagem, roteamento, cache e cadastro de Paciente.
+- Entrega: branch `fix/146-listagem-pacientes`, commit de implementação `5be5c37` e [PR #147](https://github.com/Viana-vv/Odonty/pull/147), com revisão solicitada a `viinisoares`. Frontend hospedado depende da integração e implantação do PR; rota Xano já disponível.
 - A regressão ampliada encontrou `test_saida_limpa_dados[falha_revalidacao]` falhando também no código original de `HEAD`, comprovado por execução isolada antes de restaurar as alterações desta correção. Trata-se da limpeza do formulário após indisponibilidade da revalidação, fora do escopo da listagem. O teste permanece inalterado; a execução final das regressões exclui somente esse caso conhecido.
