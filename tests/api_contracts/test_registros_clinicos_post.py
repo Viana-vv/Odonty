@@ -2,6 +2,7 @@ import pytest
 from pathlib import Path
 
 from conftest import resposta
+from sorrisomais.api import ErroAcesso
 from sorrisomais.contratos_clinicos import DadosContratoInvalidos
 
 
@@ -29,11 +30,39 @@ def test_post_registros_clinicos_rejeita_conteudo_vazio_sem_rede(cliente, http):
     http.assert_not_called()
 
 
+@pytest.mark.parametrize(("mensagem", "trecho"), [
+    ("Prontuário não encontrado para o Paciente.", "Prontuário ativo"),
+    ("Consulta não encontrada no escopo permitido.", "Consulta selecionada"),
+    ("Paciente não encontrado no escopo permitido.", "vínculo na Agenda"),
+    ("Detalhe interno fictício", "Paciente, Prontuário ou Consulta"),
+])
+def test_post_registros_clinicos_traduz_apenas_detalhes_conhecidos(cliente, http, mensagem, trecho):
+    http.return_value = resposta({
+        "codigo": "RECURSO_NAO_ENCONTRADO", "mensagem": mensagem,
+    }, 404)
+    with pytest.raises(ErroAcesso) as erro:
+        cliente.registrar_clinico("token-ficticio", 4, "Evolução fictícia", consulta_id=9)
+    assert erro.value.status == 404
+    assert trecho in str(erro.value)
+    assert "Detalhe interno" not in str(erro.value)
+    http.assert_called_once()
+
+
+def test_post_registros_clinicos_distingue_rota_nao_publicada(cliente, http):
+    http.return_value = resposta({
+        "code": "ERROR_CODE_NOT_FOUND", "message": "Unable to locate request.",
+    }, 404)
+    with pytest.raises(ErroAcesso, match="ainda não está publicado") as erro:
+        cliente.registrar_clinico("token-ficticio", 4, "Evolução fictícia", consulta_id=9)
+    assert erro.value.codigo == "ROTA_NAO_PUBLICADA"
+    http.assert_called_once()
+
+
 def test_post_registros_clinicos_sem_consulta_explicita_exige_vinculo_profissional_paciente():
     caminho = (Path(__file__).resolve().parents[2] / "backend" / "xano" / "api"
                / "sorriso_acesso" / "registros_clinicos_POST.xs")
     codigo = caminho.read_text(encoding="utf-8-sig")
-    assert '($solicitante.perfis|includes:"profissional") == false' in codigo
+    assert '($solicitante.perfis|intersect:["profissional"]|count) == 0' in codigo
     assert "db.query consulta" in codigo
     assert "$db.consulta.paciente_id == $paciente.id && $db.consulta.profissional_id == $profissional.id" in codigo
     assert 'if ($consulta_escopo == null)' in codigo

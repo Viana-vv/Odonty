@@ -151,6 +151,29 @@ class ClienteXano:
             if route == "/auth/logout" and status in (204, 401):
                 return None
             if status != status_esperado:
+                if method == "POST" and route == "/registros-clinicos" and status == 404:
+                    try:
+                        corpo = response.json()
+                    except ValueError:
+                        corpo = None
+                    mensagens = {
+                        "Prontuário não encontrado para o Paciente.":
+                            "O Paciente não possui um Prontuário ativo. Solicite a regularização do cadastro.",
+                        "Consulta não encontrada no escopo permitido.":
+                            "A Consulta selecionada não está disponível para este Paciente no seu escopo. Confira a Agenda e escolha uma Consulta autorizada.",
+                        "Paciente não encontrado no escopo permitido.":
+                            "O Paciente não está disponível no seu escopo. Confira o cadastro e o vínculo na Agenda.",
+                    }
+                    mensagem = "Paciente, Prontuário ou Consulta não encontrados no escopo permitido."
+                    codigo = "RECURSO_NAO_ENCONTRADO"
+                    if isinstance(corpo, dict) and corpo.get("code") == "ERROR_CODE_NOT_FOUND" and corpo.get("message") == "Unable to locate request.":
+                        mensagem = "O serviço de salvamento de Evolução Clínica ainda não está publicado. Solicite a publicação ao responsável pelo sistema."
+                        codigo = "ROTA_NAO_PUBLICADA"
+                    elif isinstance(corpo, dict) and corpo.get("codigo") == "RECURSO_NAO_ENCONTRADO":
+                        detalhe = corpo.get("mensagem")
+                        if isinstance(detalhe, str):
+                            mensagem = mensagens.get(detalhe, mensagem)
+                    raise ErroAcesso(mensagem, status, codigo)
                 if route == "/disponibilidades" and status == 400:
                     raise ErroAcesso(
                         "O Xano recusou o intervalo. Confira se o Profissional está ativo, "
