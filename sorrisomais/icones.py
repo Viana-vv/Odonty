@@ -80,7 +80,8 @@ def estilos_icones() -> str:
     exatos = {"menu-inicio": "home", "menu-agenda": "calendar", "menu-pacientes": "users",
               "menu-profissionais": "user", "menu-prontuarios": "file-text", "menu-procedimentos": "tool",
               "menu-exames": "scan", "menu-reagendar_consulta": "repeat", "menu-contas_acesso": "shield-check",
-              "menu-cadastrar-paciente": "user-plus", "menu-cadastrar-profissional": "user-plus", "sair": "log-out", "paciente-sair": "log-out"}
+              "menu-cadastrar-paciente": "user-plus", "menu-cadastrar-profissional": "user-plus",
+              "menu-cadastrar-recepcionista": "user-plus", "sair": "log-out", "paciente-sair": "log-out"}
     for chave, nome in exatos.items():
         css.append(f'.st-key-{chave} {{ --icone-acao:{_mascara(nome)};--icone-acao-display:inline-block;--icone-acao-tamanho:20px;}}')
         if chave.startswith("menu-"):
