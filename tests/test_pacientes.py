@@ -164,6 +164,9 @@ def paciente_api(api, monkeypatch):
     monkeypatch.setattr(ClienteXano, "listar_opcoes_agenda", opcoes)
     api["listar_consultas"] = consultas
     api["listar_opcoes_agenda"] = opcoes
+    pacientes = Mock(return_value=[])
+    monkeypatch.setattr(ClienteXano, "listar_pacientes", pacientes)
+    api["listar_pacientes"] = pacientes
     return api
 
 
@@ -377,6 +380,8 @@ def renderizar_pagina_paciente_isolada(cliente):
 
 def cache_opcoes_ficticias(token):
     return {
+        (sha256(token.encode("utf-8")).hexdigest(), "pacientes"):
+            [{"id": 1, "nome": "Paciente Fictício"}],
         (sha256(token.encode("utf-8")).hexdigest(), "agenda/opcoes"):
             {"pacientes": [{"id": 1}], "profissionais": [], "procedimentos": []},
     }
@@ -436,9 +441,7 @@ def test_rejeicao_de_cadastro_nao_invalida_cache():
 
 def test_sucesso_volta_a_lista_faz_um_get_e_exibe_paciente_novo(paciente_api):
     pacientes = [{"id": 11, "nome": "Paciente Fictício Existente"}]
-    paciente_api["listar_opcoes_agenda"].side_effect = lambda _token: {
-        "pacientes": [item.copy() for item in pacientes], "profissionais": [], "procedimentos": [],
-    }
+    paciente_api["listar_pacientes"].side_effect = lambda _token: [item.copy() for item in pacientes]
 
     def cadastrar(_token, **_dados):
         pacientes.append({"id": 12, "nome": DADOS["nome"]})
@@ -446,14 +449,14 @@ def test_sucesso_volta_a_lista_faz_um_get_e_exibe_paciente_novo(paciente_api):
 
     paciente_api["cadastrar_paciente"].side_effect = cadastrar
     app = formulario(paciente_api)
-    chamadas_antes_do_post = paciente_api["listar_opcoes_agenda"].call_count
+    chamadas_antes_do_post = paciente_api["listar_pacientes"].call_count
     preencher(app)
     botao(app, "Cadastrar").click().run()
 
     assert not app.exception
     assert app.session_state["pagina_equipe"] == "pacientes"
     assert paciente_api["cadastrar_paciente"].call_count == 1
-    assert paciente_api["listar_opcoes_agenda"].call_count == chamadas_antes_do_post + 1
+    assert paciente_api["listar_pacientes"].call_count == chamadas_antes_do_post + 1
     assert any(DADOS["nome"] in item.value for item in app.markdown)
 
 

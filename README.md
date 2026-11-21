@@ -323,6 +323,10 @@ Arquivos de credenciais locais de outra máquina não são necessários e não d
 
 O fluxo está publicado e funcionando no Xano para Administrador e Recepcionista. A integração real foi aprovada em 62 testes no grupo temporário; criação e reenvio idempotente foram confirmados no endpoint publicado. A interface também foi verificada no navegador para os dois perfis em computador, tablet e celular, com navegação por teclado. O cadastro cria um Paciente e seu Prontuário; não cria Conta de Acesso para o Paciente. Use somente dados fictícios.
 
+### Listagem de Pacientes
+
+A tela **Pacientes** usa `GET /pacientes`, autenticado e autorizado no Xano somente para Administrador e Recepcionista. Retorna `{"pacientes": [{"id": 123, "nome": "Paciente Fictício"}]}` com os Pacientes ativos ordenados por nome e identificador. Uma lista vazia é válida. A listagem usa cache privado da sessão e o botão **Atualizar** refaz a leitura; cadastro e edição invalidam esse cache. Profissionais e Procedimentos são carregados separadamente nas opções da Agenda e não interferem nessa tela.
+
 ### Cadastro de pacientes — detalhes da implementação
 
 O endpoint de cadastro foi publicado e validado no Xano em 27/09/2026. **Cadastrar paciente** fica disponível por padrão para Administrador e Recepcionista autenticados. Para ocultar a ação em uma implantação, defina `XANO_CADASTRO_PACIENTE_HABILITADO=0` antes de iniciar o Streamlit. Essa opção controla apenas a interface; a autorização efetiva é aplicada no endpoint.

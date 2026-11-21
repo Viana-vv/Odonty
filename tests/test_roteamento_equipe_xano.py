@@ -24,6 +24,7 @@ def cliente_teste():
             modo_demonstracao=False,
             cadastro_paciente_habilitado=True,
         ),
+        listar_pacientes=Mock(return_value=[{"id": 11, "nome": "Paciente Fictícia Aurora"}]),
         listar_opcoes_agenda=Mock(return_value={
             "pacientes": [{"id": 11, "nome": "Paciente Fictícia Aurora"}],
             "profissionais": [],
@@ -77,7 +78,7 @@ def test_menu_conectado_abre_listagem_de_pacientes_sem_rede():
     app.button(key="menu-pacientes").click().run()
 
     assert any("Paciente Fictícia Aurora" in item.value for item in app.markdown)
-    cliente.listar_opcoes_agenda.assert_called_once_with("token-ficticio")
+    cliente.listar_pacientes.assert_called_once_with("token-ficticio")
 
 
 def test_modulos_ausentes_ficam_desabilitados_no_menu(monkeypatch):
