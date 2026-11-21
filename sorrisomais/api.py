@@ -534,6 +534,11 @@ class ClienteXano:
             resultado.append(normalizado)
         return resultado
 
+    def listar_pacientes(self, token):
+        self._token_obrigatorio(token)
+        data = self._request("GET", "/pacientes", token=token)
+        return self._lista_resposta(data, "pacientes", {"nome": str})
+
     def listar_opcoes_agenda(self, token):
         self._token_obrigatorio(token)
         data = self._request("GET", "/agenda/opcoes", token=token)

@@ -17,14 +17,13 @@ CHAVE_MENSAGEM = "pacientes_xano_mensagem"
 
 def _carregar_pacientes(cliente, credencial, atualizar=False):
     """Carrega a lista no cache privado da sessão autenticada."""
-    opcoes = cache_xano.carregar_cache(
+    return cache_xano.carregar_cache(
         st.session_state,
         credencial.token,
-        "agenda/opcoes",
-        lambda: cliente.listar_opcoes_agenda(credencial.token),
+        "pacientes",
+        lambda: cliente.listar_pacientes(credencial.token),
         force=atualizar,
     )
-    return opcoes["pacientes"]
 
 
 def _limpar_edicao():
@@ -106,7 +105,7 @@ def _renderizar_edicao(cliente, credencial, edicao):
 
 
 def renderizar(cliente, conta):
-    """Renderiza a listagem usando exclusivamente as opções da Agenda no Xano."""
+    """Renderiza a listagem administrativa exclusiva de Pacientes no Xano."""
 
     mensagem = st.session_state.pop(CHAVE_MENSAGEM, None)
     if mensagem:
