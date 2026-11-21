@@ -410,12 +410,14 @@ class ClienteXano:
         for item in itens:
             if (not isinstance(item, dict) or type(item.get("id")) is not int
                     or item["id"] <= 0 or item["id"] in vistos
-                    or not isinstance(item.get("nome"), str) or not item["nome"].strip()
-                    or not isinstance(item.get("cro"), str) or not item["cro"].strip()
+                    or not isinstance(item.get("nome"), str)
+                    or not isinstance(item.get("cro"), str)
                     or item.get("situacao") not in ("ativo", "inativo")):
                 raise ErroAcesso()
             especialidade = item.get("especialidade")
-            if (not isinstance(especialidade, dict)
+            if "especialidade" not in item:
+                raise ErroAcesso()
+            if especialidade is not None and (not isinstance(especialidade, dict)
                     or type(especialidade.get("id")) is not int
                     or especialidade["id"] <= 0
                     or not isinstance(especialidade.get("nome"), str)
@@ -429,7 +431,8 @@ class ClienteXano:
             vistos.add(item["id"])
             resultado.append({
                 "id": item["id"], "nome": item["nome"], "cro": item["cro"],
-                "especialidade": {"id": especialidade["id"], "nome": especialidade["nome"]},
+                "especialidade": ({"id": especialidade["id"], "nome": especialidade["nome"]}
+                                  if especialidade is not None else None),
                 "email": email, "telefone": telefone, "situacao": item["situacao"],
             })
         return resultado
@@ -538,6 +541,11 @@ class ClienteXano:
         self._token_obrigatorio(token)
         data = self._request("GET", "/pacientes", token=token)
         return self._lista_resposta(data, "pacientes", {"nome": str})
+
+    def listar_procedimentos(self, token):
+        self._token_obrigatorio(token)
+        data = self._request("GET", "/procedimentos", token=token)
+        return self._lista_resposta(data, "procedimentos", {"nome": str})
 
     def listar_opcoes_agenda(self, token):
         self._token_obrigatorio(token)

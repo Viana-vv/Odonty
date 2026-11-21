@@ -28,6 +28,27 @@ def test_get_profissionais_rejeita_contrato_invalido(cliente, http):
         cliente.listar_profissionais("token-ficticio")
 
 
+def test_get_profissionais_preserva_cadastro_incompleto(cliente, http):
+    incompleto = {"id": 26, "nome": "", "cro": "", "especialidade": None,
+                  "email": None, "telefone": None, "situacao": "ativo"}
+    completo = {**incompleto, "id": 27, "nome": "Profissional Fictício", "cro": "SP-123",
+                "especialidade": {"id": 1, "nome": "Clínica geral"}}
+    http.return_value = resposta({"profissionais": [incompleto, completo]})
+    assert cliente.listar_profissionais("token-ficticio") == [incompleto, completo]
+
+
+@pytest.mark.parametrize("alteracao", [
+    {"id": True}, {"nome": None}, {"cro": 123}, {"situacao": "desconhecida"},
+    {"especialidade": {}}, {"especialidade": {"id": 0, "nome": "Exemplo"}},
+])
+def test_get_profissionais_nao_confunde_tipo_invalido_com_cadastro_incompleto(cliente, http, alteracao):
+    item = {"id": 26, "nome": "", "cro": "", "especialidade": None,
+            "email": None, "telefone": None, "situacao": "ativo"}
+    http.return_value = resposta({"profissionais": [item | alteracao]})
+    with pytest.raises(ErroAcesso):
+        cliente.listar_profissionais("token-ficticio")
+
+
 def test_export_get_profissionais_restringe_campos_e_autorizacao():
     path = Path(__file__).resolve().parents[2] / "backend/xano/api/sorriso_acesso/profissionais_GET.xs"
     source = path.read_text(encoding="utf-8-sig")
@@ -36,3 +57,5 @@ def test_export_get_profissionais_restringe_campos_e_autorizacao():
     assert 'intersect:["administrador", "recepcionista"]' in source
     assert '"cpf"' not in source and '"conta_acesso_id"' not in source
     assert 'response = {profissionais: $resultado}' in source
+    assert "especialidade: $especialidade" in source
+    assert "$especialidade.id" not in source

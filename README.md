@@ -98,6 +98,8 @@ Cadastrar um Paciente pela equipe cria o cadastro da pessoa atendida e seu Pront
 
 **Caminho:** menu Profissionais. O cadastro de Profissional é exclusivo do Administrador, pela ação Cadastrar profissional.
 
+Cadastros legados com nome ou CRO vazio ou especialidade ausente aparecem como **Cadastro incompleto**, com identificador e campos não informados, sem impedir a leitura dos demais. A tela **Reagendar consulta** carrega Pacientes e Profissionais por suas rotas próprias e oferece somente Profissionais ativos com cadastro completo; não depende das opções da Agenda nem da lista de Procedimentos.
+
 ![Listagem de Profissionais](docs/imagens/telas/profissionais.png)
 
 ![Formulário de cadastro de Profissional](docs/imagens/telas/cadastro-profissional.png)
@@ -106,6 +108,8 @@ Cadastrar um Paciente pela equipe cria o cadastro da pessoa atendida e seu Pront
 
 <details>
 <summary>Procedimentos, Prontuários e Exames</summary>
+
+O catálogo **Procedimentos** pode ser consultado por Administrador e Recepcionista. Usa GET `/procedimentos`, com autenticação e autorização no Xano, e retorna somente identificador e nome dos Procedimentos ativos. A leitura e o cache são independentes das opções da Agenda. GET `/agenda/opcoes` omite cadastros sem nome e Profissionais sem CRO ou vínculo positivo de Especialidade, preservando os registros na gestão e no histórico.
 
 **Caminhos:** Administrador → Procedimentos; Dentista → Prontuários; Dentista → Exames.
 

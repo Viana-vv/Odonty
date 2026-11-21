@@ -21,15 +21,27 @@ class ClienteFicticio(ClienteXano):
     def __init__(self):
         pass
     def listar_opcoes_agenda(self, token):
+        raise AssertionError('Reagendamento não deve consultar opções da Agenda')
+    def listar_pacientes(self, token):
         st.session_state['leituras_opcoes'] = st.session_state.get('leituras_opcoes', 0) + 1
         if {falha!r} == 'opcoes_401':
             raise ErroAcesso('Sua sessão expirou.', 401)
         if {falha!r} == 'opcoes_403':
             raise ErroAcesso('Sua conta não tem permissão.', 403)
         if {falha!r} == 'sem_opcoes':
-            return {{'pacientes': [], 'profissionais': []}}
-        return {{'pacientes': [{{'id': 1, 'nome': 'Paciente Fictício'}}, {{'id': 2, 'nome': 'Outro Paciente Fictício'}}],
-                'profissionais': [{{'id': 8, 'nome': 'Profissional Fictício'}}, {{'id': 9, 'nome': 'Outro Profissional Fictício'}}]}}
+            return []
+        return [{{'id': 1, 'nome': 'Paciente Fictício'}}, {{'id': 2, 'nome': 'Outro Paciente Fictício'}}]
+    def listar_profissionais(self, token):
+        st.session_state['leituras_profissionais'] = st.session_state.get('leituras_profissionais', 0) + 1
+        if {falha!r} in ('profissionais_401', 'profissionais_403'):
+            raise ErroAcesso('Sua sessão expirou.' if {falha!r} == 'profissionais_401' else 'Sua conta não tem permissão.',
+                             401 if {falha!r} == 'profissionais_401' else 403)
+        dados = [{{'id': 8, 'nome': 'Profissional Fictício', 'cro': 'SP-123', 'especialidade': {{'id': 1, 'nome': 'Exemplo'}}, 'situacao': 'ativo'}},
+                 {{'id': 9, 'nome': 'Outro Profissional Fictício', 'cro': 'SP-456', 'especialidade': {{'id': 1, 'nome': 'Exemplo'}}, 'situacao': 'ativo'}}]
+        if {falha!r} in ('incompleto', 'somente_incompleto'):
+            incompleto = {{'id': 26, 'nome': '', 'cro': '', 'especialidade': None, 'situacao': 'ativo'}}
+            return [incompleto] if {falha!r} == 'somente_incompleto' else dados + [incompleto]
+        return dados
     def listar_consultas(self, token, paciente_id=None):
         if {falha!r} == 'consultas_503':
             raise ErroAcesso('Detalhe interno secreto', 503)
@@ -124,10 +136,10 @@ def test_credencial_ausente_nao_consulta_api():
     assert "leituras_opcoes" not in app.session_state
 
 
-@pytest.mark.parametrize("falha", ["opcoes_401", "horarios_401", "envio_401"])
+@pytest.mark.parametrize("falha", ["opcoes_401", "profissionais_401", "horarios_401", "envio_401"])
 def test_expiracao_limpa_credencial_em_todas_as_etapas(falha):
     app = _abrir(falha=falha)
-    if falha != "opcoes_401":
+    if falha not in ("opcoes_401", "profissionais_401"):
         _selecionar_consulta(app)
     if falha == "envio_401":
         _enviar(app)
@@ -138,8 +150,9 @@ def test_expiracao_limpa_credencial_em_todas_as_etapas(falha):
     assert not app.success
 
 
-def test_403_mantem_sessao_e_informa_permissao():
-    app = _abrir(falha="opcoes_403")
+@pytest.mark.parametrize("falha", ["opcoes_403", "profissionais_403"])
+def test_403_mantem_sessao_e_informa_permissao(falha):
+    app = _abrir(falha=falha)
     assert any("não tem permissão" in item.value for item in app.error)
     assert "credencial" in app.session_state
 
@@ -211,4 +224,25 @@ def test_cancelar_volta_para_agenda_sem_mutacao():
     app = _selecionar_consulta(_abrir())
     next(item for item in app.button if item.label == "Cancelar").click().run()
     assert app.session_state["pagina_equipe"] == "agenda"
+    assert "chamadas_mutacao" not in app.session_state
+
+
+def test_recepcionista_reagenda_com_cadastro_incompleto_sem_consultar_agenda_opcoes():
+    app = _selecionar_consulta(_abrir(falha="incompleto"))
+    assert not app.exception
+    assert not app.error
+    assert len(app.selectbox(key="reagendar-consulta-profissional").options) == 2
+    assert any("cadastro incompleto" in item.value for item in app.info)
+    app = _enviar(app)
+    assert not app.exception
+    assert app.session_state["chamadas_mutacao"] == 1
+    assert app.success
+
+
+def test_sem_profissionais_completos_nao_oferece_envio():
+    app = _abrir(falha="somente_incompleto")
+    assert not app.exception
+    assert not app.error
+    assert any("cadastro incompleto" in item.value for item in app.info)
+    assert not app.selectbox
     assert "chamadas_mutacao" not in app.session_state

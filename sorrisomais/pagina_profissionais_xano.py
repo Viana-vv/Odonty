@@ -92,14 +92,18 @@ def renderizar(cliente, conta):
     st.caption(f"{len(profissionais)} profissional(is)")
     colunas = st.columns(3, gap="medium")
     for indice, profissional in enumerate(profissionais):
+        nome = profissional["nome"].strip() or f"Profissional #{profissional['id']}"
+        especialidade = profissional["especialidade"]
         coluna = colunas[indice % len(colunas)]
         with coluna:
             with st.container(border=True, key=f"profissional-xano-{profissional['id']}"):
                 avatar, resumo = st.columns([1, 2], vertical_alignment="center")
-                avatar.markdown(f"### {_iniciais(profissional['nome'])}")
-                resumo.caption(profissional["cro"])
-                st.subheader(profissional["nome"])
-                st.write(f"Especialidade: {profissional['especialidade']['nome']}")
+                avatar.markdown(f"### {_iniciais(nome)}")
+                resumo.caption(profissional["cro"].strip() or "CRO não informado")
+                st.subheader(nome)
+                if not profissional["nome"].strip() or not profissional["cro"].strip() or especialidade is None:
+                    st.caption("Cadastro incompleto — solicite a correção ao responsável.")
+                st.write(f"Especialidade: {especialidade['nome'] if especialidade else 'Não informada'}")
                 st.write(f"E-mail: {profissional['email'] or 'Não informado'}")
                 st.write(f"Telefone: {profissional['telefone'] or 'Não informado'}")
                 resultado = _situacao_card(

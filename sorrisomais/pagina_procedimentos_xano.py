@@ -22,7 +22,7 @@ def renderizar(cliente, conta):
     st.title("Procedimentos")
     st.write("Consulte os Procedimentos disponíveis.")
 
-    if "administrador" not in set(getattr(conta, "perfis", ())):
+    if not {"administrador", "recepcionista"}.intersection(getattr(conta, "perfis", ())):
         st.info("Seu perfil não tem acesso ao catálogo de Procedimentos.")
         return
 
@@ -35,8 +35,7 @@ def renderizar(cliente, conta):
     busca = st.text_input("Buscar Procedimento", key="procedimentos_xano_busca").strip()
     atualizar = st.button("Atualizar cat\u00e1logo", key="procedimentos_xano_atualizar")
     try:
-        opcoes = carregar_cache(st.session_state, token, "agenda/opcoes", lambda: cliente.listar_opcoes_agenda(token), force=atualizar)
-        procedimentos = opcoes["procedimentos"]
+        procedimentos = carregar_cache(st.session_state, token, "procedimentos", lambda: cliente.listar_procedimentos(token), force=atualizar)
     except ErroAcesso as error:
         if error.status in (401, 403):
             sessao.limpar(st.session_state)

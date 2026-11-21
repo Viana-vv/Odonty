@@ -8,4 +8,6 @@ test('GET /profissionais possui rota e export administrativo protegido', () => {
   assert.match(source, /administrador.*recepcionista/);
   assert.match(source, /especialidade_id/);
   assert.doesNotMatch(source, /conta_acesso_id|cpf|conteudo_clinico/);
+  assert.match(source, /especialidade: \$especialidade\s/);
+  assert.doesNotMatch(source, /\$especialidade\.(id|nome)/);
 });

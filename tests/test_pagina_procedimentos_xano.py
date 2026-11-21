@@ -14,8 +14,8 @@ def abrir_catalogo(monkeypatch, perfil="administrador", resposta=None, erro=None
     conta = ContaAcesso(1, "Conta Fictícia", (perfil,), validade)
     monkeypatch.setattr(ClienteXano, "entrar", Mock(return_value=Credencial("token-ficticio", validade)))
     monkeypatch.setattr(ClienteXano, "identificar", Mock(return_value=conta))
-    lista = Mock(side_effect=erro if erro else None, return_value=resposta or {"procedimentos": []})
-    monkeypatch.setattr(ClienteXano, "listar_opcoes_agenda", lista)
+    lista = Mock(side_effect=erro if erro else None, return_value=(resposta or {"procedimentos": []})["procedimentos"])
+    monkeypatch.setattr(ClienteXano, "listar_procedimentos", lista)
     codigo = """
 from sorrisomais.api import ClienteXano, ContaAcesso
 from sorrisomais.config import Configuracao
@@ -51,6 +51,17 @@ def test_catalogo_informa_lista_vazia(monkeypatch):
     lista.assert_called_once_with("token-ficticio")
 
 
+def test_recepcionista_acessa_catalogo_sem_opcoes_da_agenda(monkeypatch):
+    monkeypatch.setattr(ClienteXano, "listar_opcoes_agenda", Mock(side_effect=AssertionError("Dependência indevida")))
+    app, lista = abrir_catalogo(monkeypatch, perfil="recepcionista", resposta={
+        "procedimentos": [{"id": 1, "nome": "Limpeza fictícia"}],
+    })
+    assert not app.exception
+    assert not app.error
+    assert any("Limpeza fictícia" in item.value for item in app.markdown)
+    lista.assert_called_once_with("token-ficticio")
+
+
 def test_catalogo_trata_falha_e_oferece_tentativa(monkeypatch):
     from sorrisomais.api import ErroAcesso
     app, _ = abrir_catalogo(monkeypatch, erro=ErroAcesso("Falha", 503))
@@ -59,7 +70,7 @@ def test_catalogo_trata_falha_e_oferece_tentativa(monkeypatch):
     assert any(botao.label == "Tentar novamente" for botao in app.button)
 
 
-@pytest.mark.parametrize("perfil", ["profissional", "recepcionista"])
+@pytest.mark.parametrize("perfil", ["profissional", "paciente"])
 def test_perfil_sem_acesso_nao_carrega_opcoes(monkeypatch, perfil):
     app, lista = abrir_catalogo(monkeypatch, perfil=perfil)
     assert not app.exception
@@ -125,7 +136,7 @@ def test_falha_nao_repete_get_ate_tentativa_manual(monkeypatch):
 
     falha = ErroAcesso("Falha temporária", 503)
     resposta = {"procedimentos": [{"id": 1, "nome": "Limpeza"}]}
-    app, lista = abrir_catalogo(monkeypatch, erro=[falha, resposta], resposta=resposta)
+    app, lista = abrir_catalogo(monkeypatch, erro=[falha, resposta["procedimentos"]], resposta=resposta)
     assert not app.exception
     assert lista.call_count == 1
 

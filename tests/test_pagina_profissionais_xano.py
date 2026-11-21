@@ -99,6 +99,22 @@ def test_recepcionista_renderiza_todos_os_profissionais_ativos(tela):
     assert any("Dr. Segundo Ativo" in texto for texto in interface.textos)
 
 
+def test_recepcionista_visualiza_incompleto_sem_bloquear_demais(tela):
+    interface, cliente, _ = tela
+    cliente.listar_profissionais.return_value = [
+        PROFISSIONAIS[0],
+        {**PROFISSIONAIS[0], "id": 26, "nome": "", "cro": "", "especialidade": None},
+    ]
+    pagina.renderizar(cliente, SimpleNamespace(perfis=("recepcionista",)))
+    assert not interface.erros
+    assert "Dra. Exemplo Sorriso" in interface.textos
+    assert "Profissional #26" in interface.textos
+    assert "CRO não informado" in interface.textos
+    assert "Especialidade: Não informada" in interface.textos
+    assert any("Cadastro incompleto" in texto for texto in interface.textos)
+    assert not any("Confirmar " in texto for texto, _ in interface.botoes)
+
+
 def test_perfil_nao_autorizado_nao_consulta(tela):
     interface, cliente, _ = tela
     pagina.renderizar(cliente, SimpleNamespace(perfis=("profissional",)))

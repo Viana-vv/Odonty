@@ -13,6 +13,9 @@ test('GET /agenda/opcoes tem cliente e export Xano restrito a dados mínimos', (
   assert.match(source, /sorriso_validar_sessao/);
   assert.match(source, /administrador.*recepcionista/);
   assert.match(source, /output = \["id", "nome"\]/);
+  assert.match(source, /\$db.profissional.nome != ""/);
+  assert.match(source, /\$db.profissional.cro != ""/);
+  assert.match(source, /\$db.profissional.especialidade_id > 0/);
   assert.doesNotMatch(source, /telefone|cpf|email|observacoes|conteudo_clinico/);
 
   const client = readFileSync(resolve(root, 'sorrisomais/api.py'), 'utf8');

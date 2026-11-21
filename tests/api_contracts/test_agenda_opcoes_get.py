@@ -43,3 +43,8 @@ def test_export_xano_agenda_opcoes_restringe_perfil_e_campos():
     assert 'output = ["id", "cpf"' not in codigo
     assert '"telefone"' not in codigo
     assert "history = false" in codigo
+    assert '$db.profissional.nome != ""' in codigo
+    assert '$db.profissional.cro != ""' in codigo
+    assert '$db.profissional.especialidade_id > 0' in codigo
+    assert '$db.paciente.nome != ""' in codigo
+    assert '$db.procedimento.nome != ""' in codigo

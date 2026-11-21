@@ -169,9 +169,18 @@ def renderizar(cliente, conta):
         st.error("Sua sessão expirou. Entre novamente para continuar.")
         return
     try:
-        opcoes = _leitura_com_cache(
-            token, ("agenda/opcoes",), lambda: cliente.listar_opcoes_agenda(token),
+        pacientes = _leitura_com_cache(
+            token, ("pacientes",), lambda: cliente.listar_pacientes(token),
         )
+        profissionais = _leitura_com_cache(
+            token, ("profissionais",), lambda: cliente.listar_profissionais(token),
+        )
+        ativos = [item for item in profissionais if item["situacao"] == "ativo"]
+        completos = [item for item in ativos if item["nome"].strip()
+                     and item["cro"].strip() and item["especialidade"] is not None]
+        if len(completos) < len(ativos):
+            st.info("Há Profissionais com cadastro incompleto que não podem ser selecionados. Solicite a correção ao responsável.")
+        opcoes = {"pacientes": pacientes, "profissionais": completos}
         with st.container(key="formulario-reagendar-consulta", border=True):
             _formulario(cliente, token, opcoes)
     except ErroAcesso as error:

@@ -23,19 +23,19 @@ query "agenda/opcoes" verb=GET {
       }
     }
     db.query paciente {
-      where = $db.paciente.situacao == "ativo"
+      where = $db.paciente.situacao == "ativo" && $db.paciente.nome != ""
       sort = {paciente.nome: "asc", paciente.id: "asc"}
       return = {type: "list"}
       output = ["id", "nome"]
     } as $pacientes
     db.query profissional {
-      where = $db.profissional.situacao == "Ativo"
+      where = $db.profissional.situacao == "Ativo" && $db.profissional.nome != "" && $db.profissional.cro != "" && $db.profissional.especialidade_id > 0
       sort = {profissional.nome: "asc", profissional.id: "asc"}
       return = {type: "list"}
       output = ["id", "nome"]
     } as $profissionais
     db.query procedimento {
-      where = $db.procedimento.ativo == true
+      where = $db.procedimento.ativo == true && $db.procedimento.nome != ""
       sort = {procedimento.nome: "asc", procedimento.id: "asc"}
       return = {type: "list"}
       output = ["id", "nome"]

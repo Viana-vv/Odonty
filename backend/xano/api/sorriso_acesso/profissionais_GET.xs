@@ -57,7 +57,7 @@ query profissionais verb=GET {
             id           : $item.id
             nome         : $item.nome
             cro          : $item.cro
-            especialidade: {id: $especialidade.id, nome: $especialidade.nome}
+            especialidade: $especialidade
             email        : $item.email
             telefone     : $item.telefone
             situacao     : $item.situacao|to_lower

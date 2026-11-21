@@ -9,7 +9,7 @@ from sorrisomais.navegacao import (
 def test_menu_demonstrativo_mostra_areas_autorizadas_por_perfil():
     areas = areas_visiveis({"recepcionista"}, modo_demonstracao=True)
     assert {area["chave"] for area in areas} == {
-        "inicio", "agenda", "pacientes", "profissionais", "reagendar_consulta",
+        "inicio", "agenda", "pacientes", "profissionais", "procedimentos", "reagendar_consulta",
     }
     assert all(area["disponivel"] for area in areas)
 

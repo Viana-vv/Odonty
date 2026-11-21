@@ -154,7 +154,7 @@ def test_modulos_isolados_abrem_com_perfil_autorizado(area, perfil, monkeypatch)
 def test_modulo_disponivel_nao_abre_para_perfil_nao_autorizado(monkeypatch):
     simular_modulos_integrados(monkeypatch, {"procedimentos"})
 
-    app = abrir_app(conta_teste("recepcionista"), cliente_teste(), pagina="procedimentos")
+    app = abrir_app(conta_teste("profissional"), cliente_teste(), pagina="procedimentos")
 
     assert not app.exception
     assert app.session_state["pagina_equipe"] == "inicio"
