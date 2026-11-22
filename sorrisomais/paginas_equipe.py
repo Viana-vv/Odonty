@@ -366,9 +366,16 @@ def _renderizar_agenda(cliente, conta):
         ilustracoes.ilustracao_contextual("09-sucesso.png" if aviso_agenda[0] == "success" else "10-aviso.png")
         getattr(st, aviso_agenda[0])(aviso_agenda[1])
     perfis = set(conta.perfis)
-    token = st.session_state[sessao.CHAVE].token
+    credencial = st.session_state.get(sessao.CHAVE)
+    token = getattr(credencial, "token", None)
+    if not token:
+        st.error("Sua sessão expirou. Entre novamente para acessar a Agenda.")
+        return
     busca_col, data_col, status_col = st.columns([2.2, 1, 1], gap="medium", vertical_alignment="bottom")
-    dia = data_col.date_input("Data", value=st.session_state.get("agenda_data", date.today()),
+    data_inicial = st.session_state.get("agenda_data", date.today())
+    if not isinstance(data_inicial, date):
+        data_inicial = date.today()
+    dia = data_col.date_input("Data", value=data_inicial,
                               format="DD/MM/YYYY", key="agenda_data_input")
     situacao = status_col.selectbox("Situação", ["Todas", "Agendada", "Confirmada",
         "Em atendimento", "Realizada", "Cancelada", "Falta"], key="agenda_situacao")

@@ -156,7 +156,8 @@ def _renderizar_formulario(cliente, token, pacientes, profissionais, procediment
         )
 
     if cancelar_envio:
-        st.session_state["pagina_equipe"] = "agenda"
+        origem = st.session_state.pop("nova_consulta_origem", None)
+        st.session_state["pagina_equipe"] = origem if origem in {"agenda", "exames"} else "agenda"
         st.rerun()
     if not enviar:
         return
@@ -195,6 +196,11 @@ def renderizar(cliente, conta):
         ):
             st.session_state.pop(chave, None)
         _limpar_cache_leituras()
+        origem = st.session_state.pop("nova_consulta_origem", None)
+        if origem == "exames":
+            st.session_state["exames_feedback"] = "Consulta agendada para o Paciente."
+            st.session_state["pagina_equipe"] = "exames"
+            st.rerun()
         st.success("Consulta agendada.")
 
     credencial = st.session_state.get(sessao.CHAVE)

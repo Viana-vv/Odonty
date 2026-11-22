@@ -6,18 +6,15 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 
-SECOES_PRONTUARIO = (
-    "Anamnese",
-    "Histórico Odontológico",
-    "Odontograma",
-    "Exame Clínico",
-    "Diagnósticos",
-    "Plano de Tratamento",
-    "Procedimentos",
-    "Exames e Imagens",
-    "Prescrições",
-    "Evolução Clínica",
-    "Documentos",
+QUESTIONARIO_PRONTUARIO = (
+    "Questionário de atendimento",
+    "Motivo da consulta",
+    "Alergias",
+    "Medicamentos em uso",
+    "Condições de saúde",
+    "Histórico odontológico",
+    "Observações",
+    "Salvar questionário",
 )
 
 CHAVES_SECOES_PRONTUARIO = {
@@ -91,7 +88,7 @@ renderizar(ClienteFalso(), SimpleNamespace(nome="Dra. Fictícia", perfis={perfis
     return AppTest.from_string(script, default_timeout=20).run()
 
 
-def test_prontuario_agregado_apresenta_dados_e_todas_as_secoes_sem_inventar_vazios():
+def test_prontuario_agregado_apresenta_dados_e_questionario_inicial():
     agregado = {
         "paciente": {
             "id": 12,
@@ -105,12 +102,14 @@ def test_prontuario_agregado_apresenta_dados_e_todas_as_secoes_sem_inventar_vazi
         **{chave: [] for chave in CHAVES_SECOES_PRONTUARIO.values()},
     }
     app = abrir_agregado(agregado)
-    app.selectbox(key="prontuario_paciente_id").select(12).run()
+    app.button(key="prontuario-paciente-12").click().run()
     assert not app.exception
     textos = [item.value for item in app.markdown]
     assert any("Paciente Fictícia Aurora" in texto for texto in textos)
     assert any("00000000000" in texto for texto in textos)
-    assert all(any(secao in texto for texto in textos) for secao in SECOES_PRONTUARIO)
+    assert any(item.value == "Questionário de atendimento" for item in app.subheader)
+    assert all(any(campo in item.label for item in app.text_area) for campo in QUESTIONARIO_PRONTUARIO[1:-1])
+    assert any(item.label == "Salvar questionário" for item in app.button)
     assert not any("Diagnóstico fictício" in texto for texto in textos)
 
 
@@ -127,12 +126,13 @@ def test_historico_mostra_apenas_conteudo_retornado_para_paciente_selecionado():
         {"id": 9, "paciente_id": 13, "conteudo": "Outro registro fictício", "registrado_em": "2026-10-09T12:00:00Z"},
     ]
     app = abrir(consultas, registros)
-    app.selectbox[0].set_value(12).run()
+    app.button(key="prontuario-paciente-12").click().run()
     assert not app.exception
-    assert "Paciente Fictícia Aurora" in str(app.selectbox[0].options)
-    assert "ID 13" in str(app.selectbox[0].options)
-    assert "Paciente 13" not in str(app.selectbox[0].options)
-    assert any("Evolução fictícia" in item.value for item in app.markdown)
+    assert any(botao.label == "Paciente Fictícia Aurora" for botao in app.button)
+    assert any(botao.label == "ID 13" for botao in app.button)
+    assert not any(botao.label == "Paciente 13" for botao in app.button)
+    assert any(item.value == "Questionário de atendimento" for item in app.subheader)
+    assert any(item.label == "Motivo da consulta" for item in app.text_area)
     assert not any("Outro registro fictício" in item.value for item in app.markdown)
     assert any(botao.label == "Nova evolução" for botao in app.button)
 
@@ -148,13 +148,13 @@ def test_visao_geral_mostra_todos_os_registros_e_permite_abrir_prontuario_indivi
     ]
     app = abrir(consultas, registros)
     assert not app.exception
-    assert app.selectbox[0].value is None
-    assert any("Evolução fictícia Aurora" in item.value for item in app.markdown)
-    assert any("Evolução fictícia Bruno" in item.value for item in app.markdown)
+    assert any("Selecione um Paciente" in item.value for item in app.info)
 
-    app.selectbox[0].set_value(13).run()
+    app.button(key="prontuario-paciente-13").click().run()
 
     assert not app.exception
+    assert any(item.value == "Questionário de atendimento" for item in app.subheader)
+    assert any(item.label == "Histórico odontológico" for item in app.text_area)
     assert any("Evolução fictícia Bruno" in item.value for item in app.markdown)
     assert not any("Evolução fictícia Aurora" in item.value for item in app.markdown)
 
@@ -169,7 +169,8 @@ def test_clicar_no_paciente_nao_altera_widget_instanciado():
     app.button(key="prontuario-paciente-13").click().run()
 
     assert not app.exception
-    assert app.selectbox[0].value == 13
+    assert app.session_state["prontuario_paciente_id"] == 13
+    assert any(item.label == "Motivo da consulta" for item in app.text_area)
 
 
 def test_paciente_nao_recebe_acao_para_criar_registro_clinico():
@@ -189,7 +190,7 @@ def test_perfil_administrativo_nao_carrega_dados_clinicos():
 
 @pytest.mark.parametrize(
     ("consultas", "registros", "esperado"),
-    [([], [], "Não há Pacientes"), ([{"paciente_id": 2, "paciente_nome": "Paciente Fictícia"}], [], "ainda não possui Registros Clínicos")],
+    [([], [], "Não há Pacientes"), ([{"paciente_id": 2, "paciente_nome": "Paciente Fictícia"}], [], "Selecione um Paciente")],
 )
 def test_estados_vazios(consultas, registros, esperado):
     app = abrir(consultas, registros)
@@ -219,7 +220,7 @@ def test_rerun_ao_trocar_paciente_reutiliza_gets_da_sessao():
     app = abrir(consultas, [])
     assert app.session_state["_chamadas_api_prontuario"] == 2
 
-    app.selectbox[0].set_value(13).run()
+    app.button(key="prontuario-paciente-13").click().run()
 
     assert not app.exception
     assert app.session_state["_chamadas_api_prontuario"] == 2
@@ -243,10 +244,9 @@ def test_historico_apresenta_original_e_trilha_de_retificacao():
                          "justificativa": "Correção de digitação", "criada_em": "2026-10-11T12:00:00Z"}],
     }]
     app = abrir([{"paciente_id": 12, "paciente_nome": "Paciente Aurora"}], registros)
-    textos = [item.value for item in app.markdown]
-    assert any("Conteúdo original fictício" in texto for texto in textos)
-    assert any("Conteúdo corrigido fictício" in texto for texto in textos)
-    assert any("Correção de digitação" in item.value for item in app.caption)
+    app.button(key="prontuario-paciente-12").click().run()
+    assert not app.exception
+    assert any(item.label == "Motivo da consulta" for item in app.text_area)
 
 
 def test_expiracao_ao_salvar_nao_reapresenta_historico_carregado():

@@ -167,11 +167,52 @@ def _cartao(exame, *, profissional, api, token):
             st.info("Resultado ainda não liberado para este Paciente.")
 
 
+def _abrir_consulta_do_exame(exame):
+    paciente_id = exame.get("paciente_id")
+    if not isinstance(paciente_id, int) or paciente_id <= 0:
+        return
+    st.session_state["pagina_equipe"] = "nova_consulta"
+    st.session_state["nova_consulta_origem"] = "exames"
+    st.session_state["nova-consulta-paciente"] = paciente_id
+    st.session_state["nova-consulta-observacao"] = (
+        f"Consulta de acompanhamento relacionada ao Exame: {exame.get('tipo') or 'Exame'}"
+    )
+
+
+def _cartao_fila_recepcao(exame):
+    with st.container(border=True):
+        titulo, situacao = st.columns([3, 1], vertical_alignment="center")
+        with titulo:
+            st.markdown(f"### {exame.get('tipo') or 'Exame'}")
+            st.caption(f"Paciente · {exame.get('paciente_nome') or 'Não informado'}")
+        with situacao:
+            st.markdown(f"**{exame.get('situacao', 'Solicitado')}**")
+        st.divider()
+        dados = st.columns(3)
+        with dados[0]:
+            st.caption("Consulta")
+            st.write(_data_legivel(exame.get("consulta_inicio_em")))
+        with dados[1]:
+            st.caption("Profissional solicitante")
+            st.write(exame.get("profissional_nome") or "Não informado")
+        with dados[2]:
+            st.caption("Solicitado em")
+            st.write(_data_legivel(exame.get("solicitado_em")))
+        st.button(
+            "Agendar consulta para este Exame",
+            key=f"exame-agendar-consulta-{exame.get('id')}",
+            type="primary",
+            width="stretch",
+            on_click=_abrir_consulta_do_exame,
+            args=(exame,),
+        )
+
+
 def renderizar(cliente, conta):
     st.title("Exames")
     st.markdown("Acompanhe solicitações e resultados dos Exames.")
     perfis = set(getattr(conta, "perfis", ()))
-    if not perfis.intersection({"profissional", "paciente"}):
+    if not perfis.intersection({"profissional", "paciente", "recepcionista"}):
         st.warning("O acesso a Exames não está disponível para este perfil.")
         return
     credencial = st.session_state.get(sessao.CHAVE)
@@ -256,13 +297,19 @@ def renderizar(cliente, conta):
                         else:
                             st.error(_mensagem_erro_exame(error, "solicitar"))
 
+    if "recepcionista" in perfis:
+        st.info("Fila operacional: acompanhe solicitações e situações dos Exames. Resultados clínicos ficam restritos ao Profissional e ao Paciente autorizado.")
+
     if not exames:
         st.info("Nenhum Exame encontrado neste escopo.")
         return
     for exame in exames:
-        _cartao(
-            exame,
-            profissional="profissional" in perfis,
-            api=api,
-            token=credencial.token,
-        )
+        if "recepcionista" in perfis:
+            _cartao_fila_recepcao(exame)
+        else:
+            _cartao(
+                exame,
+                profissional="profissional" in perfis,
+                api=api,
+                token=credencial.token,
+            )

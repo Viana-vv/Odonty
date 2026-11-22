@@ -127,6 +127,7 @@ def test_atalho_nova_consulta_fica_indisponivel_quando_modulo_esta_ausente(monke
         ("prontuarios", "paciente"),
         ("procedimentos", "administrador"),
         ("exames", "profissional"),
+        ("exames", "recepcionista"),
         ("reagendar_consulta", "recepcionista"),
         ("nova_consulta", "recepcionista"),
     ],
@@ -162,7 +163,7 @@ def test_modulo_disponivel_nao_abre_para_perfil_nao_autorizado(monkeypatch):
 
 @pytest.mark.parametrize(
     ("area", "perfil"),
-    [("exames", "recepcionista"), ("reagendar_consulta", "profissional")],
+    [("reagendar_consulta", "profissional")],
 )
 def test_rota_clinica_direta_nao_autorizada_nao_carrega_modulo(area, perfil, monkeypatch):
     simular_modulos_integrados(monkeypatch, {area})

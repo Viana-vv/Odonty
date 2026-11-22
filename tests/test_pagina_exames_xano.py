@@ -52,10 +52,24 @@ def test_paciente_nao_ve_resultado_antes_da_liberacao():
     assert any("Resultado ainda não liberado" in item.value for item in app.info)
 
 
-def test_perfil_administrativo_nao_acessa_exames():
-    app = abrir([], perfis=("recepcionista",))
+def test_recepcionista_acompanha_fila_operacional_sem_resultado_clinico():
+    app = abrir([{
+        "id": 2,
+        "paciente_id": 11,
+        "tipo": "Radiografia fictícia",
+        "situacao": "Solicitado",
+        "paciente_nome": "Paciente Fictício",
+        "profissional_nome": "Profissional Fictício",
+        "solicitado_em": "2026-11-12T12:30:00Z",
+    }], perfis=("recepcionista",))
     assert not app.exception
-    assert any("não está disponível" in item.value for item in app.warning)
+    assert any("Fila operacional" in item.value for item in app.info)
+    assert any("Paciente Fictício" in item.value for item in app.caption)
+    assert not any(item.label == "Atualizar situação" for item in app.expander)
+    app.button(key="exame-agendar-consulta-2").click().run()
+    assert app.session_state["pagina_equipe"] == "nova_consulta"
+    assert app.session_state["nova-consulta-paciente"] == 11
+    assert "Radiografia fictícia" in app.session_state["nova-consulta-observacao"]
 
 
 def test_estado_vazio():

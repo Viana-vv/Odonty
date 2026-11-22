@@ -20,7 +20,7 @@ query "exames" verb=GET {
       output = ["id", "perfis", "situacao"]
     } as $conta
     conditional {
-      if ($conta == null || $conta.situacao != "ativo" || ($conta.perfis|intersect:["profissional", "paciente"]|count) == 0) {
+      if ($conta == null || $conta.situacao != "ativo" || ($conta.perfis|intersect:["profissional", "paciente", "recepcionista"]|count) == 0) {
         util.set_header { value = "HTTP/1.1 403 Forbidden" }
         return { value = {codigo: "ACESSO_NEGADO", mensagem: "Conta sem permissão para consultar Exames."} }
       }
@@ -76,6 +76,36 @@ query "exames" verb=GET {
           }
         }
       }
+      elseif (($conta.perfis|intersect:["recepcionista"]|count) > 0) {
+        db.query exame {
+          sort = {exame.solicitado_em: "desc"}
+          return = {type: "list"}
+          output = ["id", "paciente_id", "consulta_id", "profissional_id", "tipo", "situacao", "solicitado_em", "realizado_em"]
+        } as $exames_recepcao
+        foreach ($exames_recepcao) {
+          each as $exame {
+            db.get paciente {
+              field_name = "id"
+              field_value = $exame.paciente_id
+              output = ["id", "nome"]
+            } as $paciente
+            db.get consulta {
+              field_name = "id"
+              field_value = $exame.consulta_id
+              output = ["id", "inicio_em"]
+            } as $consulta
+            db.get profissional {
+              field_name = "id"
+              field_value = $exame.profissional_id
+              output = ["id", "nome"]
+            } as $profissional
+            var $exame_recepcao {
+              value = {id: $exame.id, paciente_id: $exame.paciente_id, paciente_nome: $paciente.nome, consulta_id: $exame.consulta_id, consulta_inicio_em: $consulta.inicio_em, profissional_id: $exame.profissional_id, profissional_nome: $profissional.nome, tipo: $exame.tipo, situacao: $exame.situacao, solicitado_em: $exame.solicitado_em, realizado_em: $exame.realizado_em}
+            }
+            var.update $exames { value = $exames|push:$exame_recepcao }
+          }
+        }
+      }
       else {
         db.get profissional {
           field_name = "conta_acesso_id"
@@ -117,4 +147,5 @@ query "exames" verb=GET {
   }
   response = {exames: $exames}
   history = false
+  guid = "LvZDzJY88ru6fWdYZhw4sSj0SX0"
 }

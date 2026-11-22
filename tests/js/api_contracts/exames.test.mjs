@@ -55,7 +55,10 @@ test('GET limita Paciente à própria lista e libera somente resultado disponív
   assert.match(source, /situacao == "Resultado disponível"/);
   assert.match(source, /resultado: \$resultado_liberado/);
   assert.match(source, /\$db\.exame\.profissional_id == \$profissional\.id/);
-  assert.match(source, /intersect:\["profissional", "paciente"\]/);
+  assert.match(source, /intersect:\["profissional", "paciente", "recepcionista"\]/);
+  assert.match(source, /intersect:\["recepcionista"\]/);
+  assert.match(source, /paciente_nome/);
+  assert.match(source, /profissional_nome/);
   assert.match(source, /\$input\.paciente_id > 0/);
   assert.match(source, /\$input\.consulta_id > 0/);
 });

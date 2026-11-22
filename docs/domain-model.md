@@ -50,6 +50,11 @@ Pode:
 - cadastrar procedimentos;
 - administrar contas de acesso.
 
+Recepcionistas podem consultar uma fila operacional de Exames solicitados,
+contendo Paciente, Consulta, Profissional solicitante, tipo, data e situação.
+Essa fila não inclui resultado, observações clínicas ou arquivos e não permite
+alterar o Exame.
+
 Informações clínicas só podem ser alteradas por profissionais autorizados.
 
 ## 3. Visão geral dos relacionamentos
@@ -643,6 +648,7 @@ Paciente 1 -------- N Exame
 | Associar procedimento | Não | Sim | Conforme permissão |
 | Solicitar exame | Não | Sim | Não |
 | Registrar resultado | Não | Sim | Não |
+| Consultar fila operacional de Exames | Não | Sim | Sim, sem conteúdo clínico |
 | Administrar contas | Não | Não | Sim |
 
 Todas as permissões devem ser verificadas no Xano.

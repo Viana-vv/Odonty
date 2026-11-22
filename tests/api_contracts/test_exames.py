@@ -20,7 +20,10 @@ def test_get_exames_restringe_paciente_ao_resultado_disponivel():
     assert 'situacao == "Resultado disponível"' in source
     assert 'resultado: $resultado_liberado' in source
     assert '$db.exame.profissional_id == $profissional.id' in source
-    assert 'intersect:["profissional", "paciente"]' in source
+    assert 'intersect:["profissional", "paciente", "recepcionista"]' in source
+    assert 'intersect:["recepcionista"]' in source
+    assert "paciente_nome" in source
+    assert "profissional_nome" in source
     assert '$input.paciente_id > 0' in source
     assert '$input.consulta_id > 0' in source
     assert 'HTTP/1.1 403 Forbidden" duplicates = "replace"' not in source
