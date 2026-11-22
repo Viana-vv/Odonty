@@ -4,14 +4,13 @@
 
 O **Sorriso+**, desenvolvido no projeto Odonty, é um aplicativo web acadêmico para organizar o atendimento em uma clínica odontológica. Ele reúne a Agenda, os cadastros e o histórico do atendimento para facilitar a consulta de informações e evitar conflitos de horário.
 
-O aplicativo acompanha o trabalho de Administradores, Recepcionistas e Dentistas. O Paciente tem um portal próprio para acompanhar suas Consultas e as informações que a clínica disponibiliza.
+O aplicativo acompanha o trabalho de Administradores, Recepcionistas e Dentistas.
 
 ## 2. Acesso ao aplicativo
 
 O código está no [repositório público Odonty](https://github.com/Viana-vv/Odonty). A versão web pode ser executada localmente. Até a revisão deste manual, o projeto não divulgava um endereço público de implantação do aplicativo.
 
 - **Equipe** — abra [localhost:8501](http://localhost:8501) e entre com a Conta de Acesso de Administrador, Recepcionista ou Dentista.
-- **Paciente** — abra [localhost:8503](http://localhost:8503) e use uma Conta de Acesso de Paciente vinculada ao seu cadastro.
 - Para a demonstração, solicite ao grupo contas fictícias ativas para os perfis que serão usados. Use **Esqueci minha senha** na entrada da equipe para solicitar um código por e-mail quando o serviço de recuperação estiver configurado.
 
 ![Tela de entrada da equipe com campos de e-mail e senha](docs/imagens/telas/login-equipe.png)
@@ -32,13 +31,6 @@ $env:XANO_API_BASE_URL = "https://x8ki-letl-twmt.n7.xano.io/api:sorriso-acesso:v
 .\.venv-local\Scripts\python.exe -m streamlit run app.py --server.port=8501
 ```
 
-Em um segundo PowerShell, aberto na pasta `Odonty`:
-
-```powershell
-$env:XANO_API_BASE_URL = "https://x8ki-letl-twmt.n7.xano.io/api:sorriso-acesso:v1"
-.\.venv-local\Scripts\python.exe -m streamlit run portal_paciente.py --server.port=8503
-```
-
 **macOS ou Linux (Terminal)**
 
 ```bash
@@ -50,13 +42,6 @@ export XANO_API_BASE_URL="https://x8ki-letl-twmt.n7.xano.io/api:sorriso-acesso:v
 .venv-local/bin/python -m streamlit run app.py --server.port=8501
 ```
 
-Em um segundo terminal, aberto na pasta `Odonty`:
-
-```bash
-export XANO_API_BASE_URL="https://x8ki-letl-twmt.n7.xano.io/api:sorriso-acesso:v1"
-.venv-local/bin/python -m streamlit run portal_paciente.py --server.port=8503
-```
-
 </details>
 
 ## 3. Perfis de usuários
@@ -66,7 +51,6 @@ export XANO_API_BASE_URL="https://x8ki-letl-twmt.n7.xano.io/api:sorriso-acesso:v
 | **Administrador** | Gerencia cadastros de Pacientes e Profissionais, cria Contas de Acesso de Recepcionista, organiza a Agenda e gerencia o catálogo de Procedimentos. O conteúdo clínico fica restrito aos perfis autorizados. |
 | **Recepcionista** | Cadastra e atualiza Pacientes, consulta Profissionais, agenda e reagenda Consultas, gerencia Procedimentos e acompanha a fila operacional de Exames. A fila mostra dados do pedido e a situação, com o conteúdo clínico restrito aos perfis autorizados. |
 | **Dentista (Profissional)** | Organiza seus horários, acompanha os atendimentos sob sua responsabilidade, registra Procedimentos da Consulta e evoluções clínicas, e solicita e atualiza Exames no seu escopo. Pode criar Procedimentos no catálogo. |
-| **Paciente** | Consulta seus atendimentos futuros e passados e acompanha as informações clínicas e os Exames disponibilizados no portal. |
 
 ## 4. Funcionalidades
 
@@ -74,8 +58,7 @@ export XANO_API_BASE_URL="https://x8ki-letl-twmt.n7.xano.io/api:sorriso-acesso:v
 - **Cadastros** — Pacientes, Profissionais e Contas de Acesso de Recepcionista, conforme as permissões.
 - **Procedimentos** — pesquisa, criação e gestão do catálogo, associação à Consulta e registro de realização quando habilitado.
 - **Prontuários** — consulta ao histórico autorizado e registro de evoluções clínicas.
-- **Exames** — solicitação, atualização de situação, acompanhamento operacional e consulta dos dados liberados.
-- **Portal do Paciente** — Consultas futuras e passadas, **Informações liberadas** e **Exames**.
+- **Exames** — solicitação, atualização de situação e acompanhamento operacional.
 
 ## 5. Manual de utilização
 
@@ -119,34 +102,25 @@ As capturas mostram o aplicativo com dados fictícios e respostas simuladas. Use
 
 </details>
 
-### Paciente — acompanhar o atendimento
-
-1. Abra o **Portal do Paciente** e entre com a Conta de Acesso vinculada ao seu cadastro.
-2. Em **Consultas**, alterne entre **Futuras** e **Passadas** para conferir datas e situações.
-3. Abra **Informações liberadas** e **Exames** para consultar o que a clínica disponibilizou para sua conta. Para cancelar ou alterar uma Consulta, entre em contato com a clínica.
-
-![Portal do Paciente com as opções Consultas, Informações liberadas e Exames](docs/imagens/telas/portal-paciente.png)
-
 ## 6. Exemplo de utilização
 
-Use a **Paciente Demonstração**, a **Dra. Marina Exemplo** e o Procedimento **Avaliação inicial**. Prepare um horário livre para agendar e uma Consulta anterior para demonstrar a evolução e o histórico. Prepare uma informação clínica de exemplo já liberada para exibição no Portal do Paciente.
+Use a **Paciente Demonstração**, a **Dra. Marina Exemplo** e o Procedimento **Avaliação inicial**. Prepare um horário livre para agendar e uma Consulta anterior para demonstrar a evolução e o histórico.
 
 | Etapa | Ação | Resultado esperado |
 | --- | --- | --- |
 | Preparação | O Administrador verifica os cadastros da equipe e o Dentista oferece um horário. | O horário fica disponível para o agendamento. |
-| Agendamento | A Recepcionista agenda a Avaliação inicial para a Paciente Demonstração. | A Consulta aparece na Agenda da equipe e em **Futuras** no portal. |
+| Agendamento | A Recepcionista agenda a Avaliação inicial para a Paciente Demonstração. | A Consulta aparece na Agenda da equipe. |
 | Atendimento | O Dentista abre a Consulta anterior e salva a anotação fictícia “Orientações de higiene registradas no atendimento de demonstração”. | A evolução fica vinculada ao Prontuário e à Consulta do exemplo. |
-| Acompanhamento | A Paciente consulta o agendamento e abre **Informações liberadas**. | O portal mostra as Consultas dessa conta e a informação preparada para a demonstração. |
+| Acompanhamento | O Dentista solicita um Exame para a Consulta anterior. | O pedido aparece na lista de Exames com a situação **Solicitado**. |
 
 ### Roteiro do vídeo de funcionamento
 
 | Tempo | O que mostrar no aplicativo web |
 | --- | --- |
-| **00:00–00:30** | Apresente o problema de organizar horários e centralizar o histórico. Identifique os quatro perfis. |
+| **00:00–00:30** | Apresente o problema de organizar horários e centralizar o histórico. Identifique os três perfis da equipe. |
 | **00:30–01:00** | **Administrador.** Mostre o painel e a preparação dos cadastros necessários. |
 | **01:00–02:15** | **Recepcionista.** Selecione a Paciente de exemplo, faça o agendamento e mostre a Consulta na Agenda. |
-| **02:15–03:25** | **Dentista.** Abra a Consulta anterior do exemplo, salve uma evolução e confira o histórico. |
-| **03:25–04:00** | **Paciente.** Abra o portal, confira o novo agendamento e a informação já liberada. |
+| **02:15–04:00** | **Dentista.** Abra a Consulta anterior do exemplo, salve uma evolução, confira o histórico e mostre o registro de um Exame. |
 | **04:00–05:00** | Mostre um reagendamento ou o filtro de Procedimentos. Confira o resultado da operação na tela. |
 
 Grave com o aplicativo web aberto. Prepare as contas e os dados fictícios antes da gravação. Publique o vídeo no YouTube como **Não listado** e inclua o link no arquivo de entrega.
@@ -154,7 +128,6 @@ Grave com o aplicativo web aberto. Prepare as contas e os dados fictícios antes
 ## 7. Limitações conhecidas
 
 - O Sorriso+ é um MVP acadêmico para demonstração com dados fictícios.
-- O cadastro de Paciente pela equipe cria o Paciente e seu Prontuário. Para entrar no portal, ele também precisa de uma Conta de Acesso vinculada, provisionada à parte.
 - O Prontuário completo segue em desenvolvimento. A Evolução Clínica tem fluxo próprio. O preenchimento de todas as seções estruturadas, o odontograma gráfico e o acesso a documentos clínicos ainda têm pendências. Se o carregamento do Prontuário completo estiver indisponível, a tela pode exibir seções vazias mesmo com o histórico de evoluções disponível. [Pendências do Prontuário](openspec/changes/implementar-prontuario-completo/tasks.md)
 - Solicitações de Exame ficam no aplicativo. O envio automático para laboratórios está fora do fluxo atual.
 - Pagamentos, convênios, estoque, integração com WhatsApp e suporte a múltiplas clínicas estão fora do escopo desta versão. [Escopo do projeto](docs/project-overview.md)
