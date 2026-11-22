@@ -35,6 +35,7 @@ Pode:
 - iniciar e concluir consultas;
 - registrar informações clínicas;
 - registrar procedimentos;
+- criar novos Procedimentos para uso no atendimento;
 - solicitar e registrar exames.
 
 ### Administrador ou recepcionista
@@ -48,6 +49,7 @@ Pode:
 - organizar a agenda;
 - agendar, confirmar, cancelar ou reagendar consultas;
 - cadastrar procedimentos;
+- editar e inativar Procedimentos, preservando vínculos históricos;
 - administrar contas de acesso.
 
 Recepcionistas podem consultar uma fila operacional de Exames solicitados,

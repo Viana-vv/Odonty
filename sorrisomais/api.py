@@ -600,7 +600,115 @@ class ClienteXano:
     def listar_procedimentos(self, token):
         self._token_obrigatorio(token)
         data = self._request("GET", "/procedimentos", token=token)
-        return self._lista_resposta(data, "procedimentos", {"nome": str})
+        itens = self._lista_resposta(data, "procedimentos", {"nome": str})
+        origem = data.get("procedimentos", [])
+        for item, bruto in zip(itens, origem):
+            item["ativo"] = bruto.get("ativo", True) if isinstance(bruto, dict) else True
+        return itens
+
+    def criar_procedimento(self, token, nome):
+        self._token_obrigatorio(token)
+        from .contratos_clinicos import validar_texto
+        nome = validar_texto(nome, "o nome do Procedimento", 120)
+        data = self._request("POST", "/procedimentos", token=token,
+                             payload={"nome": nome}, status_esperado=201)
+        item = data.get("procedimento")
+        if (not isinstance(item, dict) or type(item.get("id")) is not int
+                or item["id"] <= 0 or not isinstance(item.get("nome"), str)
+                or not item["nome"].strip()):
+            raise ErroAcesso()
+        return {"id": item["id"], "nome": item["nome"].strip(),
+                "ativo": item.get("ativo", True)}
+
+    def atualizar_procedimento(self, token, procedimento_id, *, nome=None, ativo=None):
+        self._token_obrigatorio(token)
+        from .contratos_clinicos import validar_id, validar_texto
+        procedimento_id = validar_id(procedimento_id, "Procedimento")
+        payload = {}
+        if nome is not None:
+            payload["nome"] = validar_texto(nome, "o nome do Procedimento", 120)
+        if ativo is not None:
+            if type(ativo) is not bool:
+                raise ErroAcesso("Informe uma situação válida para o Procedimento.", 400)
+            data = self._request(
+                "PATCH", f"/procedimentos/{procedimento_id}/situacao", token=token,
+                payload={"situacao": "ativo" if ativo else "inativo"},
+            )
+            item = data.get("procedimento")
+            if not isinstance(item, dict) or item.get("id") != procedimento_id:
+                raise ErroAcesso()
+            resultado = dict(item)
+            resultado.setdefault("ativo", ativo)
+            if not isinstance(resultado.get("nome"), str) and nome is not None:
+                resultado["nome"] = nome
+            return resultado
+        if not payload:
+            raise ErroAcesso("Informe uma alteração para o Procedimento.", 400)
+        data = self._request("PATCH", f"/procedimentos/{procedimento_id}",
+                             token=token, payload=payload)
+        item = data.get("procedimento")
+        if not isinstance(item, dict) or item.get("id") != procedimento_id:
+            raise ErroAcesso()
+        resultado = dict(item)
+        if not isinstance(resultado.get("nome"), str) and nome is not None:
+            resultado["nome"] = nome
+        if not isinstance(resultado.get("ativo"), bool) and ativo is not None:
+            resultado["ativo"] = ativo
+        return resultado
+
+    def listar_procedimentos_consulta(self, token, consulta_id):
+        self._token_obrigatorio(token)
+        from .contratos_clinicos import validar_id
+        consulta_id = validar_id(consulta_id, "Consulta")
+        data = self._request("GET", f"/consultas/{consulta_id}/procedimentos", token=token)
+        itens = data.get("procedimentos")
+        if not isinstance(itens, list) or any(not isinstance(item, dict) for item in itens):
+            raise ErroAcesso()
+        return itens
+
+    def adicionar_procedimento_consulta(self, token, consulta_id, procedimento_id):
+        self._token_obrigatorio(token)
+        from .contratos_clinicos import validar_id
+        consulta_id = validar_id(consulta_id, "Consulta")
+        procedimento_id = validar_id(procedimento_id, "Procedimento")
+        data = self._request(
+            "POST", f"/consultas/{consulta_id}/procedimentos", token=token,
+            payload={"procedimento_id": procedimento_id}, status_esperado=201,
+        )
+        item = data.get("procedimento")
+        if not isinstance(item, dict) or type(item.get("id")) is not int:
+            raise ErroAcesso()
+        return item
+
+    def atualizar_situacao_procedimento_consulta(self, token, consulta_id, vinculo_id, situacao):
+        self._token_obrigatorio(token)
+        from .contratos_clinicos import validar_id
+        consulta_id = validar_id(consulta_id, "Consulta")
+        vinculo_id = validar_id(vinculo_id, "Procedimento")
+        if situacao not in {"cancelado", "planejado"}:
+            raise ErroAcesso("Informe uma situação válida para o Procedimento.", 400)
+        data = self._request(
+            "PATCH", f"/consultas/{consulta_id}/procedimentos/{vinculo_id}/situacao",
+            token=token, payload={"situacao": situacao},
+        )
+        item = data.get("procedimento")
+        if not isinstance(item, dict) or item.get("id") != vinculo_id:
+            raise ErroAcesso()
+        return item
+
+    def marcar_procedimento_realizado(self, token, consulta_id, vinculo_id):
+        self._token_obrigatorio(token)
+        from .contratos_clinicos import validar_id
+        consulta_id = validar_id(consulta_id, "Consulta")
+        vinculo_id = validar_id(vinculo_id, "Procedimento")
+        data = self._request(
+            "PATCH", f"/consultas/{consulta_id}/procedimentos/{vinculo_id}/realizacao",
+            token=token,
+        )
+        item = data.get("procedimento")
+        if not isinstance(item, dict) or item.get("id") != vinculo_id or item.get("situacao") != "realizado":
+            raise ErroAcesso()
+        return item
 
     def listar_opcoes_agenda(self, token):
         self._token_obrigatorio(token)

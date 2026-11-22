@@ -17,16 +17,15 @@ query "procedimentos" verb=GET {
       output = ["id", "perfis", "situacao"]
     } as $solicitante
     conditional {
-      if ($solicitante == null || $solicitante.situacao != "ativo" || ($solicitante.perfis|intersect:["administrador", "recepcionista"]|count) == 0) {
+      if ($solicitante == null || $solicitante.situacao != "ativo" || ($solicitante.perfis|intersect:["administrador", "recepcionista", "profissional"]|count) == 0) {
         util.set_header { value = "HTTP/1.1 403 Forbidden" }
         return { value = {codigo: "ACESSO_NEGADO", mensagem: "Listagem de Procedimentos disponível somente à equipe administrativa."} }
       }
     }
     db.query procedimento {
-      where = $db.procedimento.ativo == true
       sort = {procedimento.nome: "asc", procedimento.id: "asc"}
       return = {type: "list"}
-      output = ["id", "nome"]
+      output = ["id", "nome", "ativo"]
     } as $procedimentos
   }
   response = {procedimentos: $procedimentos}

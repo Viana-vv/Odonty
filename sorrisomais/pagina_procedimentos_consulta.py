@@ -54,6 +54,18 @@ def _renderizar_lista(cliente, token, consulta, procedimentos):
                 else:
                     indicador.warning("Situação indisponível")
 
+            if situacao == "planejado" and st.button(
+                "Cancelar Procedimento", key=f"cancelar-procedimento-{identificador}"
+            ):
+                try:
+                    cliente.atualizar_situacao_procedimento_consulta(
+                        token, consulta["id"], identificador, "cancelado"
+                    )
+                    invalidar_cache(st.session_state, (f"procedimentos-consulta:{consulta['id']}", "consultas", "prontuario"))
+                    st.rerun()
+                except ErroAcesso as erro:
+                    st.error(str(erro))
+
             if situacao == "realizado":
                 responsavel = procedimento.get("realizado_por_nome")
                 data = procedimento.get("realizado_em")
@@ -136,6 +148,32 @@ def renderizar(cliente, conta, consulta):
     except Exception:
         st.error("Não foi possível carregar os Procedimentos. Tente novamente em instantes.")
         return
+
+    try:
+        catalogo = cliente.listar_procedimentos(credencial.token)
+    except Exception:
+        catalogo = []
+    usados = {item.get("procedimento_id") for item in procedimentos
+              if isinstance(item, dict) and item.get("situacao") != "cancelado"}
+    opcoes = {item["id"]: item["nome"] for item in catalogo
+              if isinstance(item, dict) and item.get("ativo", True)
+              and item.get("id") not in usados}
+    if opcoes:
+        st.subheader("Adicionar Procedimento")
+        procedimento_id = st.selectbox(
+            "Procedimento", list(opcoes), format_func=opcoes.get,
+            key="procedimento-consulta-novo",
+        )
+        if st.button("Adicionar à Consulta", key="procedimento-consulta-adicionar", type="primary"):
+            try:
+                cliente.adicionar_procedimento_consulta(
+                    credencial.token, consulta["id"], procedimento_id
+                )
+                invalidar_cache(st.session_state, (f"procedimentos-consulta:{consulta['id']}", "consultas", "prontuario"))
+                st.success("Procedimento adicionado à Consulta.")
+                st.rerun()
+            except ErroAcesso as erro:
+                st.error(str(erro))
 
     _renderizar_lista(cliente, credencial.token, consulta, procedimentos)
     if st.button("Atualizar Procedimentos", key="procedimentos-consulta-atualizar"):

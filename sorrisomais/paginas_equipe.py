@@ -396,6 +396,29 @@ def _renderizar_agenda(cliente, conta):
                 st.rerun()
         return
 
+    # A Agenda vazia ou uma resposta antiga em sessão não pode derrubar o
+    # Streamlit. O contrato normalizado do cliente retorna uma lista, mas a
+    # tela deve continuar utilizável mesmo se o estado local estiver inválido.
+    if not isinstance(consultas, list):
+        consultas = []
+    consultas_normalizadas = []
+    for consulta in consultas:
+        if not isinstance(consulta, dict):
+            continue
+        consulta = dict(consulta)
+        procedimentos = consulta.get("procedimentos", [])
+        if isinstance(procedimentos, str):
+            procedimentos = [procedimentos] if procedimentos.strip() else []
+        elif not isinstance(procedimentos, list):
+            procedimentos = []
+        consulta["procedimentos"] = [
+            procedimento for procedimento in procedimentos if isinstance(procedimento, str)
+        ]
+        consulta.setdefault("paciente_nome", "Paciente não informado")
+        consulta.setdefault("profissional_nome", "Profissional não informado")
+        consultas_normalizadas.append(consulta)
+    consultas = consultas_normalizadas
+
     if situacao != "Todas":
         consultas = [c for c in consultas if c["situacao"] == situacao]
     if busca:

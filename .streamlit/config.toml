@@ -9,7 +9,7 @@ textColor = "#183d32"
 font = "sans serif"
 
 [client]
-showErrorDetails = "none"
+showErrorDetails = "full"
 toolbarMode = "minimal"
 
 [browser]
